@@ -1,0 +1,14 @@
+const fs = require('fs');
+let content = fs.readFileSync('C:/Users/Admin/Desktop/citilap-admin-nextjs/layouts/MainLayout.jsx', 'utf8');
+content = '\"use client\";\n' + content.replace(/import \{ Outlet, NavLink, useNavigate, useLocation \} from 'react-router-dom';/, 'import Link from \'next/link\';\nimport { useRouter, usePathname } from \'next/navigation\';');
+content = content.replace(/useNavigate\(\)/, 'useRouter()');
+content = content.replace(/useLocation\(\)/, 'usePathname()');
+content = content.replace(/location\.pathname/g, 'pathname');
+content = content.replace(/<Outlet \/>/g, '{children}');
+content = content.replace(/export default function MainLayout\(\) \{/, 'export default function MainLayout({ children }) {');
+content = content.replace(/<NavLink/g, '<Link');
+content = content.replace(/<\/NavLink>/g, '</Link>');
+content = content.replace(/to=/g, 'href=');
+content = content.replace(/className=\{.*?isActive.*?\}/g, 'className="nav-item"');
+content = content.replace(/\.\.\/config\/supabaseClient/g, '../lib/supabaseClient');
+fs.writeFileSync('C:/Users/Admin/Desktop/citilap-admin-nextjs/layouts/MainLayout.jsx', content);
