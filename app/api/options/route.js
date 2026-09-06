@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/lib/supabaseClient';
+import { initSupabaseClient } from '@/lib/supabaseClient';
 import { getUserRole } from '@/lib/apiAuth';
 
 export async function GET(request) {
   const role = await getUserRole(request);
   if (!['ADMIN', 'SALES', 'TECHNICAL'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const supabase = getSupabaseClient();
+  const supabase = initSupabaseClient();
   const { data, error } = await supabase.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -17,7 +17,7 @@ export async function POST(request) {
   const role = await getUserRole(request);
   if (!['ADMIN', 'SALES'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const supabase = getSupabaseClient();
+  const supabase = initSupabaseClient();
   const payload = await request.json();
 
   const { data, error } = await supabase
@@ -40,7 +40,7 @@ export async function PUT(request) {
   const role = await getUserRole(request);
   if (!['ADMIN', 'SALES'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const supabase = getSupabaseClient();
+  const supabase = initSupabaseClient();
   const payload = await request.json();
 
   if (!payload.id) {
@@ -75,7 +75,7 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Missing option ID' }, { status: 400 });
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = initSupabaseClient();
   const { error } = await supabase
     .from('app_options')
     .delete()

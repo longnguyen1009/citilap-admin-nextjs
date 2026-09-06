@@ -660,6 +660,7 @@ textarea:focus-visible {
 }
 
 .data-table {
+    table-layout: fixed;
     width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
@@ -809,20 +810,26 @@ textarea:focus-visible {
 .col-6 { flex: 6; }
 .col-8 { flex: 8; }
 
-.form-group label {
+.form-group label, .form-label {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.3rem;
 }
 
-.form-group input, .form-group select, .form-group textarea {
-    padding: 0.65rem 0.85rem;
+.form-group input, .form-group select, .form-group textarea, .form-control {
+    padding: 0.5rem 0.75rem;
+    height: 40px;
     background: var(--bg-main);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     color: var(--text-main);
-    font-size: 0.875rem;
+    font-size: 0.85rem;
+}
+
+.form-group textarea, textarea.form-control {
+    height: auto;
+    min-height: 42px;
 }
 
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
@@ -976,13 +983,13 @@ textarea:focus-visible {
 
 /* Category Tags & Badges matching user Google Sheet screenshot */
 .cat-badge {
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
+    max-width: 100%;
     padding: 2px 10px;
     border-radius: 20px;
     font-size: 0.73rem;
     font-weight: 700;
-    white-space: nowrap;
+    white-space: normal; word-break: break-word; text-align: center;
     letter-spacing: 0.2px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
@@ -1031,14 +1038,13 @@ textarea:focus-visible {
 
 /* Status Badges */
 .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
+    display: inline-block;
+    max-width: 100%;
     padding: 2px 8px;
     border-radius: 6px;
     font-size: 0.73rem;
     font-weight: 700;
-    white-space: nowrap;
+    white-space: normal; word-break: break-word; text-align: center;
     letter-spacing: 0.15px;
 }
 
@@ -1118,7 +1124,15 @@ tr.row-san-hang td.sticky-col-2 {
     color: #713f12 !important;
 }
 
-/* 3. Màu đỏ: Đang sửa chữa */
+/* 3. Màu xanh dương: Đã cọc */
+tr.row-da-coc td,
+tr.row-da-coc td.sticky-col-1,
+tr.row-da-coc td.sticky-col-2 {
+    background-color: #dbeafe !important;
+    color: #1e3a8a !important;
+}
+
+/* 4. Màu đỏ: Đang sửa chữa */
 tr.row-dang-sua td,
 tr.row-dang-sua td.sticky-col-1,
 tr.row-dang-sua td.sticky-col-2 {
@@ -1126,123 +1140,87 @@ tr.row-dang-sua td.sticky-col-2 {
     color: #991b1b !important;
 }
 
-/* 4. Màu xám đậm: Các trạng thái còn lại (Đã bán, Back lại TQ) */
+/* 5. Màu xám nhạt (không chú ý): Đã bán, Hoàn thành, Hủy, Back lại */
 tr.row-other td,
 tr.row-other td.sticky-col-1,
-tr.row-other td.sticky-col-2 {
-    background-color: #64748b !important;
-    color: #ffffff !important;
+tr.row-other td.sticky-col-2,
+tr.order-row-completed td,
+tr.order-row-completed td.sticky-col-1,
+tr.order-row-completed td.sticky-col-2,
+tr.order-row-cancelled td,
+tr.order-row-cancelled td.sticky-col-1,
+tr.order-row-cancelled td.sticky-col-2 {
+    background-color: #a3a3a3 !important; /* Neutral 400 - Xám rõ */
+    color: #171717 !important; /* Neutral 900 - Đen chữ */
 }
 
 tr.row-other td .subtitle,
-tr.row-other td span {
-    color: #f1f5f9;
+tr.row-other td span,
+tr.order-row-completed td input, tr.order-row-completed td textarea, tr.order-row-completed td select, tr.order-row-completed td span,
+tr.order-row-cancelled td input, tr.order-row-cancelled td textarea, tr.order-row-cancelled td select, tr.order-row-cancelled td span {
+    color: #262626 !important; /* Neutral 800 */
 }
 
-/* Order Row Color Coding (User Specific Rules) */
-/* 1. Đơn đang chuẩn bị, chưa giao hàng (Màu hồng / trắng) */
+/* Order Row Color Coding (Minimalist) */
+/* 1. Đơn đang chuẩn bị, đơn cọc (Màu xanh dương) */
 tr.order-row-preparing td,
 tr.order-row-preparing td.sticky-col-1,
 tr.order-row-preparing td.sticky-col-2 {
-    background-color: #fce7f3 !important;
-    color: #9d174d !important;
+    background-color: #dbeafe !important;
+    color: #1e3a8a !important;
 }
+tr.order-row-preparing td input, tr.order-row-preparing td textarea, tr.order-row-preparing td select, tr.order-row-preparing td span { color: #1e3a8a !important; }
 
-/* Hover/Focus inputs trong hàng hồng */
-tr.order-row-preparing td .sheet-cell-input:hover,
-tr.order-row-preparing td .sheet-cell-select:hover,
-tr.order-row-preparing td .sheet-cell-textarea:hover {
-    background: #fbcfe8 !important;
-    color: #9d174d !important;
-}
-tr.order-row-preparing td .sheet-cell-input:focus,
-tr.order-row-preparing td .sheet-cell-select:focus,
-tr.order-row-preparing td .sheet-cell-textarea:focus {
-    background: #fdf2f8 !important;
-    color: #9d174d !important;
-    border-color: #ec4899 !important;
-    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.25) !important;
-}
-
-/* 2. Đang giao hàng / Đang chờ COD (Màu vàng) */
+/* 2. Đang giao hàng / Đang xử lý (Màu vàng) */
 tr.order-row-shipping td,
 tr.order-row-shipping td.sticky-col-1,
 tr.order-row-shipping td.sticky-col-2 {
     background-color: #fde047 !important;
     color: #713f12 !important;
 }
+tr.order-row-shipping td input, tr.order-row-shipping td textarea, tr.order-row-shipping td select, tr.order-row-shipping td span { color: #713f12 !important; }
 
-/* Hover/Focus inputs trong hàng vàng */
-tr.order-row-shipping td .sheet-cell-input:hover,
-tr.order-row-shipping td .sheet-cell-select:hover,
-tr.order-row-shipping td .sheet-cell-textarea:hover {
-    background: #facc15 !important;
-    color: #713f12 !important;
-}
-tr.order-row-shipping td .sheet-cell-input:focus,
-tr.order-row-shipping td .sheet-cell-select:focus,
-tr.order-row-shipping td .sheet-cell-textarea:focus {
-    background: #fef9c3 !important;
-    color: #713f12 !important;
-    border-color: #eab308 !important;
-    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.3) !important;
-}
-
-/* 3. Đã hoàn thành, thu tiền xong (Màu xám đậm) */
+/* 3. Đã hoàn thành, thu tiền xong (Màu xám) */
 tr.order-row-completed td,
 tr.order-row-completed td.sticky-col-1,
 tr.order-row-completed td.sticky-col-2 {
-    background-color: #64748b !important;
-    color: #ffffff !important;
+    background-color: #a3a3a3 !important;
+    color: #171717 !important;
 }
+tr.order-row-completed td input, tr.order-row-completed td textarea, tr.order-row-completed td select, tr.order-row-completed td span { color: #171717 !important; }
 
-tr.order-row-completed td input,
-tr.order-row-completed td textarea,
-tr.order-row-completed td span,
-tr.order-row-completed td select {
-    color: #ffffff !important;
-}
-
-/* Hover/Focus inputs trong hàng xám đậm */
-tr.order-row-completed td .sheet-cell-input:hover,
-tr.order-row-completed td .sheet-cell-select:hover,
-tr.order-row-completed td .sheet-cell-textarea:hover {
-    background: #475569 !important;
-    color: #ffffff !important;
-}
-tr.order-row-completed td .sheet-cell-input:focus,
-tr.order-row-completed td .sheet-cell-select:focus,
-tr.order-row-completed td .sheet-cell-textarea:focus {
-    background: #334155 !important;
-    color: #ffffff !important;
-    border-color: #94a3b8 !important;
-    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4) !important;
-}
-
-/* 4. Hủy / Back máy / Đổi máy (Màu đỏ nhạt) */
+/* 4. Hủy / Back máy / Đổi máy (Màu xám) */
 tr.order-row-cancelled td,
 tr.order-row-cancelled td.sticky-col-1,
 tr.order-row-cancelled td.sticky-col-2 {
-    background-color: #fecaca !important;
-    color: #991b1b !important;
+    background-color: #a3a3a3 !important;
+    color: #171717 !important;
 }
+tr.order-row-cancelled td input, tr.order-row-cancelled td textarea, tr.order-row-cancelled td select, tr.order-row-cancelled td span { color: #171717 !important; }
 
-/* Hover/Focus inputs trong hàng đỏ */
-tr.order-row-cancelled td .sheet-cell-input:hover,
-tr.order-row-cancelled td .sheet-cell-select:hover,
-tr.order-row-cancelled td .sheet-cell-textarea:hover {
-    background: #fca5a5 !important;
-    color: #991b1b !important;
+/* 5. Cọc / Reservation (Màu xanh siêu nhạt) */
+tr.order-row-deposited td,
+tr.order-row-deposited td.sticky-col-1,
+tr.order-row-deposited td.sticky-col-2 {
+    background-color: #f0fdfa !important;
+    color: #334155 !important;
 }
-tr.order-row-cancelled td .sheet-cell-input:focus,
-tr.order-row-cancelled td .sheet-cell-select:focus,
-tr.order-row-cancelled td .sheet-cell-textarea:focus {
-    background: #fff1f2 !important;
-    color: #991b1b !important;
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
-}
+tr.order-row-deposited td input, tr.order-row-deposited td textarea, tr.order-row-deposited td select, tr.order-row-deposited td span { color: #334155 !important; }
 
+/* Hover effects cho tất cả input trong Order table để nổi bật */
+tr td .sheet-cell-input:hover,
+tr td .sheet-cell-select:hover,
+tr td .sheet-cell-textarea:hover {
+    background: rgba(255,255,255,0.8) !important;
+    box-shadow: inset 0 0 0 1px #cbd5e1 !important;
+}
+tr td .sheet-cell-input:focus,
+tr td .sheet-cell-select:focus,
+tr td .sheet-cell-textarea:focus {
+    background: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
 
 /* Table enhancements for 20 columns with Custom Horizontal Scrollbar */
 .inventory-table-container {
@@ -1523,17 +1501,21 @@ tr.order-row-cancelled td .sheet-cell-textarea:focus {
 }
 
 .pill-badge {
-    display: inline-flex;
+    display: inline-block;
+    max-width: 100%;
     align-items: center;
     justify-content: center;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 9999px; /* Pill shape */
     font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
+    font-weight: 800; /* Bold */
+    white-space: normal;
+    word-wrap: break-word;
+    text-align: center;
     letter-spacing: 0.2px;
     transition: all 0.2s ease;
-    border: 1px solid transparent;
+    border: 2px solid transparent !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* Lift off row background */
 }
 .pill-badge:hover {
     transform: translateY(-1px);
@@ -1541,39 +1523,39 @@ tr.order-row-cancelled td .sheet-cell-textarea:focus {
 }
 
 .pill-success {
-    background: rgba(16, 185, 129, 0.12);
-    color: #059669;
-    border-color: rgba(16, 185, 129, 0.2);
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
 }
 .pill-warning {
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
-    border-color: rgba(245, 158, 11, 0.2);
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border-color: #d97706 !important;
 }
 .pill-danger {
-    background: rgba(239, 68, 68, 0.12);
-    color: #dc2626;
-    border-color: rgba(239, 68, 68, 0.2);
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
 }
 .pill-info {
-    background: rgba(59, 130, 246, 0.12);
-    color: #2563eb;
-    border-color: rgba(59, 130, 246, 0.2);
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
 }
 .pill-purple {
-    background: rgba(139, 92, 246, 0.12);
-    color: #7c3aed;
-    border-color: rgba(139, 92, 246, 0.2);
+    background: #8b5cf6 !important;
+    color: #ffffff !important;
+    border-color: #7c3aed !important;
 }
 .pill-neutral {
-    background: rgba(100, 116, 139, 0.12);
-    color: #475569;
-    border-color: rgba(100, 116, 139, 0.2);
+    background: #64748b !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
 }
-
 .data-table-wide tbody tr:hover td,
 .data-table-wide tbody tr:hover td.sticky-col-1,
 .data-table-wide tbody tr:hover td.sticky-col-2 {
     filter: brightness(0.96) !important;
 }
+
 

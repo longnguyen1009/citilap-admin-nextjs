@@ -3,13 +3,13 @@ import { useInventory } from '../context/InventoryContext';
 
 export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
   const { dynamicOptions } = useInventory();
-  const componentOpts = dynamicOptions?.COMPONENT_STATUS_OPTIONS || ['OK', 'Lỗi / Có vấn đề'];
+  const componentOpts = dynamicOptions?.COMPONENT_STATUS_OPTIONS || [];
   const statusOpts = dynamicOptions?.STATUS_OPTIONS || [];
   const [status, setStatus] = useState('');
   const [serial, setSerial] = useState('');
-  const [screenStatus, setScreenStatus] = useState('OK');
-  const [cameraMicStatus, setCameraMicStatus] = useState('OK');
-  const [mainboardStatus, setMainboardStatus] = useState('OK');
+  const [screenStatus, setScreenStatus] = useState('ok');
+  const [cameraMicStatus, setCameraMicStatus] = useState('ok');
+  const [mainboardStatus, setMainboardStatus] = useState('ok');
   const [note, setNote] = useState('');
   const [batteryHealth, setBatteryHealth] = useState(100);
   const [isLocked, setIsLocked] = useState(false);
@@ -19,9 +19,9 @@ export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
     if (laptop) {
       setStatus(laptop.status || '');
       setSerial(laptop.serial || '');
-      setScreenStatus(laptop.screenStatus || 'OK');
-      setCameraMicStatus(laptop.cameraMicStatus || 'OK');
-      setMainboardStatus(laptop.mainboardStatus || 'OK');
+      setScreenStatus(laptop.screenStatus || componentOpts[0]?.key || 'ok');
+      setCameraMicStatus(laptop.cameraMicStatus || componentOpts[0]?.key || 'ok');
+      setMainboardStatus(laptop.mainboardStatus || componentOpts[0]?.key || 'ok');
       setNote(laptop.conditionNote || '');
       setBatteryHealth(laptop.batteryHealth || 100);
       setIsLocked(laptop.isLocked || false);
@@ -79,7 +79,7 @@ export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Trạng thái Máy (Sau khi test):</label>
                 <select className="form-control" value={status} onChange={e => setStatus(e.target.value)}>
-                  {statusOpts.map(s => <option key={s} value={s}>{s}</option>)}
+                  {statusOpts.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                 </select>
               </div>
             </div>
@@ -113,21 +113,21 @@ export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Màn Hình:</label>
                 <select className="form-control" value={screenStatus} onChange={e => setScreenStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o} value={o}>{o}</option>)}
+                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
               </div>
 
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Cam &amp; Mic:</label>
                 <select className="form-control" value={cameraMicStatus} onChange={e => setCameraMicStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o} value={o}>{o}</option>)}
+                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
               </div>
 
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Mainboard:</label>
                 <select className="form-control" value={mainboardStatus} onChange={e => setMainboardStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o} value={o}>{o}</option>)}
+                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
               </div>
             </div>

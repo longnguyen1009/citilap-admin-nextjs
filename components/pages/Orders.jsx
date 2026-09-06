@@ -13,9 +13,11 @@ import {
   Download, 
   Trash2, 
   X, 
-  Check
+  Check,
+  History
 } from 'lucide-react';
 import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
+import ActivityTimeline from '../ActivityTimeline';
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
   if (vnDate.includes('-')) return vnDate;
@@ -153,6 +155,7 @@ export default function Orders() {
 
   // Modal State (cho nút "Tạo Đơn Hàng Mới")
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // Form State cho Modal 20 trường thông tin
   const [formData, setFormData] = useState({
@@ -1111,13 +1114,21 @@ export default function Orders() {
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShoppingCart className="text-primary" size={20} />
-                Tạo Đơn Hàng Mới
+                {formData.id ? `Chỉnh Sửa Đơn Hàng #${formData.id}` : 'Tạo Đơn Hàng Mới'}
               </h3>
-              <button className="modal-close" type="button" onClick={() => setIsModalOpen(false)}>&times;</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {formData.id && (
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowTimeline(!showTimeline)} style={{ height: '32px' }}>
+                    <History size={14} style={{ marginRight: '6px' }} /> Lịch sử
+                  </button>
+                )}
+                <button className="modal-close" type="button" onClick={() => setIsModalOpen(false)}>&times;</button>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmitForm}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', minHeight: '500px', maxHeight: '80vh', overflow: 'hidden' }}>
+              <form onSubmit={handleSubmitForm} style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
                 
                 {/* 1. Ngày tạo đơn */}
                 <div className="form-group">
@@ -1485,9 +1496,16 @@ export default function Orders() {
                 </button>
               </div>
             </form>
+            
+            {showTimeline && formData.id && (
+              <div style={{ width: '350px', background: '#f8fafc', borderLeft: '1px solid var(--border-color)', overflowY: 'auto' }}>
+                <ActivityTimeline entityType="ORDER" entityId={formData.id} />
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+    )}
     </section>
   );
 }

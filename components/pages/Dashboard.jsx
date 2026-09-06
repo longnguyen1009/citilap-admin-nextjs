@@ -43,7 +43,7 @@ export default function Dashboard() {
 
   // Group by category count
   const categoryCounts = laptops.reduce((acc, l) => {
-    const label = getLabel('category', l.categoryId, appOptions);
+    const label = getLabel('category', l.category, appOptions);
     acc[label] = (acc[label] || 0) + 1;
     return acc;
   }, {});
@@ -141,12 +141,12 @@ export default function Dashboard() {
           </div>
           <div className="card-body">
             <div className="status-pills-grid">
-              {statusLabels.map((lbl, idx) => (
+              {statusLabels.map((stObj, idx) => { const lbl = stObj.label; return (
                 <div key={idx} className="status-chip">
                   <span className="name">{lbl}</span>
-                  <span className="count">{laptops.filter(l => l.status === lbl).length}</span>
+                  <span className="count">{laptops.filter(l => l.status === stObj.key).length}</span>
                 </div>
-              ))}
+              ); })}
             </div>
           </div>
         </div>

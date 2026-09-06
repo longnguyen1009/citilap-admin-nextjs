@@ -4,22 +4,18 @@ import {
   useInventory, 
   computeImportPrice, 
   computeProfit, 
-  parseFlexibleFloat,
-  LOCATION_OPTIONS, 
-  STATUS_OPTIONS, 
-  CHARGER_OPTIONS,
-  SELLER_OPTIONS,
-  CATEGORY_OPTIONS
+  parseFlexibleFloat
 } from '../../context/InventoryContext';
 import { D } from '../../lib/fieldOptions';
-import { labelToKey, getOptions, getLabel, readPresetConfigs } from '../../lib/useFieldOptions';
+import { labelToKey, getOptions, getLabel, usePresetConfigs } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Plus, Edit3, Trash2, Settings, RefreshCw, Download, Upload, 
-  Search, Filter, ExternalLink, Calculator, Layers, Tag, Box, CheckCircle2, AlertTriangle, ArrowUpRight, Zap, ChevronDown, X, Activity, Calendar
+  Search, Filter, ExternalLink, Calculator, Layers, Tag, Box, CheckCircle2, AlertTriangle, ArrowUpRight, Zap, ChevronDown, X, Activity, Calendar, History
 } from 'lucide-react';
 import TechCheckModal from '../TechCheckModal';
 import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
+import ActivityTimeline from '../ActivityTimeline';
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -45,12 +41,10 @@ export default function Inventory() {
     setSelectedMonth,
     availableMonths,
     parseMonthYear,
-    categories, 
     formulaConfig, 
     updateLaptop, 
     addLaptop, 
     deleteLaptop, 
-    addCategory, 
     updateFormulaConfig,
     importSheetData,
     getLabel,
@@ -58,6 +52,9 @@ export default function Inventory() {
     cloudStatus,
     SELLER_OPTIONS,
     CATEGORY_OPTIONS,
+    LOCATION_OPTIONS,
+    STATUS_OPTIONS,
+    CHARGER_OPTIONS,
     updateFieldOptions,
     fieldOptionsConfig
   } = useInventory();
@@ -84,21 +81,19 @@ export default function Inventory() {
     id: 65,
     importDate: 48,
     name: 420,
-    location: 75,
-    categoryId: CATEGORY_OPTIONS[0]?.key || '',
-    cycleCount: '',
-    warrantySupplier: '',
+    location: 95,
+    category: 180,
+    cycleCount: 70,
+    warrantySupplier: 100,
     conditionNote: 220,
     serial: 90,
-    chargerStatus: 65,
-    seller: 100,
-    status: 110,
+    chargerStatus: 100,
+    seller: 120,
+    status: 160,
     priceRmb: 80,
     shippingRmb: 75,
     exchangeRate: 70,
     importPriceVnd: 95,
-    wholesalePriceVnd: 95,
-    retailPriceVnd: 95,
     trackingCode: 160,
     actions: 70
   });
@@ -152,6 +147,7 @@ export default function Inventory() {
   const [editingLaptop, setEditingLaptop] = useState(null);
   const [isTechCheckModalOpen, setIsTechCheckModalOpen] = useState(false);
   const [techCheckLaptop, setTechCheckLaptop] = useState(null);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // Form State cho Thêm / Sửa Laptop
   const emptyForm = {
@@ -160,37 +156,34 @@ export default function Inventory() {
     id: '',
     serial: '',
     name: '',
-    location: LOCATION_OPTIONS[0] || 'CH',
-    categoryId: CATEGORY_OPTIONS[0]?.key || '',
+    location: LOCATION_OPTIONS[0]?.key || 'wh_vn',
+    category: CATEGORY_OPTIONS[0]?.key || '',
     cycleCount: '',
     warrantySupplier: '',
     conditionNote: '',
-    chargerStatus: CHARGER_OPTIONS[0] || 'Có Sạc',
-    seller: SELLER_OPTIONS[0] || '',
+    chargerStatus: CHARGER_OPTIONS[0]?.key || 'with_charger',
+    seller: SELLER_OPTIONS[0]?.key || '',
     status: D.laptopAvailable,
     priceRmb: '',
     shippingRmb: '',
     exchangeRate: formulaConfig.defaultRate || 3550,
     importPriceVnd: '',
     importPriceManuallyEdited: false,
-    wholesalePriceVnd: '',
-    retailPriceVnd: '',
-    customProfit: '',
     trackingCode: ''
   };
 
   const [formData, setFormData] = useState(emptyForm);
 
   // Preset configs (cấu hình mẫu cho tên máy)
-  const [presetConfigs, setPresetConfigs] = useState(() => readPresetConfigs());
+  const { presets: presetConfigs } = usePresetConfigs();
   const [showPresets, setShowPresets] = useState(false);
 
   // Lọc presets theo tên đang nhập
   const matchedPresets = useMemo(() => {
-    const name = (formData.name || '').trim().toLowerCase();
-    if (!name) return Object.entries(presetConfigs);
+    const name = String(formData.name || '').trim().toLowerCase();
+    if (!name) return [];
     return Object.entries(presetConfigs).filter(([key, val]) =>
-      key.toLowerCase().includes(name) || val.toLowerCase().includes(name)
+      String(key).toLowerCase().includes(name) || String(val).toLowerCase().includes(name)
     );
   }, [formData.name, presetConfigs]);
 
@@ -202,9 +195,7 @@ export default function Inventory() {
   });
 
   // Category new tag input state
-  const [newCatInput, setNewCatInput] = useState('');
-  const [showAddCatInput, setShowAddCatInput] = useState(false);
-
+    
   // Trợ lý chọn Class màu cho HÀNG sản phẩm theo Trạng Thái
   const getRowStatusClass = (status) => {
     const key = labelToKey('laptopStatus', status);
@@ -212,6 +203,8 @@ export default function Inventory() {
       case 'not_imported': return 'row-chua-nhap';
       case 'available': return 'row-san-hang';
       case 'repairing': return 'row-dang-sua';
+      case 'deposited': return 'row-da-coc';
+      case 'sold': return 'row-other';
       default: return 'row-other';
     }
   };
@@ -235,12 +228,12 @@ export default function Inventory() {
     const key = labelToKey('laptopStatus', status);
     switch (key) {
       case 'not_imported': return 'pill-badge pill-warning';
-      case 'available': return 'pill-badge pill-info';
-      case 'repairing': return 'pill-badge pill-danger';
-      case 'sold': return 'pill-badge pill-success';
-      case 'returned_cn': return 'pill-badge pill-danger';
+      case 'available': return 'pill-badge pill-success';
+      case 'repairing': return 'pill-badge pill-warning';
+      case 'sold': return 'pill-badge pill-neutral';
+      case 'returned_cn': return 'pill-badge pill-neutral';
       case 'deposited': return 'pill-badge pill-info';
-      default: return 'pill-badge pill-info';
+      default: return 'pill-badge pill-warning';
     }
   };
 
@@ -296,16 +289,16 @@ export default function Inventory() {
     return laptops.filter(laptop => {
       const matchSearch = 
         !searchTerm ||
-        laptop.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.serial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.seller?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.trackingCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.conditionNote?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.importDate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        laptop.warehouseDate?.toLowerCase().includes(searchTerm.toLowerCase());
+        String(laptop.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.serial || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.seller || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.trackingCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.conditionNote || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.importDate || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(laptop.warehouseDate || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-      const laptopCatKey = laptop.categoryId;
+      const laptopCatKey = laptop.category;
       const matchCat = selectedCats.length === 0 || selectedCats.includes(laptopCatKey);
       const matchLoc = selectedLoc === 'ALL' || laptop.location === selectedLoc || labelToKey('laptopLocation', laptop.location, fieldOptionsConfig) === selectedLoc;
       const matchStatus = selectedStatus === 'ALL' || laptop.status === selectedStatus || labelToKey('laptopStatus', laptop.status, fieldOptionsConfig) === selectedStatus;
@@ -354,10 +347,10 @@ export default function Inventory() {
     setEditingLaptop(null);
     setFormData({
       ...emptyForm,
-      categoryId: CATEGORY_OPTIONS[0]?.key || '',
+      category: CATEGORY_OPTIONS[0]?.key || '',
       exchangeRate: formulaConfig.defaultRate
     });
-    setPresetConfigs(readPresetConfigs());
+    // Reset presetConfigs is no longer needed since it uses usePresetConfigs hook
     setIsAddModalOpen(true);
   };
 
@@ -371,7 +364,7 @@ export default function Inventory() {
       serial: laptop.serial || '',
       name: laptop.name || '',
       location: laptop.location || D.locStore,
-      categoryId: laptop.categoryId || CATEGORY_OPTIONS[0]?.key || '',
+      category: laptop.category || CATEGORY_OPTIONS[0]?.key || '',
       cycleCount: laptop.cycleCount || '',
       warrantySupplier: laptop.warrantySupplier || '',
       conditionNote: laptop.conditionNote || '',
@@ -382,13 +375,11 @@ export default function Inventory() {
       shippingRmb: laptop.shippingRmb || '',
       exchangeRate: laptop.exchangeRate || formulaConfig.defaultRate,
       importPriceVnd: laptop.importPriceVnd || '',
-      importPriceManuallyEdited: false,
-      wholesalePriceVnd: laptop.wholesalePriceVnd || '',
-      retailPriceVnd: laptop.retailPriceVnd || '',
-      customProfit: laptop.customProfit || '',
+      importPriceManuallyEdited: Boolean(laptop.importPriceVnd && Number(laptop.importPriceVnd) !== computeImportPrice(laptop.priceRmb, laptop.shippingRmb, laptop.exchangeRate || formulaConfig.defaultRate, formulaConfig)),
       trackingCode: laptop.trackingCode || ''
     });
     setIsAddModalOpen(true);
+    setShowTimeline(false);
   };
 
   // Lưu Form Thêm / Sửa
@@ -442,7 +433,7 @@ export default function Inventory() {
       const newLabel = newCatInput.trim();
       const newKey = String(Date.now());
       updateFieldOptions('category', newKey, newLabel);
-      setFormData(prev => ({ ...prev, categoryId: newKey }));
+      setFormData(prev => ({ ...prev, category: newKey }));
       setNewCatInput('');
       setShowAddCatInput(false);
     }
@@ -463,14 +454,6 @@ export default function Inventory() {
     }
   }, [liveImportPrice, formData.importPriceManuallyEdited]);
 
-  // Live preview của Lợi Nhuận trong Form
-  const liveProfit = computeProfit(
-    formData.retailPriceVnd, 
-    formData.wholesalePriceVnd, 
-    liveImportPrice, 
-    formData.customProfit
-  );
-
   // Xuất file CSV (Khớp chính xác 20 cột của Google Sheet)
   const handleExportCSV = () => {
     const isAdmin = user?.role === 'ADMIN';
@@ -485,13 +468,13 @@ export default function Inventory() {
       headers.join(','),
       ...laptops.map(l => {
         const base = [
-          `"${l.importDate}"`, `"${l.id}"`, `"${l.name.replace(/"/g, '""')}"`, `"${l.location}"`, '""', `"${getLabel('category', l.categoryId)}"`,
+          `"${l.importDate}"`, `"${l.id}"`, `"${l.name.replace(/"/g, '""')}"`, `"${l.location}"`, '""', `"${getLabel('category', l.category)}"`,
           `"${l.serial || ''}"`, `"${l.chargerStatus || D.chargerWith}"`, '""', `"${l.seller}"`, `"${(l.conditionNote || '').replace(/"/g, '""')}"`, `"${l.status}"`,
         ];
         const financial = isAdmin
           ? [l.priceRmb, l.shippingRmb, l.exchangeRate, l.importPriceVnd]
           : [];
-        const selling = [l.wholesalePriceVnd, l.retailPriceVnd, `"${l.trackingCode}"`];
+        const selling = [`"${l.trackingCode}"`];
         return [...base, ...financial, ...selling].join(',');
       })
     ];
@@ -526,11 +509,11 @@ export default function Inventory() {
 
       if (text.includes('<!DOCTYPE html>') || text.includes('login') || text.includes('Google Accounts')) {
         alert(
-          '⚠️ File Google Sheet hiện đang để chế độ "Hạn chế" (Riêng tư).\n\n' +
-          'Để ứng dụng kéo dữ liệu tự động 1-Click:\n' +
-          '1. Mở file Google Sheet của bạn\n' +
-          '2. Bấm nút "Chia sẻ" (Share) ở góc trên bên phải\n' +
-          '3. Đổi từ "Hạn chế" sang "Bất kỳ ai có đường liên kết" (Anyone with the link can view)\n' +
+          '⚠️ File Google Sheet hiện đang để chế độ "Hạn chế" (Riêng tư).\\n\\n' +
+          'Để ứng dụng kéo dữ liệu tự động 1-Click:\\n' +
+          '1. Mở file Google Sheet của bạn\\n' +
+          '2. Bấm nút "Chia sẻ" (Share) ở góc trên bên phải\\n' +
+          '3. Đổi từ "Hạn chế" sang "Bất kỳ ai có đường liên kết" (Anyone with the link can view)\\n' +
           '4. Thử bấm lại nút "Kéo Dữ Liệu Ngay" nhé!'
         );
         setIsSyncing(false);
@@ -554,7 +537,7 @@ export default function Inventory() {
           id: clean[1] || `#${idx + 75}`,
           name: clean[2] || '',
           location: clean[3] || D.locStore,
-                                  categoryId: labelToKey('category', clean[5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
+                                  category: labelToKey('category', clean[5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
           serial: clean[6] || '',
           chargerStatus: clean[7] || D.chargerWith,
           seller: clean[9] || '',
@@ -564,9 +547,6 @@ export default function Inventory() {
           shippingRmb: parseFlexibleFloat(clean[13]),
           exchangeRate: parseFlexibleFloat(clean[14]),
           importPriceVnd: clean[15] !== undefined && clean[15] !== '' ? parseFlexibleFloat(clean[15]) : undefined,
-          wholesalePriceVnd: parseFlexibleFloat(clean[16]),
-          retailPriceVnd: parseFlexibleFloat(clean[17]),
-          customProfit: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
           profitVnd: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
           trackingCode: clean[19] || ''
         };
@@ -684,7 +664,7 @@ export default function Inventory() {
             >
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selectedCats.length > 0 ? 700 : 400 }}>
                 {selectedCats.length === 0 
-                  ? `-- Tất cả Phân loại (${categories.length}) --` 
+                  ? `-- Tất cả Phân loại (${CATEGORY_OPTIONS.length}) --` 
                   : `Đã chọn (${selectedCats.length}) phân loại`}
               </span>
               <ChevronDown size={14} style={{ color: selectedCats.length > 0 ? '#1d4ed8' : '#64748b', flexShrink: 0 }} />
@@ -736,7 +716,7 @@ export default function Inventory() {
                     const catKey = catOpt.key;
                     const catLabel = catOpt.label;
                     const isChecked = selectedCats.includes(catKey);
-                    const count = laptops.filter(l => String(l.categoryId) === String(catKey)).length;
+                    const count = laptops.filter(l => String(l.category) === String(catKey)).length;
                     return (
                       <label
                         key={catKey}
@@ -843,7 +823,7 @@ export default function Inventory() {
       </div>
 
       {/* DATA TABLE (RESPONSIVE INCL SERIAL & CHARGER) */}
-      <div className="card glass p-0" style={{ overflow: 'hidden' }}>
+      <div className="card glass p-0" style={{ overflowX: 'auto' }}>
         <div 
           className="inventory-table-container"
           ref={tableContainerRef}
@@ -851,7 +831,7 @@ export default function Inventory() {
           <table className="data-table data-table-wide" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
-                <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative' }}>
+                <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative', textAlign: 'center' }}>
                   Mã ID
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột Mã ID" />
                 </th>
@@ -897,19 +877,19 @@ export default function Inventory() {
                 </th>
                 {user?.role === 'ADMIN' && (
                   <>
-                    <th style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, position: 'relative' }}>
-                      Giá tệ (¥)
+                    <th style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, position: 'relative', textAlign: 'center' }}>
+                      Giá tệ
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'priceRmb')} title="Kéo để chỉnh rộng hẹp cột Giá tệ" />
                     </th>
-                    <th style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, position: 'relative' }}>
-                      Phí VC (¥)
+                    <th style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, position: 'relative', textAlign: 'center' }}>
+                      Phí VC
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'shippingRmb')} title="Kéo để chỉnh rộng hẹp cột Phí VC" />
                     </th>
-                    <th style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, position: 'relative' }}>
+                    <th style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, position: 'relative', textAlign: 'center' }}>
                       Tỷ giá
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá" />
                     </th>
-                    <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#60a5fa', position: 'relative' }}>
+                    <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#60a5fa', position: 'relative', textAlign: 'center' }}>
                       Giá Nhập (tr)
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá Nhập" />
                     </th>
@@ -917,14 +897,6 @@ export default function Inventory() {
                 )}
                 {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
                   <>
-                    <th style={{ width: `${colWidths.wholesalePriceVnd}px`, minWidth: `${colWidths.wholesalePriceVnd}px`, position: 'relative' }}>
-                      Giá bán thợ
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'wholesalePriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá thợ" />
-                    </th>
-                    <th style={{ width: `${colWidths.retailPriceVnd}px`, minWidth: `${colWidths.retailPriceVnd}px`, position: 'relative' }}>
-                      Giá bán lẻ
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'retailPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá lẻ" />
-                    </th>
                   </>
                 )}
                 <th style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, position: 'relative' }}>
@@ -943,7 +915,7 @@ export default function Inventory() {
               ) : (
                 filteredLaptops.map((l, index) => (
                   <tr key={l.id || index} className={getRowStatusClass(l.status)}>
-                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)' }}>{l.id}</td>
+                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)', textAlign: 'center' }}>{l.id}</td>
                     <td className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', left: `${colWidths.id}px` }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                       <button
@@ -984,15 +956,15 @@ export default function Inventory() {
                         return <div>{l.importDate}</div>;
                       })()}
                     </td>
-                    <td style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px`, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.name}>{l.name}</td>
+                    <td style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px`, fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.name}>{l.name}</td>
                     <td style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
                       <span className={`status-badge ${getStatusBadgeClass(l.status)}`}>
                         {getLabel('laptopStatus', l.status)}
                       </span>
                     </td>
                     <td style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
-                      <span className={`cat-badge ${getCategoryBadgeClass(l.categoryId)}`}>
-                        {getLabel('category', l.categoryId)}
+                      <span className={`cat-badge ${getCategoryBadgeClass(l.category)}`}>
+                        {getLabel('category', l.category)}
                       </span>
                     </td>
                     <td style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -1009,9 +981,9 @@ export default function Inventory() {
                         )}
                         {l.isLocked && <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: '#ef4444'}}>KHOA</span></>}
                       </div>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.72rem', opacity: 0.8 }} title={l.conditionNote}>{l.conditionNote || '-'}</div>
+                      <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '0.72rem', opacity: 0.8 }} title={l.conditionNote}>{l.conditionNote || '-'}</div>
                     </td>
-                    <td style={{ width: `${colWidths.serial}px`, minWidth: `${colWidths.serial}px`, fontFamily: 'monospace', fontSize: '0.78rem', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.serial}>
+                    <td style={{ width: `${colWidths.serial}px`, minWidth: `${colWidths.serial}px`, fontFamily: 'monospace', fontSize: '0.78rem', color: '#475569', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.serial}>
                       {l.serial || '-'}
                     </td>
                     <td style={{ width: `${colWidths.chargerStatus}px`, minWidth: `${colWidths.chargerStatus}px` }}>
@@ -1036,10 +1008,10 @@ export default function Inventory() {
                     </td>
                     {user?.role === 'ADMIN' && (
                       <>
-                        <td style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, fontWeight: 600 }}>¥{(l.priceRmb || 0).toFixed(2)}</td>
-                        <td style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px` }}>¥{(l.shippingRmb || 0).toFixed(2)}</td>
-                        <td style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, color: 'var(--text-muted)' }}>{l.exchangeRate}</td>
-                        <td style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, fontWeight: 800, color: '#2563eb' }}>
+                        <td style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, fontWeight: 600, textAlign: 'center' }}>{Number(l.priceRmb || 0).toFixed(2)}</td>
+                        <td style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, textAlign: 'center' }}>{Number(l.shippingRmb || 0).toFixed(2)}</td>
+                        <td style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, color: 'var(--text-muted)', textAlign: 'center' }}>{l.exchangeRate}</td>
+                        <td style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, fontWeight: 800, color: '#2563eb', textAlign: 'center' }}>
                           {l.importPriceVnd !== undefined && l.importPriceVnd !== '' ? Number(l.importPriceVnd).toFixed(2) : '-'}
                         </td>
                       </>
@@ -1047,13 +1019,11 @@ export default function Inventory() {
 
                     {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
                       <>
-                        <td style={{ width: `${colWidths.wholesalePriceVnd}px`, minWidth: `${colWidths.wholesalePriceVnd}px`, fontWeight: 600 }}>{l.wholesalePriceVnd ? Number(l.wholesalePriceVnd).toFixed(2) : '-'}</td>
-                        <td style={{ width: `${colWidths.retailPriceVnd}px`, minWidth: `${colWidths.retailPriceVnd}px`, fontWeight: 600 }}>{l.retailPriceVnd ? Number(l.retailPriceVnd).toFixed(2) : '-'}</td>
                       </>
                     )}
 
 
-                    <td style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.trackingCode}>{l.trackingCode || '-'}</td>
+                    <td style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.trackingCode}>{l.trackingCode || '-'}</td>
                   </tr>
                 ))
               )}
@@ -1071,17 +1041,36 @@ export default function Inventory() {
           <div className="modal-box glass" style={{ maxWidth: '880px' }}>
             <div className="modal-header">
               <h3>{editingLaptop ? `Chỉnh Sửa Máy ${editingLaptop.id}` : 'Thêm Máy Mới Vào Kho'}</h3>
-              <button className="modal-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {editingLaptop && (
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowTimeline(!showTimeline)} style={{ height: '32px' }}>
+                    <History size={14} style={{ marginRight: '6px' }} /> Lịch sử
+                  </button>
+                )}
+                <button className="modal-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+              </div>
             </div>
 
-            <form onSubmit={handleSaveLaptop}>
-              <div className="modal-body">
+            <div style={{ display: 'flex', flexDirection: 'row', minHeight: '500px', maxHeight: '80vh', overflow: 'hidden' }}>
+              <form onSubmit={handleSaveLaptop} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+                <div className="modal-body" style={{ flex: 1 }}>
                 {/* SECTION 1: THÔNG TIN CƠ BẢN */}
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Box size={16} /> 1. Thông Tin Máy & Phân Loại
                 </h4>
                 
-                <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  <div className="form-group">
+                    <label>Mã ID</label>
+                    <input 
+                      type="text" 
+                      value={formData.id} 
+                      onChange={e => setFormData({ ...formData, id: e.target.value })}
+                      placeholder="#75" 
+                      className="form-control"
+                    />
+                  </div>
+
                   <div className="form-group">
                     <label>Ngày nhập (T.Quốc)</label>
                     <input 
@@ -1103,36 +1092,45 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
+                    <label>Trạng thái máy</label>
+                    <select 
+                      value={formData.status} 
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      className="form-control"
+                    >
+                      {STATUS_OPTIONS.map(st => (
+<option key={st.key} value={st.key}>{st.label}</option>
+))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row mt-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  <div className="form-group">
                     <label>Phân loại máy</label>
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <select 
-                        value={formData.categoryId} 
-                        onChange={e => setFormData({ ...formData, categoryId: e.target.value })}
-                        style={{ flex: 1 }}
-                      >
-                        {CATEGORY_OPTIONS.map(cat => (
-                          <option key={cat.key} value={cat.key}>{cat.label}</option>
-                        ))}
-                      </select>
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-outline" 
-                        title="Thêm nhãn phân loại mới"
-                        onClick={() => setShowAddCatInput(!showAddCatInput)}
-                      >
-                        +
-                      </button>
-                    </div>
+                    <select 
+                      value={formData.category} 
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                      className="form-control"
+                      style={{ width: '100%' }}
+                    >
+                      {CATEGORY_OPTIONS.map(cat => (
+<option key={cat.key} value={cat.key}>{cat.label}</option>
+))}
+                    </select>
                   </div>
 
                   <div className="form-group">
-                    <label>Mã ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.id} 
-                      onChange={e => setFormData({ ...formData, id: e.target.value })}
-                      placeholder="#75" 
-                    />
+                    <label>Nguồn nhập</label>
+                    <select 
+                      value={formData.seller} 
+                      onChange={e => setFormData({ ...formData, seller: e.target.value })}
+                      className="form-control"
+                    >
+                      {SELLER_OPTIONS.map(sl => (
+<option key={sl.key} value={sl.key}>{sl.label}</option>
+))}
+                    </select>
                   </div>
 
                   <div className="form-group">
@@ -1142,6 +1140,7 @@ export default function Inventory() {
                       value={formData.serial} 
                       onChange={e => setFormData({ ...formData, serial: e.target.value })}
                       placeholder="SN12345678" 
+                      className="form-control"
                     />
                   </div>
 
@@ -1152,28 +1151,17 @@ export default function Inventory() {
                       value={formData.trackingCode} 
                       onChange={e => setFormData({ ...formData, trackingCode: e.target.value })}
                       placeholder="SF123456" 
+                      className="form-control"
                     />
                   </div>
                 </div>
-
-                {showAddCatInput && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Tên Phân Loại Mới (VD: ROG STRIX G18 2024)" 
-                      value={newCatInput} 
-                      onChange={e => setNewCatInput(e.target.value)}
-                      style={{ flex: 1, padding: '0.4rem' }}
-                    />
-                    <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCategorySubmit}>Thêm Nhãn</button>
-                  </div>
-                )}
 
                 <div className="form-group mt-3" style={{ position: 'relative' }}>
                   <label>Tên máy & Cấu hình chi tiết *</label>
                   <input
                     type="text"
                     required
+                    className="form-control"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     onFocus={() => setShowPresets(true)}
@@ -1183,10 +1171,10 @@ export default function Inventory() {
                   {/* Dropdown gợi ý cấu hình mẫu */}
                   {showPresets && matchedPresets.length > 0 && (
                     <div style={{
-                      position: 'absolute', zIndex: 100, left: 0, right: 0,
+                      position: 'absolute', zIndex: 100, left: 0, right: 0, top: '100%', marginTop: '4px',
                       maxHeight: '180px', overflowY: 'auto',
                       background: '#fff', border: '1.5px solid #3b82f6',
-                      borderRadius: '0 0 8px 8px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                      borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                     }}>
                       {matchedPresets.map(([key, val]) => (
                         <div
@@ -1217,16 +1205,17 @@ export default function Inventory() {
                   <Layers size={16} /> 2. Vị Trí Kho, Sạc & Trạng Thái Máy
                 </h4>
 
-                <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                   <div className="form-group">
                     <label>Vị trí kho</label>
                     <select 
                       value={formData.location} 
                       onChange={e => setFormData({ ...formData, location: e.target.value })}
+                      className="form-control"
                     >
                       {LOCATION_OPTIONS.map(loc => (
-                        <option key={loc} value={loc}>{loc}</option>
-                      ))}
+<option key={loc.key} value={loc.key}>{loc.label}</option>
+))}
                     </select>
                   </div>
 
@@ -1235,15 +1224,15 @@ export default function Inventory() {
                     <select 
                       value={formData.chargerStatus} 
                       onChange={e => setFormData({ ...formData, chargerStatus: e.target.value })}
+                      className="form-control"
                     >
                       {CHARGER_OPTIONS.map(ch => (
-                        <option key={ch} value={ch}>{ch}</option>
-                      ))}
+<option key={ch.key} value={ch.key}>{ch.label}</option>
+))}
                     </select>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
+                  <div className="form-group">
                     <label>Sạc Pin (Cycle Count)</label>
                     <input 
                       type="number" 
@@ -1253,7 +1242,8 @@ export default function Inventory() {
                       placeholder="Số lần sạc..." 
                     />
                   </div>
-                  <div className="form-group" style={{ flex: 1 }}>
+
+                  <div className="form-group">
                     <label>Hạn BH Nguồn (TQ/US)</label>
                     <input 
                       type="text" 
@@ -1262,31 +1252,6 @@ export default function Inventory() {
                       onChange={e => setFormData({ ...formData, warrantySupplier: e.target.value })} 
                       placeholder="VD: 25/12/2026..." 
                     />
-                  </div>
-                </div>
-
-                  <div className="form-group">
-                    <label>Trạng thái</label>
-                    <select 
-                      value={formData.status} 
-                      onChange={e => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      {STATUS_OPTIONS.map(st => (
-                        <option key={st} value={st}>{st}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Người bán / Nguồn nhập</label>
-                    <select 
-                      value={formData.seller} 
-                      onChange={e => setFormData({ ...formData, seller: e.target.value })}
-                    >
-                      {SELLER_OPTIONS.map(sl => (
-                        <option key={sl} value={sl}>{sl}</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
@@ -1308,7 +1273,7 @@ export default function Inventory() {
                 </h4>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.2fr', gap: '10px' }}>
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                     <div className="form-group">
                       <label>Giá tệ (¥)</label>
                       <input 
@@ -1317,6 +1282,7 @@ export default function Inventory() {
                         value={formData.priceRmb} 
                         onChange={e => setFormData({ ...formData, priceRmb: e.target.value })}
                         placeholder="4200" 
+                        className="form-control"
                       />
                     </div>
 
@@ -1328,6 +1294,7 @@ export default function Inventory() {
                         value={formData.shippingRmb} 
                         onChange={e => setFormData({ ...formData, shippingRmb: e.target.value })}
                         placeholder="50" 
+                        className="form-control"
                       />
                     </div>
 
@@ -1339,6 +1306,7 @@ export default function Inventory() {
                         value={formData.exchangeRate} 
                         onChange={e => setFormData({ ...formData, exchangeRate: e.target.value })}
                         placeholder="3550" 
+                        className="form-control"
                       />
                     </div>
 
@@ -1352,6 +1320,7 @@ export default function Inventory() {
                       <input
                         type="number"
                         step="any"
+                        className="form-control"
                         value={formData.importPriceVnd}
                         onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })}
                         placeholder={liveImportPrice > 0 ? liveImportPrice : 'Tự tính từ giá tệ'}
@@ -1360,37 +1329,8 @@ export default function Inventory() {
                     </div>
                   </div>
 
-                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '10px' }}>
-                    <div className="form-group">
-                      <label>Giá bán thợ (tr VNĐ)</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={formData.wholesalePriceVnd} 
-                        onChange={e => setFormData({ ...formData, wholesalePriceVnd: e.target.value })}
-                        placeholder="16.5" 
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Giá bán lẻ (tr VNĐ)</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={formData.retailPriceVnd} 
-                        onChange={e => setFormData({ ...formData, retailPriceVnd: e.target.value })}
-                        placeholder="17.5" 
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <label style={{ color: '#34d399', fontWeight: 700, fontSize: '0.75rem', margin: 0 }}>LỢI NHUẬN DỰ KIẾN</label>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#34d399' }}>
-                        {liveProfit} tr VNĐ
-                      </div>
-                    </div>
-                  </div>
                 </div>
+
                 </>)}
               </div>
 
@@ -1399,9 +1339,16 @@ export default function Inventory() {
                 <button type="submit" className="btn btn-success">Lưu Thông Tin Máy</button>
               </div>
             </form>
+            
+            {showTimeline && editingLaptop && (
+              <div style={{ width: '350px', background: '#f8fafc', borderLeft: '1px solid var(--border-color)', overflowY: 'auto' }}>
+                <ActivityTimeline entityType="LAPTOP" entityId={editingLaptop.id} />
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* MODAL CẤU HÌNH CÔNG THỨC GIÁ NHẬP */}
       {isFormulaModalOpen && (
@@ -1553,7 +1500,7 @@ export default function Inventory() {
                                   id: clean[1] || `#${idx + 75}`,
                                   name: clean[2] || '',
                                   location: clean[3] || D.locStore,
-                                                          categoryId: labelToKey('category', clean[5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
+                                                          category: labelToKey('category', clean[5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
                                   serial: clean[6] || '',
                                   chargerStatus: clean[7] || D.chargerWith,
                                   seller: clean[9] || '',
@@ -1563,9 +1510,6 @@ export default function Inventory() {
                                   shippingRmb: parseFlexibleFloat(clean[13]),
                                   exchangeRate: parseFlexibleFloat(clean[14]),
                                   importPriceVnd: clean[15] !== undefined && clean[15] !== '' ? parseFlexibleFloat(clean[15]) : undefined,
-                                  wholesalePriceVnd: parseFlexibleFloat(clean[16]),
-                                  retailPriceVnd: parseFlexibleFloat(clean[17]),
-                                  customProfit: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
                                   profitVnd: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
                                   trackingCode: clean[19] || ''
                                 };
@@ -1604,7 +1548,7 @@ export default function Inventory() {
       serial: data[i][2],
       name: data[i][3],
       location: data[i][4],
-      categoryId: labelToKey('category', data[i][5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
+      category: labelToKey('category', data[i][5], fieldOptionsConfig) || CATEGORY_OPTIONS[0]?.key || '',
       chargerStatus: data[i][6],
       conditionNote: data[i][7],
       seller: data[i][8],
@@ -1612,8 +1556,6 @@ export default function Inventory() {
       priceRmb: data[i][10],
       shippingRmb: data[i][11],
       exchangeRate: data[i][12],
-      wholesalePriceVnd: data[i][14],
-      retailPriceVnd: data[i][15],
       trackingCode: data[i][17]
     });
   }

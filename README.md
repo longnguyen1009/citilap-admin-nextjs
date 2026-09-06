@@ -34,3 +34,11 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## RESEED DATABASE
+Bây giờ, bạn hãy làm đúng theo trình tự sau nhé:
+
+1. Mở lại Supabase SQL Editor và dán toàn bộ nội dung mới nhất của file init_full_db.sql vào chạy. (Thao tác này sẽ reset lại DB, tạo bảng và cấp quyền truy cập đầy đủ).
+2. Chạy tiếp file reseed_data.sql bên trong SQL Editor để chèn dữ liệu mẫu.
+3. Cuối cùng, gõ lại lệnh này ở Terminal của VSCode để tạo tài khoản Admin: node create_admin.js
+

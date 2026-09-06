@@ -19,46 +19,6 @@ export const AuthProvider = ({ children }) => {
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
 
   // Kiểm tra Supabase kết nối và khôi phục session
-  useEffect(() => {
-    const client = getSupabaseClient();
-    if (!client) {
-      // Fallback: dùng mock auth từ localStorage
-      const savedUser = localStorage.getItem('citilap_user');
-      if (savedUser) {
-        try { setUser(JSON.parse(savedUser)); } catch { /* ignore */ }
-      }
-      setLoading(false);
-      return;
-    }
-
-    setIsSupabaseConnected(true);
-
-    // Lấy session hiện tại
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserProfile(client, session.user);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen auth state changes — chỉ xử lý SIGNED_IN / SIGNED_OUT
-    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        loadUserProfile(client, session.user);
-      } else if (event === 'SIGNED_OUT') {
-        lastUserRef.current = null;
-        setUser(null);
-        setLoading(false);
-      }
-      // Bỏ qua INITIAL_SESSION, TOKEN_REFRESHED, PASSWORD_RECOVERY, USER_UPDATED
-    });
-
-    return () => subscription?.unsubscribe();
-  }, []);
-
-  // Load user profile (role, name) từ user_profiles table
-  // Dùng ref để tránh load trùng lặp khi onAuthStateChange fire nhiều lần
   const lastUserRef = React.useRef(null);
   const loadingProfileRef = React.useRef(false);
 
@@ -133,6 +93,47 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) {
+      // Fallback: dùng mock auth từ localStorage
+      const savedUser = localStorage.getItem('citilap_user');
+      if (savedUser) {
+        // eslint-disable-next-line
+        try { setUser(JSON.parse(savedUser)); } catch { /* ignore */ }
+      }
+      setLoading(false);
+      return;
+    }
+
+    setIsSupabaseConnected(true);
+
+    // Lấy session hiện tại
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(client, session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen auth state changes — chỉ xử lý SIGNED_IN / SIGNED_OUT
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        loadUserProfile(client, session.user);
+      } else if (event === 'SIGNED_OUT') {
+        lastUserRef.current = null;
+        setUser(null);
+        setLoading(false);
+      }
+      // Bỏ qua INITIAL_SESSION, TOKEN_REFRESHED, PASSWORD_RECOVERY, USER_UPDATED
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  // Load user profile (role, name) từ user_profiles table
+  // Dùng ref để tránh load trùng lặp khi onAuthStateChange fire nhiều lần
   // ─── Login với Supabase Auth ───────────────────────────────────────
   const login = async (email, password) => {
     const client = getSupabaseClient();

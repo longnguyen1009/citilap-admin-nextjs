@@ -4,6 +4,8 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Settings as SettingsIcon, Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import UserManagementSection from './UserManagementSection';
+import PresetManagementSection from './PresetManagementSection';
 
 const GROUP_SECTIONS = [
   {
@@ -142,7 +144,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
     }
     
     // Check if key already exists locally
-    if (options.some(o => o.option_key.toLowerCase() === trimmedKey.toLowerCase())) {
+    if (options.some(o => String(o.option_key).toLowerCase() === trimmedKey.toLowerCase())) {
       toast.error('Mã này đã tồn tại trong nhóm!');
       return;
     }
@@ -393,6 +395,9 @@ export default function Settings() {
           </div>
         ))}
       </div>
+
+      <PresetManagementSection />
+      <UserManagementSection />
     </div>
   );
 }
