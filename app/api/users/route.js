@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabaseClient';
-import { getUserRole } from '@/lib/apiAuth';
+import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { requireUser } from '@/lib/apiAuth';
 
 export async function GET(request) {
-  const role = await getUserRole(request);
-  if (role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized (Admin only)' }, { status: 401 });
-  }
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
   const adminClient = getSupabaseAdminClient();
   if (!adminClient) {
@@ -48,10 +46,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const role = await getUserRole(request);
-  if (role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized (Admin only)' }, { status: 401 });
-  }
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
   const adminClient = getSupabaseAdminClient();
   const payload = await request.json();
@@ -100,10 +96,8 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-  const role = await getUserRole(request);
-  if (role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized (Admin only)' }, { status: 401 });
-  }
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
   const adminClient = getSupabaseAdminClient();
   const payload = await request.json();

@@ -79,7 +79,7 @@ export default function Customers() {
                 <td colSpan="5" className="empty-state" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <Users size={56} style={{ opacity: 0.15, marginBottom: '16px' }} />
                   <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>Chưa có khách hàng nào</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '0.9rem', opacity: 0.7 }}>Bấm "Thêm Mới" để tạo hồ sơ khách hàng đầu tiên</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.9rem', opacity: 0.7 }}>Bấm &quot;Thêm Mới&quot; để tạo hồ sơ khách hàng đầu tiên</p>
                 </td>
               </tr>
             ) : (

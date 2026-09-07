@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { initSupabaseClient } from '@/lib/supabaseClient';
-import { getUserRole } from '@/lib/apiAuth';
+import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { requireUser } from '@/lib/apiAuth';
 
 export async function GET(request) {
-  const role = await getUserRole(request);
-  if (!['ADMIN', 'SALES', 'TECHNICAL'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  if (!auth.ok) return auth.response;
 
-  const supabase = initSupabaseClient();
+  const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -14,10 +14,10 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const role = await getUserRole(request);
-  if (!['ADMIN', 'SALES'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
-  const supabase = initSupabaseClient();
+  const supabase = getSupabaseAdminClient();
   const payload = await request.json();
 
   const { data, error } = await supabase
@@ -37,10 +37,10 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-  const role = await getUserRole(request);
-  if (!['ADMIN', 'SALES'].includes(role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
-  const supabase = initSupabaseClient();
+  const supabase = getSupabaseAdminClient();
   const payload = await request.json();
 
   if (!payload.id) {
@@ -65,8 +65,8 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
-  const role = await getUserRole(request);
-  if (!['ADMIN'].includes(role)) return NextResponse.json({ error: 'Unauthorized (Admin only)' }, { status: 401 });
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -75,7 +75,7 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Missing option ID' }, { status: 400 });
   }
 
-  const supabase = initSupabaseClient();
+  const supabase = getSupabaseAdminClient();
   const { error } = await supabase
     .from('app_options')
     .delete()

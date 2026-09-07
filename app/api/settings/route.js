@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import { fetchAllSettings, saveSettings } from '../../../lib/services/dbService';
-import { getUserRole } from '../../../lib/apiAuth';
+import { requireUser } from '../../../lib/apiAuth';
 
-export async function GET() {
+export async function GET(request) {
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
   const data = await fetchAllSettings();
   if (!data) return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   return NextResponse.json(data);
 }
 
 export async function POST(request) {
-  const role = await getUserRole(request);
-  if (role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized: Only ADMIN can modify settings' }, { status: 403 });
-  }
+  const auth = await requireUser(request, ['ADMIN']);
+  if (!auth.ok) return auth.response;
 
   try {
     const body = await request.json();

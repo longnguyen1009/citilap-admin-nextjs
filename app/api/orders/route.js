@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { fetchOrdersFromCloud, saveOrderToCloud } from '../../../lib/services/dbService';
 import { logActivity } from '../../../lib/services/logger';
-import { getUserProfile, filterSensitiveFields, SENSITIVE_ORDER_KEYS } from '../../../lib/apiAuth';
-import { getSupabaseAdminClient } from '../../../lib/supabaseClient';
+import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS } from '../../../lib/apiAuth';
+import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 export async function GET(request) {
-  const profile = await getUserProfile(request);
+  const auth = await requireUser(request, ['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+  const { profile } = auth;
   const isAdmin = profile.role === 'ADMIN';
 
   const { searchParams } = new URL(request.url);
@@ -20,7 +22,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const profile = await getUserProfile(request);
+  const auth = await requireUser(request, ['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+  const { profile } = auth;
   const isAdmin = profile.role === 'ADMIN';
 
   try {

@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getSupabaseClient, getSupabaseAdminClient } from '../lib/supabaseClient';
+import { getSupabaseClient } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
@@ -15,8 +15,8 @@ const MOCK_USERS = {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(getSupabaseClient()));
+  const isSupabaseConnected = Boolean(getSupabaseClient());
 
   // Kiểm tra Supabase kết nối và khôi phục session
   const lastUserRef = React.useRef(null);
@@ -37,21 +37,12 @@ export const AuthProvider = ({ children }) => {
       let newUser;
 
       if (error || !profile) {
-        // Auto-create profile nếu user đăng nhập lần đầu (tạo qua Dashboard)
+        // Không tự cấp quyền ở client. Profile phải được ADMIN tạo ở server.
         const metaName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || '';
-        const metaRole = authUser.user_metadata?.role || 'ADMIN';
-        try {
-          await client.from('user_profiles').upsert({
-            id: authUser.id,
-            name: metaName,
-            role: metaRole,
-            is_active: true,
-          }, { onConflict: 'id' });
-        } catch { /* ignore */ }
         newUser = {
           id: authUser.id,
           name: metaName || authUser.email,
-          role: metaRole,
+          role: 'STAFF',
           email: authUser.email,
         };
       } else if (!profile.is_active) {
@@ -96,17 +87,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) {
-      // Fallback: dùng mock auth từ localStorage
-      const savedUser = localStorage.getItem('citilap_user');
-      if (savedUser) {
-        // eslint-disable-next-line
-        try { setUser(JSON.parse(savedUser)); } catch { /* ignore */ }
-      }
-      setLoading(false);
       return;
     }
-
-    setIsSupabaseConnected(true);
 
     // Lấy session hiện tại
     client.auth.getSession().then(({ data: { session } }) => {
@@ -138,7 +120,10 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const client = getSupabaseClient();
     if (!client) {
-      // Mock auth fallback
+      if (process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH !== 'true') {
+        return { ok: false, message: 'Supabase chưa được cấu hình.' };
+      }
+      // Mock auth chỉ dành cho môi trường phát triển được bật rõ ràng.
       const role = email.includes('admin') ? 'ADMIN' : email.includes('tech') ? 'TECH' : 'SALES';
       const mockUser = MOCK_USERS[role];
       setUser(mockUser);
@@ -163,6 +148,7 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Mock login (fallback khi không có Supabase) ────────────────────
   const mockLogin = (role) => {
+    if (process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH !== 'true') return false;
     const mockUser = MOCK_USERS[role];
     if (mockUser) {
       setUser(mockUser);
@@ -174,8 +160,10 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Logout ─────────────────────────────────────────────────────────
   const logout = async () => {
-    // 1. Clear TOÀN BỘ localStorage (data app + session Supabase)
-    localStorage.clear();
+    // Chỉ xóa dữ liệu thuộc CitiLap, không ảnh hưởng ứng dụng khác cùng origin.
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('citilap_') || key === 'sidebar_collapsed')
+      .forEach(key => localStorage.removeItem(key));
 
     // 2. Set null TRƯỚC để UI立即响应
     lastUserRef.current = null;
@@ -189,52 +177,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ─── Tạo user mới (chỉ ADMIN) ─────────────────────────────────────
-  const createUser = async (email, password, name, role) => {
-    const adminClient = getSupabaseAdminClient();
-    const client = getSupabaseClient();
-    if (!client) return { ok: false, message: 'Supabase chưa kết nối' };
-
-    // Nếu có admin client → dùng Supabase Auth Admin API (tạo đúng identities)
-    if (adminClient) {
-      try {
-        const { data, error } = await adminClient.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: { name, role },
-        });
-        if (error) return { ok: false, message: error.message };
-
-        // Tạo profile trong user_profiles
-        const userId = data.user.id;
-        const { error: profileError } = await client
-          .from('user_profiles')
-          .upsert({ id: userId, name, role, is_active: true }, { onConflict: 'id' });
-        if (profileError) {
-          console.error('Lỗi tạo profile:', profileError);
-          // Không return lỗi vì user đã tạo thành công trong auth
-        }
-        return { ok: true };
-      } catch (err) {
-        return { ok: false, message: err.message };
-      }
-    }
-
-    // Fallback: dùng RPC (legacy, có thể không hoạt động đúng)
-    try {
-      const { data, error } = await client.rpc('create_user_with_role', {
-        p_email: email,
-        p_password: password,
-        p_name: name,
-        p_role: role,
-      });
-      if (error) return { ok: false, message: error.message };
-      if (data?.ok) return { ok: true };
-      return { ok: false, message: data?.message || 'Lỗi không xác định' };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
-  };
+  const createUser = async () => ({ ok: false, message: 'Hãy dùng màn hình quản lý người dùng để tạo tài khoản.' });
 
   // ─── Danh sách users ───────────────────────────────────────────────
   const listUsers = useCallback(async () => {

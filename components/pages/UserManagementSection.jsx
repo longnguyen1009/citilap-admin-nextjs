@@ -25,7 +25,7 @@ export default function UserManagementSection() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    queueMicrotask(fetchUsers);
   }, []);
 
   const handleOpenAdd = () => {

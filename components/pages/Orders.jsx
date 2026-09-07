@@ -42,12 +42,15 @@ const toVnFormat = (ymd) => {
 };
 
 const EditableCell = ({ value, onChange, type = "text", rows, placeholder, className, style, step }) => {
-  const [localValue, setLocalValue] = React.useState(value || '');
+  const incomingValue = value || '';
+  const [localValue, setLocalValue] = React.useState(incomingValue);
+  const [previousValue, setPreviousValue] = React.useState(incomingValue);
   const textareaRef = React.useRef(null);
 
-  React.useEffect(() => {
-    setLocalValue(value || '');
-  }, [value]);
+  if (incomingValue !== previousValue) {
+    setPreviousValue(incomingValue);
+    setLocalValue(incomingValue);
+  }
 
   React.useEffect(() => {
     if (type === 'textarea' && textareaRef.current) {
@@ -57,7 +60,7 @@ const EditableCell = ({ value, onChange, type = "text", rows, placeholder, class
   }, [localValue, type]);
 
   const handleBlur = () => {
-    if (localValue !== (value || '')) {
+    if (localValue !== incomingValue) {
       onChange(localValue);
     }
   };
@@ -204,7 +207,7 @@ export default function Orders() {
     depositNote: 125,
     codAmount: 85,
     customerId: 150,
-    customerAddress_DEPRECATED: 170,
+    customerAddress: 170,
     setupNote: 120,
     warranty: 80,
     gifts: 145
@@ -368,7 +371,7 @@ export default function Orders() {
         const matchCustomer = (o.customerId || '').toLowerCase().includes(term);
         const matchLaptop = (o.laptopId || '').toLowerCase().includes(term);
         const matchTracking = (o.trackingCode || '').toLowerCase().includes(term);
-        const matchAddress = (o.customerAddress_DEPRECATED || '').toLowerCase().includes(term);
+        const matchAddress = (o.customerAddress || '').toLowerCase().includes(term);
         const matchNote = (o.note || o.note1 || o.note2 || '').toLowerCase().includes(term);
         if (!matchId && !matchCustomer && !matchLaptop && !matchTracking && !matchAddress && !matchNote) return false;
       }
@@ -430,7 +433,7 @@ export default function Orders() {
         `"${o.depositNote || ''}"`,
         o.codAmount || 0,
         `"${o.customerId || ''}"`,
-        `"${o.customerAddress_DEPRECATED || ''}"`,
+        `"${o.customerAddress || ''}"`,
         `"${o.trackingCode || ''}"`,
         `"${o.setupNote || ''}"`,
         `"${o.warranty || ''}"`,
@@ -559,8 +562,7 @@ export default function Orders() {
             </label>
             <input 
               type="text" 
-              className="filter-input"
-              className="form-control"
+              className="filter-input form-control"
               placeholder="Tìm theo ID (#1001), Tên/SĐT khách, Mã máy (#709), Note, Mã vận đơn..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -570,8 +572,7 @@ export default function Orders() {
           <div className="filter-item">
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Online</label>
             <select 
-              className="form-control"
-              className="filter-input"
+              className="form-control filter-input"
               value={filterSaleOnline} 
               onChange={e => setFilterSaleOnline(e.target.value)}
             >
@@ -585,8 +586,7 @@ export default function Orders() {
           <div className="filter-item">
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Đơn</label>
             <select 
-              className="form-control"
-              className="filter-input"
+              className="form-control filter-input"
               value={filterOrderStatus} 
               onChange={e => setFilterOrderStatus(e.target.value)}
             >
@@ -600,8 +600,7 @@ export default function Orders() {
           <div className="filter-item">
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Thanh Toán</label>
             <select 
-              className="form-control"
-              className="filter-input"
+              className="form-control filter-input"
               value={filterPaymentStatus} 
               onChange={e => setFilterPaymentStatus(e.target.value)}
             >
@@ -615,8 +614,7 @@ export default function Orders() {
           <div className="filter-item">
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Hình Thức Gửi Hàng</label>
             <select 
-              className="form-control"
-              className="filter-input"
+              className="form-control filter-input"
               value={filterShippingMethod} 
               onChange={e => setFilterShippingMethod(e.target.value)}
             >
@@ -630,8 +628,7 @@ export default function Orders() {
           <div className="filter-item">
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Phân Loại Sản Phẩm</label>
             <select 
-              className="form-control"
-              className="filter-input"
+              className="form-control filter-input"
               value={filterCategory} 
               onChange={e => setFilterCategory(e.target.value)}
             >
@@ -734,9 +731,9 @@ export default function Orders() {
                   Thông Tin Khách
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'customerId')} title="Kéo để chỉnh rộng hẹp cột Khách" />
                 </th>
-                <th style={{ width: `${colWidths.customerAddress_DEPRECATED}px`, minWidth: `${colWidths.customerAddress_DEPRECATED}px`, position: 'relative' }}>
+                <th style={{ width: `${colWidths.customerAddress}px`, minWidth: `${colWidths.customerAddress}px`, position: 'relative' }}>
                   Địa Chỉ
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'customerAddress_DEPRECATED')} title="Kéo để chỉnh rộng hẹp cột Địa Chỉ" />
+                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'customerAddress')} title="Kéo để chỉnh rộng hẹp cột Địa Chỉ" />
                 </th>
 
                 <th style={{ width: `${colWidths.setupNote}px`, minWidth: `${colWidths.setupNote}px`, position: 'relative' }}>
@@ -1045,14 +1042,14 @@ export default function Orders() {
                       </td>
 
                       {/* Địa Chỉ */}
-                      <td style={{ width: `${colWidths.customerAddress_DEPRECATED}px`, minWidth: `${colWidths.customerAddress_DEPRECATED}px` }}>
+                      <td style={{ width: `${colWidths.customerAddress}px`, minWidth: `${colWidths.customerAddress}px` }}>
                         <EditableCell 
                           type="textarea"
                           className="sheet-cell-textarea"
                           rows={3}
                           style={{ color: 'var(--text-muted)' }}
-                          value={ord.customerAddress_DEPRECATED || ''} 
-                          onChange={(val) => updateOrder(ord.id, { customerAddress_DEPRECATED: val })} 
+                          value={ord.customerAddress || ''}
+                          onChange={(val) => updateOrder(ord.id, { customerAddress: val })}
                           placeholder="Địa chỉ..."
                         />
                       </td>

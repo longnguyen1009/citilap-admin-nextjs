@@ -12,6 +12,7 @@ export default function Login() {
   const [showMockLogin, setShowMockLogin] = useState(false);
   const { login, mockLogin, isSupabaseConnected, user } = useAuth();
   const router = useRouter();
+  const canUseMockAuth = process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH === 'true';
 
   // Tự động chuyển hướng khi user đã có (tránh race condition với AuthContext)
   React.useEffect(() => {
@@ -34,14 +35,13 @@ export default function Login() {
       setError(result.message || 'Sai email hoặc mật khẩu');
       setIsSubmitting(false);
     } else {
-      window.location.href = '/';
+      router.replace('/');
     }
   };
 
   // Mock login fallback (khi chưa cấu hình Supabase)
   const handleMockLogin = (role) => {
-    mockLogin(role);
-    router.push('/');
+    if (mockLogin(role)) router.push('/');
   };
 
   return (
@@ -161,7 +161,7 @@ export default function Login() {
         </form>
 
         {/* Mock login toggle */}
-        {!isSupabaseConnected && (
+        {!isSupabaseConnected && canUseMockAuth && (
           <div style={{ marginTop: '20px', textAlign: 'center' }}>
             <button
               onClick={() => setShowMockLogin(!showMockLogin)}

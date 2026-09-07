@@ -7,7 +7,7 @@ import { Wrench, Search, Plus, CheckCircle2 } from 'lucide-react';
 
 const emptyCase = () => ({
   laptopId: '', orderId: '', customerInfo: '', receivedDate: new Date().toLocaleDateString('vi-VN'),
-  issueDescription: '', status: D.warrantyCaseReceived, diagnosis: '', resolution: '', repairCost: '', notes: ''
+  reportedIssue: '', status: D.warrantyCaseReceived, diagnosis: '', resolution: '', repairCost: '', notes: ''
 });
 
 export default function Warranty() {
@@ -19,7 +19,7 @@ export default function Warranty() {
 
   const rows = useMemo(() => warrantyCases.filter(item => {
     const laptop = laptops.find(machine => machine.id === item.laptopId);
-    const source = [item.id, item.customerInfo, item.issueDescription, laptop?.id, laptop?.name, laptop?.serial].join(' ').toLowerCase();
+    const source = [item.id, item.customerInfo, item.reportedIssue, laptop?.id, laptop?.name, laptop?.serial].join(' ').toLowerCase();
     return !searchTerm || source.includes(searchTerm.toLowerCase());
   }), [warrantyCases, laptops, searchTerm]);
   const openCases = rows.filter(item => {
@@ -34,9 +34,9 @@ export default function Warranty() {
     const linkedOrder = orders.find(order => order.laptopId === laptopId && isOrderCommitted(order));
     setFormData(prev => ({ ...prev, laptopId, orderId: linkedOrder?.id || '', customerInfo: linkedOrder?.customerId ? (customers.find(c => c.id === linkedOrder.customerId)?.name || '') : prev.customerInfo, notes: laptop?.conditionNote || prev.notes }));
   };
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const result = editingCase ? updateWarrantyCase(editingCase.id, formData) : createWarrantyCase(formData);
+    const result = editingCase ? updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
     if (!result.ok) return alert(`⛔ ${result.message}`);
     setIsModalOpen(false);
   };

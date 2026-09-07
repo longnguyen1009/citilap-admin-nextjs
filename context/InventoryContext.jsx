@@ -546,6 +546,7 @@ export const InventoryProvider = ({ children }) => {
     };
 
     loadCloudData();
+    const refreshIntervalId = window.setInterval(loadCloudData, 60 * 1000);
 
     // Realtime: patch trực tiếp từ payload thay vì refetch toàn bộ
     // Cross-fetch (laptop↔orders) cần throttle để tránh chain reaction
@@ -621,7 +622,7 @@ export const InventoryProvider = ({ children }) => {
       }
     );
 
-    return () => { cancelled = true; unsubscribe(); };
+    return () => { cancelled = true; window.clearInterval(refreshIntervalId); unsubscribe(); };
   }, [user?.id]);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -678,6 +679,19 @@ export const InventoryProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(LOCAL_KEYS.formula, JSON.stringify(formulaConfig));
   }, [formulaConfig]);
+
+  function applyAndSaveLaptopStatuses(nextOrders) {
+    setLaptops(prev => {
+      const nextLaptops = reconcileLaptopStatuses(prev, nextOrders);
+      nextLaptops.forEach((nextLaptop, idx) => {
+        const prevLaptop = prev[idx];
+        if (prevLaptop && prevLaptop.id === nextLaptop.id && prevLaptop.status !== nextLaptop.status) {
+          saveLaptopToCloud(nextLaptop);
+        }
+      });
+      return nextLaptops;
+    });
+  }
 
   // Khi mở lại ứng dụng hoặc hết hạn giữ máy, trạng thái kho luôn được suy ra từ đơn hàng.
   useEffect(() => {
@@ -817,6 +831,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       gifts: orderData.gifts || 'basic_gift',
       customerInfo: orderData.customerInfo || '',
       customerAddress: orderData.customerAddress || '',
+      customerId: orderData.customerId || null,
       trackingCode: orderData.trackingCode || '',
       shipDate: orderData.shipDate || '',
       orderType: orderData.orderType || 'retail',
@@ -1126,17 +1141,17 @@ const mapLabelsToKeys = (fields, appOpts) => {
     return { ok: true, customer: saved || updated };
   };
 
-  const createWarrantyCase = (caseData) => {
+  const createWarrantyCase = async (caseData) => {
     const laptop = laptops.find(item => item.id == caseData.laptopId);
     if (!laptop) return { ok: false, message: 'Hãy chọn đúng máy cần tiếp nhận bảo hành.' };
     const linkedOrder = orders.find(order => String(order.id) === String(caseData.orderId));
-    const warrantyCase = {
+    const draftWarrantyCase = {
       id: createLocalId('BH'),
       laptopId: laptop.id,
       orderId: linkedOrder?.id || '',
       customerInfo: caseData.customerInfo || linkedOrder?.customerInfo || '',
       receivedDate: caseData.receivedDate || todayVi(),
-      issueDescription: caseData.issueDescription?.trim() || '',
+      reportedIssue: caseData.reportedIssue?.trim() || '',
       status: caseData.status || WARRANTY_CASE_STATUS_OPTIONS[0],
       diagnosis: caseData.diagnosis || '',
       resolution: caseData.resolution || '',
@@ -1145,19 +1160,22 @@ const mapLabelsToKeys = (fields, appOpts) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    if (!warrantyCase.issueDescription) return { ok: false, message: 'Cần ghi nhận lỗi khách báo khi tiếp nhận.' };
+    if (!draftWarrantyCase.reportedIssue) return { ok: false, message: 'Cần ghi nhận lỗi khách báo khi tiếp nhận.' };
+
+    const savedWarrantyCase = await saveWarrantyCaseToCloud(draftWarrantyCase);
+    if (!savedWarrantyCase) return { ok: false, message: 'Không thể lưu phiếu bảo hành lên cloud.' };
+    const warrantyCase = { ...draftWarrantyCase, ...savedWarrantyCase };
 
     setWarrantyCases(prev => [warrantyCase, ...prev]);
-    saveWarrantyCaseToCloud(warrantyCase);
     
     const updatedLaptop = {
       ...laptop,
-      conditionNote: `${laptop.conditionNote || ''}${laptop.conditionNote ? ' | ' : ''}BH ${warrantyCase.receivedDate}: ${warrantyCase.issueDescription}`
+      conditionNote: `${laptop.conditionNote || ''}${laptop.conditionNote ? ' | ' : ''}BH ${warrantyCase.receivedDate}: ${warrantyCase.reportedIssue}`
     };
     setLaptops(prev => prev.map(item => item.id == laptop.id ? updatedLaptop : item));
     saveLaptopToCloud(updatedLaptop);
     
-    addStockMovement({ laptopId: laptop.id, orderId: warrantyCase.orderId, warrantyCaseId: warrantyCase.id, type: 'TIẾP NHẬN BẢO HÀNH', note: warrantyCase.issueDescription });
+    addStockMovement({ laptopId: laptop.id, orderId: warrantyCase.orderId, warrantyCaseId: warrantyCase.id, type: 'TIẾP NHẬN BẢO HÀNH', note: warrantyCase.reportedIssue });
     return { ok: true, warrantyCase };
   };
 
@@ -1204,21 +1222,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
   // Import từ Google Sheet JSON/CSV Data (BẮT BUỘC có Tên sản phẩm mới tính là tồn tại)
   
-  const applyAndSaveLaptopStatuses = (nextOrders) => {
-    setLaptops(prev => {
-      const nextLaptops = reconcileLaptopStatuses(prev, nextOrders);
-      nextLaptops.forEach((nextLaptop, idx) => {
-        const prevLaptop = prev[idx];
-        if (prevLaptop && prevLaptop.id === nextLaptop.id && prevLaptop.status !== nextLaptop.status) {
-          saveLaptopToCloud(nextLaptop); // Persist status changes to cloud
-        }
-      });
-      return nextLaptops;
-    });
-  };
-
-  const importSheetData = (items) => {
-    if (!Array.isArray(items)) return;
+  const importSheetData = async (items) => {
+    if (!Array.isArray(items)) return { ok: false, message: 'Dữ liệu import không hợp lệ.' };
     const validItems = items.filter(item => 
       item && 
       item.name && 
@@ -1251,12 +1256,12 @@ const mapLabelsToKeys = (fields, appOpts) => {
         id: item.id || `#${index + 75}`,
         serial: item.serial || '',
         name: item.name.trim(),
-        location: labelToKey('laptopLocation', laptopData.location, _cfg()) || 'store',
+        location: labelToKey('laptopLocation', item.location, _cfg()) || 'store',
         category: item.category || 'ASUS',
         conditionNote: item.conditionNote || '',
-        chargerStatus: labelToKey('chargerStatus', laptopData.chargerStatus, _cfg()) || 'with_charger',
+        chargerStatus: labelToKey('chargerStatus', item.chargerStatus, _cfg()) || 'with_charger',
         seller: item.seller || '',
-        status: labelToKey('laptopStatus', laptopData.status, _cfg()) || 'available',
+        status: labelToKey('laptopStatus', item.status, _cfg()) || 'available',
         priceRmb: pRmb,
         shippingRmb: sRmb,
         exchangeRate: rate,
@@ -1268,7 +1273,21 @@ const mapLabelsToKeys = (fields, appOpts) => {
         trackingCode: item.trackingCode || ''
       };
     });
-    setLaptops(formatted);
+    const results = await Promise.allSettled(formatted.map(item => saveLaptopToCloud(item)));
+    const saved = results
+      .filter(result => result.status === 'fulfilled' && result.value)
+      .map(result => result.value);
+    if (saved.length > 0) {
+      setLaptops(prev => {
+        const merged = new Map(prev.map(laptop => [String(laptop.id), laptop]));
+        saved.forEach(laptop => merged.set(String(laptop.id), laptop));
+        return Array.from(merged.values());
+      });
+    }
+    const failed = formatted.length - saved.length;
+    return failed === 0
+      ? { ok: true, imported: saved.length }
+      : { ok: false, imported: saved.length, failed, message: `${failed} dòng không thể lưu lên cloud.` };
   };
 
   return (

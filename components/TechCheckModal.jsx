@@ -1,33 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useInventory } from '../context/InventoryContext';
 
 export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
   const { dynamicOptions } = useInventory();
   const componentOpts = dynamicOptions?.COMPONENT_STATUS_OPTIONS || [];
   const statusOpts = dynamicOptions?.STATUS_OPTIONS || [];
-  const [status, setStatus] = useState('');
-  const [serial, setSerial] = useState('');
-  const [screenStatus, setScreenStatus] = useState('ok');
-  const [cameraMicStatus, setCameraMicStatus] = useState('ok');
-  const [mainboardStatus, setMainboardStatus] = useState('ok');
-  const [note, setNote] = useState('');
-  const [batteryHealth, setBatteryHealth] = useState(100);
-  const [isLocked, setIsLocked] = useState(false);
+  const [status, setStatus] = useState(() => laptop?.status || '');
+  const [serial, setSerial] = useState(() => laptop?.serial || '');
+  const [screenStatus, setScreenStatus] = useState(() => laptop?.screenStatus || componentOpts[0]?.key || 'ok');
+  const [cameraMicStatus, setCameraMicStatus] = useState(() => laptop?.cameraMicStatus || componentOpts[0]?.key || 'ok');
+  const [mainboardStatus, setMainboardStatus] = useState(() => laptop?.mainboardStatus || componentOpts[0]?.key || 'ok');
+  const [note, setNote] = useState(() => laptop?.conditionNote || '');
+  const [batteryHealth, setBatteryHealth] = useState(() => laptop?.batteryHealth || 100);
+  const [isLocked, setIsLocked] = useState(() => laptop?.isLocked || false);
   const [partsLog, setPartsLog] = useState('');
-
-  useEffect(() => {
-    if (laptop) {
-      setStatus(laptop.status || '');
-      setSerial(laptop.serial || '');
-      setScreenStatus(laptop.screenStatus || componentOpts[0]?.key || 'ok');
-      setCameraMicStatus(laptop.cameraMicStatus || componentOpts[0]?.key || 'ok');
-      setMainboardStatus(laptop.mainboardStatus || componentOpts[0]?.key || 'ok');
-      setNote(laptop.conditionNote || '');
-      setBatteryHealth(laptop.batteryHealth || 100);
-      setIsLocked(laptop.isLocked || false);
-      setPartsLog(''); // Reset parts log on open
-    }
-  }, [laptop]);
 
   if (!isOpen || !laptop) return null;
 

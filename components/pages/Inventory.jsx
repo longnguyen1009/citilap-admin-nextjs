@@ -327,7 +327,7 @@ export default function Inventory() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, warehouseDateFrom, warehouseDateTo]);
+  }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
 
   // Trợ lý Bật/Tắt Phân loại trong Multi-Select
   const toggleCategorySelect = (cat) => {
@@ -390,14 +390,17 @@ export default function Inventory() {
       return;
     }
 
+    const computedPayload = !formData.importPriceManuallyEdited && liveImportPrice > 0
+      ? { ...formData, importPriceVnd: liveImportPrice }
+      : formData;
     if (editingLaptop) {
-      const result = await updateLaptop(editingLaptop.id, formData);
+      const result = await updateLaptop(editingLaptop.id, computedPayload);
       if (!result.ok) {
         alert(`⛔ ${result.message}`);
         return;
       }
     } else {
-      const result = await addLaptop(formData);
+      const result = await addLaptop(computedPayload);
       if (!result.ok) {
         alert(`⛔ ${result.message}`);
         return;
@@ -446,13 +449,6 @@ export default function Inventory() {
     formData.exchangeRate,
     formulaConfig
   );
-
-  // Tự động cập nhật giá nhập khi thay đổi giá tệ/phí VC/tỷ giá (nếu user chưa chỉnh tay)
-  useEffect(() => {
-    if (!formData.importPriceManuallyEdited && liveImportPrice > 0) {
-      setFormData(prev => ({ ...prev, importPriceVnd: liveImportPrice }));
-    }
-  }, [liveImportPrice, formData.importPriceManuallyEdited]);
 
   // Xuất file CSV (Khớp chính xác 20 cột của Google Sheet)
   const handleExportCSV = () => {
@@ -552,10 +548,12 @@ export default function Inventory() {
         };
       });
 
-      importSheetData(parsed);
+      const result = await importSheetData(parsed);
       setIsSyncing(false);
       setIsSyncModalOpen(false);
-      alert(`🎉 Đã đồng bộ chuẩn xác ${parsed.length} sản phẩm từ Google Sheet của bạn!`);
+      alert(result.ok
+        ? `🎉 Đã đồng bộ ${result.imported} sản phẩm lên cloud.`
+        : `⚠️ Đã lưu ${result.imported || 0}/${parsed.length} sản phẩm. ${result.message || ''}`);
     } catch (err) {
       console.error(err);
       alert('Không thể kết nối đến Google Sheet. Vui lòng kiểm tra lại quyền Chia sẻ của Sheet!');
@@ -1454,7 +1452,7 @@ export default function Inventory() {
                 <div style={{ fontSize: '0.8rem', background: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', color: '#475569' }}>
                   💡 <b>Lưu ý quan trọng để kéo dữ liệu tự động 1-Click:</b>
                   <br />
-                  Nếu bấm nút bị báo lỗi Hạn chế, bạn chỉ cần mở file Google Sheet của bạn &rarr; Bấm <b>Chia sẻ (Share)</b> ở góc trên bên phải &rarr; Đổi quyền truy cập chung thành <b>"Bất kỳ ai có đường liên kết" (Anyone with the link can view)</b>.
+                  Nếu bấm nút bị báo lỗi Hạn chế, bạn chỉ cần mở file Google Sheet của bạn &rarr; Bấm <b>Chia sẻ (Share)</b> ở góc trên bên phải &rarr; Đổi quyền truy cập chung thành <b>&quot;Bất kỳ ai có đường liên kết&quot; (Anyone with the link can view)</b>.
                 </div>
               </div>
 
@@ -1488,7 +1486,7 @@ export default function Inventory() {
                         const file = e.target.files[0];
                         if (file) {
                           const reader = new FileReader();
-                          reader.onload = (event) => {
+                          reader.onload = async (event) => {
                             try {
                               const text = event.target.result;
                               const lines = text.split('\n').filter(l => l.trim());
@@ -1514,9 +1512,11 @@ export default function Inventory() {
                                   trackingCode: clean[19] || ''
                                 };
                               });
-                              importSheetData(parsed);
+                              const result = await importSheetData(parsed);
                               setIsSyncModalOpen(false);
-                              alert(`Đã nhập thành công ${parsed.length} dòng máy từ Google Sheet CSV!`);
+                              alert(result.ok
+                                ? `Đã nhập thành công ${result.imported} dòng máy lên cloud.`
+                                : `⚠️ Đã lưu ${result.imported || 0}/${parsed.length} dòng. ${result.message || ''}`);
                             } catch (err) {
                               alert('Lỗi khi đọc file CSV!');
                             }
@@ -1573,7 +1573,8 @@ export default function Inventory() {
         </div>
       )}
       {/* TECH CHECK MODAL */}
-      <TechCheckModal 
+      <TechCheckModal
+        key={`${techCheckLaptop?.id || 'none'}-${isTechCheckModalOpen}`}
         isOpen={isTechCheckModalOpen}
         onClose={() => setIsTechCheckModalOpen(false)}
         laptop={techCheckLaptop}

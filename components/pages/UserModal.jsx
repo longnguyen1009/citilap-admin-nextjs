@@ -1,31 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 import { saveUserToCloud } from '../../lib/apiFetchers';
 
 export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+  const [formData, setFormData] = useState(() => ({
+    name: initialData?.name || '',
+    email: initialData?.email || '',
     password: '',
-    role: 'SALES',
-    is_active: true
-  });
+    role: initialData?.role || 'SALES',
+    is_active: initialData?.is_active ?? true
+  }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const isEdit = !!initialData;
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name || '',
-        email: initialData.email || '',
-        password: '', // Blank password unless changing
-        role: initialData.role || 'SALES',
-        is_active: initialData.is_active
-      });
-    }
-  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
