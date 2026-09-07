@@ -2,14 +2,26 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 import { requireUser } from '../../../lib/apiAuth';
 
+const ENTITY_TYPES = new Set([
+  'LAPTOP',
+  'ORDER',
+  'CUSTOMER',
+  'WARRANTY',
+  'STOCK_MOVEMENT',
+  'SETTING',
+  'OPTION',
+  'PAYMENT',
+  'FINANCIAL_RECORD'
+]);
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
   if (!auth.ok) return auth.response;
   const { searchParams } = new URL(request.url);
-  const entityType = searchParams.get('entityType');
-  const entityId = searchParams.get('entityId');
+  const entityType = String(searchParams.get('entityType') || '').trim().toUpperCase();
+  const entityId = String(searchParams.get('entityId') || '').trim();
 
-  if (!entityType || !entityId) {
+  if (!ENTITY_TYPES.has(entityType) || !entityId || entityId.length > 100) {
     return NextResponse.json({ error: 'Missing entityType or entityId' }, { status: 400 });
   }
 

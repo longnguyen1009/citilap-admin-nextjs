@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { fetchOrdersFromCloud, saveOrderToCloud } from '../../../lib/services/dbService';
+import { fetchOrdersFromCloud, saveOrderToCloud, createOrderWithInventoryToCloud } from '../../../lib/services/dbService';
 import { logActivity } from '../../../lib/services/logger';
-import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS } from '../../../lib/apiAuth';
+import { requireUser, filterSensitiveFields, sanitizePayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 export async function GET(request) {
@@ -28,14 +28,7 @@ export async function POST(request) {
   const isAdmin = profile.role === 'ADMIN';
 
   try {
-    const body = await request.json();
-    
-    // Non-admin shouldn't be updating profit directly
-    if (!isAdmin) {
-      SENSITIVE_ORDER_KEYS.forEach(key => {
-        delete body[key];
-      });
-    }
+    const body = sanitizePayload(await request.json(), ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
 
     let oldData = null;
     let action = 'CREATE';
@@ -48,7 +41,9 @@ export async function POST(request) {
       }
     }
 
-    const data = await saveOrderToCloud(body);
+    const data = body.id
+      ? await saveOrderToCloud(body)
+      : await createOrderWithInventoryToCloud(body, profile.name);
     if (data === null || data === false) {
       return NextResponse.json({ error: 'Failed to save order (saveOrderToCloud returned null or false)' }, { status: 500 });
     }
@@ -71,9 +66,17 @@ export async function POST(request) {
        changes = body;
     }
 
-    await logActivity('ORDER', data.id, action, changes, profile.name);
+    const activityOrder = data.order || data;
+    await logActivity('ORDER', activityOrder.id, action, changes, profile.name);
 
-    return NextResponse.json(data);
+    if (isAdmin) return NextResponse.json(data);
+    if (data.order) {
+      return NextResponse.json({
+        ...data,
+        order: filterSensitiveFields([data.order], SENSITIVE_ORDER_KEYS)[0]
+      });
+    }
+    return NextResponse.json(filterSensitiveFields([data], SENSITIVE_ORDER_KEYS)[0]);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

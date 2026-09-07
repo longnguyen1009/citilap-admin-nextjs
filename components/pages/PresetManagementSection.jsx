@@ -9,21 +9,29 @@ export default function PresetManagementSection() {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newKey.trim() || !newValue.trim()) {
       toast.error('Vui lòng nhập đủ mã gợi ý và cấu hình chi tiết');
       return;
     }
-    addPreset(newKey.trim(), newValue.trim());
+    const saved = await addPreset(newKey.trim(), newValue.trim());
+    if (!saved) {
+      toast.error('Không thể lưu gợi ý cấu hình lên cloud.');
+      return;
+    }
     toast.success('Đã thêm gợi ý cấu hình!');
     setNewKey('');
     setNewValue('');
     setIsAdding(false);
   };
 
-  const handleRemove = (key) => {
+  const handleRemove = async (key) => {
     if (window.confirm(`Xóa gợi ý cấu hình "${key}"?`)) {
-      removePreset(key);
+      const saved = await removePreset(key);
+      if (!saved) {
+        toast.error('Không thể xóa gợi ý cấu hình trên cloud.');
+        return;
+      }
       toast.success('Đã xóa gợi ý!');
     }
   };

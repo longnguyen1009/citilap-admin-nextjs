@@ -94,6 +94,7 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL ON ALL ROUTINES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON SCHEMA public FROM anon, authenticated;
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT ON user_profiles TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;

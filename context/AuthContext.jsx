@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
+import { fetchUsersFromCloud, saveUserToCloud, updateUserStatus } from '../lib/apiFetchers';
 
 const AuthContext = createContext();
 
@@ -37,14 +38,12 @@ export const AuthProvider = ({ children }) => {
       let newUser;
 
       if (error || !profile) {
-        // Không tự cấp quyền ở client. Profile phải được ADMIN tạo ở server.
-        const metaName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || '';
-        newUser = {
-          id: authUser.id,
-          name: metaName || authUser.email,
-          role: 'STAFF',
-          email: authUser.email,
-        };
+        await client.auth.signOut();
+        lastUserRef.current = null;
+        loadingProfileRef.current = false;
+        setUser(null);
+        setLoading(false);
+        return;
       } else if (!profile.is_active) {
         await client.auth.signOut();
         lastUserRef.current = null;
@@ -177,38 +176,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ─── Tạo user mới (chỉ ADMIN) ─────────────────────────────────────
-  const createUser = async () => ({ ok: false, message: 'Hãy dùng màn hình quản lý người dùng để tạo tài khoản.' });
+  const createUser = async (payload) => {
+    try {
+      const created = await saveUserToCloud(payload, false);
+      return { ok: true, user: created };
+    } catch (err) {
+      return { ok: false, message: err.message };
+    }
+  };
 
   // ─── Danh sách users ───────────────────────────────────────────────
   const listUsers = useCallback(async () => {
-    const client = getSupabaseClient();
-    if (!client) return [];
-
     try {
-      const { data, error } = await client
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (error) {
-        console.error('Lỗi listing users:', error);
-        return [];
-      }
-      return data || [];
-    } catch {
+      return (await fetchUsersFromCloud()) || [];
+    } catch (error) {
+      console.error('Lỗi listing users:', error);
       return [];
     }
   }, []);
 
   // ─── Vô hiệu hóa user ──────────────────────────────────────────────
   const deactivateUser = async (targetUserId) => {
-    const client = getSupabaseClient();
-    if (!client) return { ok: false, message: 'Supabase chưa kết nối' };
-
     try {
-      const { data, error } = await client.rpc('deactivate_user', {
-        target_user_id: targetUserId,
-      });
-      if (error) return { ok: false, message: error.message };
+      await updateUserStatus(targetUserId, false);
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err.message };
@@ -217,14 +207,8 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Kích hoạt user ────────────────────────────────────────────────
   const activateUser = async (targetUserId) => {
-    const client = getSupabaseClient();
-    if (!client) return { ok: false, message: 'Supabase chưa kết nối' };
-
     try {
-      const { data, error } = await client.rpc('activate_user', {
-        target_user_id: targetUserId,
-      });
-      if (error) return { ok: false, message: error.message };
+      await updateUserStatus(targetUserId, true);
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err.message };
@@ -233,15 +217,8 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Đổi mật khẩu user ────────────────────────────────────────────
   const changeUserPassword = async (targetUserId, newPassword) => {
-    const client = getSupabaseClient();
-    if (!client) return { ok: false, message: 'Supabase chưa kết nối' };
-
     try {
-      const { data, error } = await client.rpc('change_user_password', {
-        target_user_id: targetUserId,
-        new_password: newPassword,
-      });
-      if (error) return { ok: false, message: error.message };
+      await saveUserToCloud({ id: targetUserId, password: newPassword }, true);
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err.message };

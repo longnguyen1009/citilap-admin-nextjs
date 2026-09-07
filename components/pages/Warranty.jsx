@@ -30,13 +30,13 @@ export default function Warranty() {
   const openCreate = () => { setEditingCase(null); setFormData(emptyCase()); setIsModalOpen(true); };
   const openEdit = (item) => { setEditingCase(item); setFormData({ ...item, repairCost: item.repairCost ?? '' }); setIsModalOpen(true); };
   const handleLaptopChange = (laptopId) => {
-    const laptop = laptops.find(item => item.id === laptopId);
-    const linkedOrder = orders.find(order => order.laptopId === laptopId && isOrderCommitted(order));
+    const laptop = laptops.find(item => String(item.id) === String(laptopId));
+    const linkedOrder = orders.find(order => String(order.laptopId) === String(laptopId) && isOrderCommitted(order));
     setFormData(prev => ({ ...prev, laptopId, orderId: linkedOrder?.id || '', customerInfo: linkedOrder?.customerId ? (customers.find(c => c.id === linkedOrder.customerId)?.name || '') : prev.customerInfo, notes: laptop?.conditionNote || prev.notes }));
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const result = editingCase ? updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
+    const result = editingCase ? await updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
     if (!result.ok) return alert(`⛔ ${result.message}`);
     setIsModalOpen(false);
   };
@@ -63,7 +63,7 @@ export default function Warranty() {
         <div className="modal-header"><h3>{editingCase ? `Cập nhật phiếu ${editingCase.id}` : 'Tiếp nhận bảo hành / đổi trả'}</h3><button className="modal-close" type="button" onClick={() => setIsModalOpen(false)}>&times;</button></div>
         <form onSubmit={handleSubmit}><div className="modal-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
           <div className="form-group"><label>Máy *</label><select className="form-control" value={formData.laptopId} onChange={event => handleLaptopChange(event.target.value)} disabled={Boolean(editingCase)} required><option value="">-- Chọn máy --</option>{laptops.map(laptop => <option key={laptop.id} value={laptop.id}>{laptop.id} · {laptop.name} · SN: {laptop.serial || '-'}</option>)}</select></div>
-          <div className="form-group"><label>Đơn gốc</label><select className="form-control" value={formData.orderId} onChange={event => setFormData({ ...formData, orderId: event.target.value })}><option value="">-- Chưa liên kết --</option>{orders.filter(order => !formData.laptopId || order.laptopId === formData.laptopId).map(order => <option key={order.id} value={order.id}>#{order.id} · {customers.find(c => String(c.id) === String(order.customerId))?.name}</option>)}</select></div>
+          <div className="form-group"><label>Đơn gốc</label><select className="form-control" value={formData.orderId} onChange={event => setFormData({ ...formData, orderId: event.target.value })}><option value="">-- Chưa liên kết --</option>{orders.filter(order => !formData.laptopId || String(order.laptopId) === String(formData.laptopId)).map(order => <option key={order.id} value={order.id}>#{order.id} · {customers.find(c => String(c.id) === String(order.customerId))?.name}</option>)}</select></div>
           <div className="form-group"><label>Khách hàng</label><input className="form-control" value={formData.customerInfo} onChange={event => setFormData({ ...formData, customerInfo: event.target.value })} /></div>
           <div className="form-group"><label>Ngày tiếp nhận</label><input className="form-control" value={formData.receivedDate} onChange={event => setFormData({ ...formData, receivedDate: event.target.value })} required /></div>
           <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Lỗi khách báo *</label><textarea className="form-control" rows={3} value={formData.reportedIssue} onChange={event => setFormData({ ...formData, reportedIssue: event.target.value })} required /></div>

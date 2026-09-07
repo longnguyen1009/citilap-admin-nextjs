@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { History, Clock, FileEdit, Plus, Trash2 } from 'lucide-react';
+import { getAuthHeaders } from '../lib/apiFetchers';
 
 const ActivityTimeline = ({ entityType, entityId }) => {
   const [logs, setLogs] = useState([]);
@@ -9,7 +10,8 @@ const ActivityTimeline = ({ entityType, entityId }) => {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/activity-logs?entityType=${entityType}&entityId=${entityId}`);
+        const params = new URLSearchParams({ entityType, entityId: String(entityId) });
+        const res = await fetch(`/api/activity-logs?${params}`, { headers: await getAuthHeaders() });
         if (res.ok) {
           const data = await res.json();
           setLogs(data);

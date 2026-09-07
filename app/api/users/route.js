@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { requireUser } from '@/lib/apiAuth';
 
+const ALLOWED_ROLES = new Set(['ADMIN', 'SALES', 'TECHNICAL', 'TECH', 'STAFF']);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const validateEmail = (email) => typeof email === 'string'
+  && email.trim().length <= 254
+  && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+const validateUserId = (id) => typeof id === 'string' && UUID_RE.test(id);
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN']);
   if (!auth.ok) return auth.response;
@@ -50,10 +59,15 @@ export async function POST(request) {
   if (!auth.ok) return auth.response;
 
   const adminClient = getSupabaseAdminClient();
+  if (!adminClient) return NextResponse.json({ error: 'Admin client not configured' }, { status: 500 });
   const payload = await request.json();
 
-  if (!payload.email || !payload.password || !payload.name) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  if (!validateEmail(payload.email) || typeof payload.password !== 'string' || payload.password.length < 8
+    || payload.password.length > 128 || typeof payload.name !== 'string' || !payload.name.trim()) {
+    return NextResponse.json({ error: 'Email, tên và mật khẩu tối thiểu 8 ký tự là bắt buộc' }, { status: 400 });
+  }
+  if (payload.role !== undefined && !ALLOWED_ROLES.has(payload.role)) {
+    return NextResponse.json({ error: 'Role không hợp lệ' }, { status: 400 });
   }
 
   try {
@@ -80,7 +94,10 @@ export async function POST(request) {
       .select()
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      await adminClient.auth.admin.deleteUser(userId);
+      throw profileError;
+    }
 
     return NextResponse.json({
       id: userId,
@@ -100,10 +117,29 @@ export async function PUT(request) {
   if (!auth.ok) return auth.response;
 
   const adminClient = getSupabaseAdminClient();
+  if (!adminClient) return NextResponse.json({ error: 'Admin client not configured' }, { status: 500 });
   const payload = await request.json();
 
-  if (!payload.id) {
-    return NextResponse.json({ error: 'Missing user ID' }, { status: 400 });
+  if (!validateUserId(payload.id)) {
+    return NextResponse.json({ error: 'User ID không hợp lệ' }, { status: 400 });
+  }
+  if (payload.email !== undefined && !validateEmail(payload.email)) {
+    return NextResponse.json({ error: 'Email không hợp lệ' }, { status: 400 });
+  }
+  if (payload.password !== undefined && (typeof payload.password !== 'string' || payload.password.length < 8 || payload.password.length > 128)) {
+    return NextResponse.json({ error: 'Mật khẩu phải dài từ 8 đến 128 ký tự' }, { status: 400 });
+  }
+  if (payload.name !== undefined && (typeof payload.name !== 'string' || !payload.name.trim() || payload.name.length > 120)) {
+    return NextResponse.json({ error: 'Tên không hợp lệ' }, { status: 400 });
+  }
+  if (payload.role !== undefined && !ALLOWED_ROLES.has(payload.role)) {
+    return NextResponse.json({ error: 'Role không hợp lệ' }, { status: 400 });
+  }
+  if (payload.is_active !== undefined && typeof payload.is_active !== 'boolean') {
+    return NextResponse.json({ error: 'is_active không hợp lệ' }, { status: 400 });
+  }
+  if (payload.id === auth.profile.id && payload.is_active === false) {
+    return NextResponse.json({ error: 'Không thể tự khóa tài khoản đang đăng nhập' }, { status: 400 });
   }
 
   try {
@@ -118,14 +154,14 @@ export async function PUT(request) {
     }
 
     // 2. Update profile
+    const profileUpdates = { updated_at: new Date().toISOString() };
+    if (payload.name !== undefined) profileUpdates.name = payload.name.trim();
+    if (payload.role !== undefined) profileUpdates.role = payload.role;
+    if (payload.is_active !== undefined) profileUpdates.is_active = payload.is_active;
+
     const { data: profile, error: profileError } = await adminClient
       .from('user_profiles')
-      .update({
-        name: payload.name,
-        role: payload.role,
-        is_active: payload.is_active,
-        updated_at: new Date().toISOString()
-      })
+      .update(profileUpdates)
       .eq('id', payload.id)
       .select()
       .single();

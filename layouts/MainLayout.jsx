@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Wrench,
-  BadgeDollarSign,
+          BadgeDollarSign,
   Database,
   Settings
 } from 'lucide-react';
@@ -118,6 +118,17 @@ export default function MainLayout({ children }) {
             >
               <ShoppingCart size={20} />
               {!isCollapsed && <span>Đơn Hàng & Xuất Bán</span>}
+            </Link>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+            <Link
+              href="/payments"
+              className="nav-item"
+              title={isCollapsed ? "Thanh toán & Tài chính" : ""}
+            >
+              <BadgeDollarSign size={20} />
+              {!isCollapsed && <span>Thanh toán & Tài chính</span>}
             </Link>
           )}
 

@@ -430,12 +430,16 @@ export default function Inventory() {
   };
 
   // Thêm Phân loại danh mục mới
-  const handleAddCategorySubmit = (e) => {
+  const handleAddCategorySubmit = async (e) => {
     e.preventDefault();
     if (newCatInput.trim()) {
       const newLabel = newCatInput.trim();
       const newKey = String(Date.now());
-      updateFieldOptions('category', newKey, newLabel);
+      const saved = await updateFieldOptions('category', newKey, newLabel);
+      if (!saved) {
+        alert('Không thể thêm phân loại lên cloud.');
+        return;
+      }
       setFormData(prev => ({ ...prev, category: newKey }));
       setNewCatInput('');
       setShowAddCatInput(false);

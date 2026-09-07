@@ -147,14 +147,14 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                 value={formData.password}
                 onChange={handleChange}
                 required={!isEdit}
-                minLength={6}
+                minLength={8}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid var(--glass-border)',
                   borderRadius: '8px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
                 onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                placeholder={isEdit ? "Nhập mật khẩu mới..." : "Ít nhất 6 ký tự"}
+                placeholder={isEdit ? "Nhập mật khẩu mới..." : "Ít nhất 8 ký tự"}
               />
             </div>
 

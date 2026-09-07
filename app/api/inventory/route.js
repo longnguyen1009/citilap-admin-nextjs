@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchLaptopsFromCloud, saveLaptopToCloud } from '../../../lib/services/dbService';
 import { logActivity } from '../../../lib/services/logger';
-import { requireUser, filterSensitiveFields, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
+import { requireUser, filterSensitiveFields, sanitizePayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 export async function GET(request) {
@@ -28,14 +28,7 @@ export async function POST(request) {
   const isAdmin = profile.role === 'ADMIN';
 
   try {
-    const body = await request.json();
-    
-    // Non-admin shouldn't be updating prices or profit
-    if (!isAdmin) {
-      SENSITIVE_LAPTOP_KEYS.forEach(key => {
-        delete body[key];
-      });
-    }
+    const body = sanitizePayload(await request.json(), LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
 
     // Lấy dữ liệu cũ để diff
     let oldData = null;
@@ -80,7 +73,8 @@ export async function POST(request) {
 
     await logActivity('LAPTOP', data.id, action, changes, profile.name);
 
-    return NextResponse.json(data);
+    const responseData = isAdmin ? data : filterSensitiveFields([data], SENSITIVE_LAPTOP_KEYS)[0];
+    return NextResponse.json(responseData);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

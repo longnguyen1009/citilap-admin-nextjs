@@ -1,4 +1,6 @@
 -- 0. Xóa dữ liệu cũ (TÙY CHỌN, cẩn thận trên production)
+DELETE FROM financial_records;
+DELETE FROM payments;
 DELETE FROM stock_movements;
 DELETE FROM warranty_cases;
 DELETE FROM orders;

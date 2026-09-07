@@ -8,6 +8,8 @@ import {
   fetchCustomersFromCloud, saveCustomerToCloud,
   fetchAllSettings, saveSetting,
   fetchAppOptionsFromCloud,
+  fetchPaymentsFromCloud, savePaymentToCloud,
+  getAuthHeaders,
   subscribeRealtimeChanges
 } from '../lib/apiFetchers';
 // removed manual map functions
@@ -28,7 +30,7 @@ import { useAuth } from './AuthContext';
 const InventoryContext = createContext();
 
 // ─── Phân quyền data: ẩn thông tin nhạy cảm theo role ─────────────────
-const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd'];
+const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'seller', 'warrantySupplier'];
 const SENSITIVE_ORDER_KEYS = ['profitVnd'];
 
 const filterSensitiveFields = (items, sensitiveKeys) => {
@@ -47,8 +49,9 @@ const LOCAL_KEYS = {
 };
 
 const readLocalArray = (key, fallback = []) => {
+  if (typeof window === 'undefined') return fallback;
   try {
-    const saved = localStorage.getItem(key);
+    const saved = window.localStorage.getItem(key);
     const parsed = saved ? JSON.parse(saved) : fallback;
     return Array.isArray(parsed) ? parsed : fallback;
   } catch (error) {
@@ -70,8 +73,9 @@ export const DEFAULT_FORMULA_CONFIG = {
 
 // ─── Helper nội bộ: đọc customConfig từ localStorage tại runtime ──────────────
 const _cfg = () => {
+  if (typeof window === 'undefined') return [];
   try { 
-    const val = JSON.parse(localStorage.getItem(LOCAL_KEYS.appOptions) || '[]'); 
+    const val = JSON.parse(window.localStorage.getItem(LOCAL_KEYS.appOptions) || '[]');
     return Array.isArray(val) ? val : [];
   } catch { return []; }
 };
@@ -111,13 +115,14 @@ export const isOrderCancelled = (order, appOptions = []) => {
 };
 
 export const isOrderCommitted = (order, appOptions = []) => {
+  if (!order || order.isActive === false) return false;
   if (isOrderCancelled(order, appOptions)) return false;
   const statusKey = labelToKey('orderStatus', order?.orderStatus, appOptions);
   return COMMITTED_ORDER_STATUS_KEYS.includes(statusKey);
 };
 
 export const isReservationActive = (order, appOptions = [], now = new Date()) => {
-  if (!order?.laptopId || isOrderCancelled(order, appOptions) || isOrderCommitted(order, appOptions)) return false;
+  if (!order?.laptopId || order.isActive === false || isOrderCancelled(order, appOptions) || isOrderCommitted(order, appOptions)) return false;
   const statusKey  = labelToKey('orderStatus', order?.orderStatus, appOptions);
   const paymentKey = labelToKey('paymentStatus', order?.paymentStatus, appOptions);
   const hasDeposit = DEPOSIT_PAYMENT_STATUS_KEYS.includes(paymentKey)
@@ -168,9 +173,16 @@ export const computeImportPrice = (priceRmb, shippingRmb, exchangeRate, formulaC
 };
 
 // Trợ lý tính Lợi Nhuận (triệu VNĐ) - Giữ chính xác con số tuyệt đối
-export const computeProfit = (importPriceVnd) => {
-  return 0;
-};
+export function computeProfit(retailPriceVnd, wholesalePriceVnd, importPriceVnd, customProfit) {
+  if (arguments.length === 1) return 0;
+  const salePrice = parseFlexibleFloat(retailPriceVnd) || parseFlexibleFloat(wholesalePriceVnd);
+  const importPrice = parseFlexibleFloat(importPriceVnd);
+  if (salePrice <= 0 || importPrice <= 0) return 0;
+  if (customProfit !== undefined && customProfit !== null && customProfit !== '') {
+    return parseFlexibleFloat(customProfit);
+  }
+  return Number((salePrice - importPrice).toFixed(2));
+}
 
 // Trợ lý chuyển đổi Ngày thành chuỗi Tháng/Năm (VD: "08/2026")
 export const parseMonthYear = (dateStr, fallbackTimestamp) => {
@@ -290,7 +302,7 @@ export const filterLaptopsByMonth = (laptops, selectedMonth, orders = []) => {
   // Lấy đơn mới nhất có liên kết máy & có ngày giao/tạo đơn
   const soldMonthByLaptopId = {};
   orders.forEach(order => {
-    if (!order.laptopId) return;
+    if (!order.laptopId || order.isActive === false || isOrderCancelled(order)) return;
     // Lấy ngày bán: ưu tiên createdDate (ngày chốt đơn) để đồng bộ với filterOrdersByMonth
     const saleDate = order.createdDate || order.shipDate;
     const saleMonth = parseMonthYear(saleDate, order.created_at || order.createdAt);
@@ -397,35 +409,39 @@ const initialOrders = [
 
 export const InventoryProvider = ({ children }) => {
   const { user } = useAuth();
+  const userId = user?.id;
   const isAdmin = user?.role === 'ADMIN';
 
   const [laptops, setLaptops] = useState([]);
   const [orders, setOrders] = useState([]);
   const [warrantyCases, setWarrantyCases] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [customers, setCustomers] = useState([]);
 
   const [cloudStatus, setCloudStatus] = useState('checking'); // 'checking', 'connected', 'error', 'disconnected'
+  const ordersRef = React.useRef(orders);
+
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
   // Fetch initial data from Cloud — chỉ lấy columns cần thiết (giảm ~30-40% payload)
   const [appOptions, setAppOptions] = useState(() => {
-    const saved = localStorage.getItem('citilap_app_options_v1');
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return []; }
-    }
-    return [];
+    return readLocalArray(LOCAL_KEYS.appOptions);
   });
 
-  const updateAppOptions = async () => {
+  const updateAppOptions = useCallback(async () => {
     const opts = await fetchAppOptionsFromCloud();
     if (opts) {
       setAppOptions(opts);
-      localStorage.setItem('citilap_app_options_v1', JSON.stringify(opts));
+      if (typeof window !== 'undefined') window.localStorage.setItem(LOCAL_KEYS.appOptions, JSON.stringify(opts));
     }
-  };
+  }, []);
 
   const [formulaConfig, setFormulaConfig] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_KEYS.formula);
+    if (typeof window === 'undefined') return DEFAULT_FORMULA_CONFIG;
+    const saved = window.localStorage.getItem(LOCAL_KEYS.formula);
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
@@ -434,10 +450,16 @@ export const InventoryProvider = ({ children }) => {
 
 
 
-  const updateFieldOptions = useCallback((groupKey, optionKey, newLabel) => {
-    // Việc này giờ được quản lý ở Settings.jsx gọi API trực tiếp
-    // Hàm này giữ lại để không báo lỗi nếu còn chỗ nào gọi
-  }, []);
+  const updateFieldOptions = useCallback(async (groupKey, optionKey, newLabel) => {
+    const response = await fetch('/api/options', {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ group_key: groupKey, option_key: optionKey, label: newLabel })
+    });
+    if (!response.ok) return false;
+    await updateAppOptions();
+    return true;
+  }, [updateAppOptions]);
 
   const resetFieldOptionsGroup = useCallback((groupKey) => {
     // Không dùng nữa, Settings.jsx đã lo
@@ -474,7 +496,7 @@ export const InventoryProvider = ({ children }) => {
 
   useEffect(() => {
     // KHÔNG fetch nếu: chưa login, hoặc đang ở màn login
-    if (!user) return;
+    if (!userId) return;
     if (window.location.pathname === '/login') return;
 
     let unsubscribe = () => {};
@@ -493,14 +515,15 @@ export const InventoryProvider = ({ children }) => {
         if (!session || cancelled) return;
       }
 
-      const [cloudLaptops, cloudOrders, cloudWarranty, cloudStock, cloudCustomers, cloudSettings, cloudOptions] = await Promise.all([
+      const [cloudLaptops, cloudOrders, cloudWarranty, cloudStock, cloudCustomers, cloudSettings, cloudOptions, cloudPayments] = await Promise.all([
         fetchLaptopsFromCloud(),
         fetchOrdersFromCloud(),
         fetchWarrantyCasesFromCloud(),
         fetchStockMovementsFromCloud(),
         fetchCustomersFromCloud(),
         fetchAllSettings(),
-        fetchAppOptionsFromCloud()
+        fetchAppOptionsFromCloud(),
+        fetchPaymentsFromCloud()
       ]);
 
       if (cancelled) return;
@@ -514,11 +537,12 @@ export const InventoryProvider = ({ children }) => {
         if (cloudWarranty !== null) setWarrantyCases(cloudWarranty);
         if (cloudStock !== null) setStockMovements(cloudStock);
         if (cloudCustomers !== null) setCustomers(cloudCustomers);
+        if (cloudPayments !== null) setPayments(cloudPayments);
 
         // Load options từ bảng app_options
         if (cloudOptions && Array.isArray(cloudOptions)) {
           setAppOptions(cloudOptions);
-          localStorage.setItem(LOCAL_KEYS.fieldOptions, JSON.stringify(cloudOptions));
+          localStorage.setItem(LOCAL_KEYS.appOptions, JSON.stringify(cloudOptions));
         }
 
         if (cloudSettings) {
@@ -595,7 +619,7 @@ export const InventoryProvider = ({ children }) => {
       if (now - lastCrossFetchOrder > CROSS_FETCH_THROTTLE_MS) {
         lastCrossFetchOrder = now;
         fetchLaptopsFromCloud().then(d => {
-          if (d && !cancelled) setLaptops(reconcileLaptopStatuses(d, orders));
+          if (d && !cancelled) setLaptops(reconcileLaptopStatuses(d, ordersRef.current));
         });
       }
     };
@@ -623,10 +647,11 @@ export const InventoryProvider = ({ children }) => {
     );
 
     return () => { cancelled = true; window.clearInterval(refreshIntervalId); unsubscribe(); };
-  }, [user?.id]);
+  }, [userId]);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    return localStorage.getItem(LOCAL_KEYS.selectedMonth) || currentMonthStr;
+    if (typeof window === 'undefined') return currentMonthStr;
+    return window.localStorage.getItem(LOCAL_KEYS.selectedMonth) || currentMonthStr;
   });
 
   useEffect(() => {
@@ -686,7 +711,7 @@ export const InventoryProvider = ({ children }) => {
       nextLaptops.forEach((nextLaptop, idx) => {
         const prevLaptop = prev[idx];
         if (prevLaptop && prevLaptop.id === nextLaptop.id && prevLaptop.status !== nextLaptop.status) {
-          saveLaptopToCloud(nextLaptop);
+          void saveLaptopToCloud(nextLaptop).catch(error => console.error('Không thể đồng bộ trạng thái máy:', error));
         }
       });
       return nextLaptops;
@@ -708,7 +733,20 @@ export const InventoryProvider = ({ children }) => {
       ...entry
     };
     setStockMovements(prev => [newEntry, ...prev].slice(0, 1000));
-    saveStockMovementToCloud(newEntry);
+    void saveStockMovementToCloud(newEntry).catch(error => console.error('Không thể lưu lịch sử kho:', error));
+  };
+
+  const recordPayment = async (paymentData) => {
+    try {
+      const result = await savePaymentToCloud(paymentData);
+      if (result?.payment) setPayments(prev => [result.payment, ...prev]);
+      if (result?.order) {
+        setOrders(prev => prev.map(order => String(order.id) === String(result.order.id) ? result.order : order));
+      }
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, message: error.message || 'Không thể ghi nhận thanh toán.' };
+    }
   };
 
   const getLaptopAssignmentError = (laptopId, currentOrderId = null) => {
@@ -860,15 +898,26 @@ const mapLabelsToKeys = (fields, appOpts) => {
     if (!orderData.id) {
       newOrder.id = undefined;
     }
-    const savedData = await saveOrderToCloud(newOrder);
+    let savedData;
+    try {
+      savedData = await saveOrderToCloud(newOrder);
+    } catch (error) {
+      return { ok: false, message: error.message || 'Không thể lưu đơn hàng lên cloud.' };
+    }
     if (!savedData) return { ok: false, message: 'Lỗi khi lưu lên cơ sở dữ liệu. Dữ liệu chưa được cập nhật.' };
-    newOrder.id = savedData.id;
+    const persistedOrder = savedData.order || savedData;
+    Object.assign(newOrder, persistedOrder);
+    newOrder.id = persistedOrder.id;
 
     const nextOrders = [newOrder, ...orders];
     setOrders(nextOrders);
-    applyAndSaveLaptopStatuses(nextOrders);
+    if (savedData.inventoryApplied && savedData.laptop) {
+      setLaptops(prev => prev.map(laptop => String(laptop.id) === String(savedData.laptop.id) ? savedData.laptop : laptop));
+    } else {
+      applyAndSaveLaptopStatuses(nextOrders);
+    }
 
-    if (newOrder.laptopId) {
+    if (newOrder.laptopId && !savedData.inventoryApplied) {
       addStockMovement({ laptopId: newOrder.laptopId, orderId: newOrder.id, type: isReservationActive(newOrder) ? 'GIỮ MÁY' : 'GÁN VÀO ĐƠN', note: `Đơn #${newOrder.id}` });
     }
     return { ok: true, order: newOrder };
@@ -926,13 +975,16 @@ const mapLabelsToKeys = (fields, appOpts) => {
     setOrders(nextOrders);
     applyAndSaveLaptopStatuses(nextOrders);
     
-    // Fire and forget cloud save
-    saveOrderToCloud(merged);
-    
-    if (merged.laptopId !== currentOrder.laptopId) {
-      addStockMovement({ laptopId: currentOrder.laptopId, orderId: id, type: 'NHẢ MÁY', note: `Đổi máy sang ${merged.laptopId || 'chưa gán'}` });
-      if (merged.laptopId) addStockMovement({ laptopId: merged.laptopId, orderId: id, type: 'GÁN VÀO ĐƠN', note: `Đơn #${id}` });
-    }
+    void saveOrderToCloud(merged).then(() => {
+      if (merged.laptopId !== currentOrder.laptopId) {
+        addStockMovement({ laptopId: currentOrder.laptopId, orderId: id, type: 'NHẢ MÁY', note: `Đổi máy sang ${merged.laptopId || 'chưa gán'}` });
+        if (merged.laptopId) addStockMovement({ laptopId: merged.laptopId, orderId: id, type: 'GÁN VÀO ĐƠN', note: `Đơn #${id}` });
+      }
+    }).catch(error => {
+      setOrders(prev => prev.map(order => String(order.id) === String(id) ? currentOrder : order));
+      applyAndSaveLaptopStatuses(orders);
+      console.error('Không thể đồng bộ đơn hàng:', error);
+    });
     return { ok: true, order: merged };
   };
 
@@ -985,7 +1037,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
     setLaptops(prev => prev.map(laptop => laptop.id == id ? finalLaptop : laptop));
     
     // Fire and forget cloud save
-    saveLaptopToCloud(finalLaptop);
+    void saveLaptopToCloud(finalLaptop).catch(error => {
+      setLaptops(prev => prev.map(laptop => laptop.id == id ? currentLaptop : laptop));
+      console.error('Không thể đồng bộ máy:', error);
+    });
 
     // Tự động tính lại profit_vnd cho tất cả đơn hàng liên kết khi giá nhập thay đổi
     if (importPriceVnd !== currentLaptop.importPriceVnd) {
@@ -996,7 +1051,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
           if (o.laptopId !== id || !o.isActive || o.salePrice <= 0) return o;
           const newProfitVnd = parseFloat((o.salePrice - finalLaptop.importPriceVnd).toFixed(2));
           if (newProfitVnd === o.profitVnd) return o;
-          saveOrderToCloud({ ...o, profitVnd: newProfitVnd });
+          void saveOrderToCloud({ ...o, profitVnd: newProfitVnd }).catch(error => console.error('Không thể cập nhật lợi nhuận đơn:', error));
           return { ...o, profitVnd: newProfitVnd };
         });
       });
@@ -1095,14 +1150,14 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
   // Không xóa vật lý, đổi trạng thái và đánh dấu isActive = false (Soft Delete)
   const deleteLaptop = (id) => {
-    if (orders.some(order => order.laptopId === id) || warrantyCases.some(item => item.laptopId === id)) {
+    if (orders.some(order => String(order.laptopId) === String(id)) || warrantyCases.some(item => String(item.laptopId) === String(id))) {
       return { ok: false, message: 'Máy đã có lịch sử đơn hàng hoặc bảo hành, không thể xóa.' };
     }
     const target = laptops.find(l => l.id == id);
     if (target) {
       const softDeleted = { ...target, isActive: false, status: 'NGỪNG HOẠT ĐỘNG', updatedAt: new Date().toISOString() };
       setLaptops(prev => prev.map(l => l.id == id ? softDeleted : l));
-      saveLaptopToCloud(softDeleted);
+      void saveLaptopToCloud(softDeleted).catch(error => console.error('Không thể ngừng hoạt động máy:', error));
       addStockMovement({ laptopId: id, type: 'NGỪNG HOẠT ĐỘNG', note: 'Xóa mềm máy khỏi kho' });
     }
     return { ok: true };
@@ -1118,11 +1173,15 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updatedAt: new Date().toISOString()
     };
     setCustomers(prev => [newCustomer, ...prev]);
-    const saved = await saveCustomerToCloud(newCustomer);
-    if (saved) {
-      setCustomers(prev => prev.map(c => c.id == newCustomer.id ? saved : c));
+    let saved;
+    try {
+      saved = await saveCustomerToCloud(newCustomer);
+    } catch (error) {
+      setCustomers(prev => prev.filter(c => String(c.id) !== String(newCustomer.id)));
+      return { ok: false, message: error.message || 'Không thể lưu khách hàng lên cloud.' };
     }
-    return { ok: true, customer: saved || newCustomer };
+    setCustomers(prev => prev.map(c => String(c.id) === String(newCustomer.id) ? saved : c));
+    return { ok: true, customer: saved };
   };
 
   const updateCustomer = async (id, updates) => {
@@ -1134,11 +1193,15 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updatedAt: new Date().toISOString()
     };
     setCustomers(prev => prev.map(c => c.id == id ? updated : c));
-    const saved = await saveCustomerToCloud(updated);
-    if (saved) {
-      setCustomers(prev => prev.map(c => c.id == id ? saved : c));
+    let saved;
+    try {
+      saved = await saveCustomerToCloud(updated);
+    } catch (error) {
+      setCustomers(prev => prev.map(c => String(c.id) === String(id) ? current : c));
+      return { ok: false, message: error.message || 'Không thể cập nhật khách hàng lên cloud.' };
     }
-    return { ok: true, customer: saved || updated };
+    setCustomers(prev => prev.map(c => String(c.id) === String(id) ? saved : c));
+    return { ok: true, customer: saved };
   };
 
   const createWarrantyCase = async (caseData) => {
@@ -1162,7 +1225,12 @@ const mapLabelsToKeys = (fields, appOpts) => {
     };
     if (!draftWarrantyCase.reportedIssue) return { ok: false, message: 'Cần ghi nhận lỗi khách báo khi tiếp nhận.' };
 
-    const savedWarrantyCase = await saveWarrantyCaseToCloud(draftWarrantyCase);
+    let savedWarrantyCase;
+    try {
+      savedWarrantyCase = await saveWarrantyCaseToCloud(draftWarrantyCase);
+    } catch (error) {
+      return { ok: false, message: error.message || 'Không thể lưu phiếu bảo hành lên cloud.' };
+    }
     if (!savedWarrantyCase) return { ok: false, message: 'Không thể lưu phiếu bảo hành lên cloud.' };
     const warrantyCase = { ...draftWarrantyCase, ...savedWarrantyCase };
 
@@ -1173,7 +1241,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       conditionNote: `${laptop.conditionNote || ''}${laptop.conditionNote ? ' | ' : ''}BH ${warrantyCase.receivedDate}: ${warrantyCase.reportedIssue}`
     };
     setLaptops(prev => prev.map(item => item.id == laptop.id ? updatedLaptop : item));
-    saveLaptopToCloud(updatedLaptop);
+    void saveLaptopToCloud(updatedLaptop).catch(error => console.error('Không thể đồng bộ máy bảo hành:', error));
     
     addStockMovement({ laptopId: laptop.id, orderId: warrantyCase.orderId, warrantyCaseId: warrantyCase.id, type: 'TIẾP NHẬN BẢO HÀNH', note: warrantyCase.reportedIssue });
     return { ok: true, warrantyCase };
@@ -1189,7 +1257,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updatedAt: new Date().toISOString()
     };
     setWarrantyCases(prev => prev.map(item => item.id == id ? updatedCase : item));
-    saveWarrantyCaseToCloud(updatedCase);
+    void saveWarrantyCaseToCloud(updatedCase).catch(error => {
+      setWarrantyCases(prev => prev.map(item => item.id == id ? currentCase : item));
+      console.error('Không thể đồng bộ phiếu bảo hành:', error);
+    });
 
     const laptop = laptops.find(l => l.id == updatedCase.laptopId);
     if (laptop) {
@@ -1198,7 +1269,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
         conditionNote: `${laptop.conditionNote || ''}${updates.diagnosis ? ` | KT: ${updates.diagnosis}` : ''}`
       };
       setLaptops(prev => prev.map(l => l.id == laptop.id ? updatedLaptop : l));
-      saveLaptopToCloud(updatedLaptop);
+      void saveLaptopToCloud(updatedLaptop).catch(error => {
+        setLaptops(prev => prev.map(item => item.id == laptop.id ? laptop : item));
+        console.error('Không thể đồng bộ máy bảo hành:', error);
+      });
     }
     
     addStockMovement({
@@ -1249,7 +1323,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
       const prof = (sheetProf !== undefined && !isNaN(sheetProf) && sheetProf !== 0)
         ? sheetProf 
-        : computeProfit(imp);
+        : computeProfit(0, 0, imp);
 
       return {
         importDate: item.importDate || '08/07',
@@ -1295,6 +1369,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       laptops: viewLaptops,
       orders,
       customers,
+      payments,
       warrantyCases,
       stockMovements,
       filteredLaptops: viewFilteredLaptops,
@@ -1306,6 +1381,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       availableMonths,
       parseMonthYear,
       formulaConfig,
+      fieldOptionsConfig: appOptions,
       ...dynamicOptions,
       // ─── Field Options Config (label customization) ──────────────────────
       appOptions,
@@ -1327,6 +1403,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       createOrder,
       addOrder,
       updateOrder,
+      recordPayment,
       deleteOrder,
       cancelOrder,
       createCustomer,

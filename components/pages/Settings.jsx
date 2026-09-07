@@ -6,6 +6,7 @@ import { Settings as SettingsIcon, Check, ChevronDown, ChevronUp, Plus, Trash2 }
 import toast from 'react-hot-toast';
 import UserManagementSection from './UserManagementSection';
 import PresetManagementSection from './PresetManagementSection';
+import { getAuthHeaders } from '../../lib/apiFetchers';
 
 const GROUP_SECTIONS = [
   {
@@ -279,8 +280,8 @@ export default function Settings() {
     try {
       const res = await fetch('/api/options', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupKey, optionKey, label })
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ group_key: groupKey, option_key: optionKey, label })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add option');
@@ -289,8 +290,7 @@ export default function Settings() {
       
       // Update local context
       if (updateAppOptions) {
-        // Appending the new option to the existing list
-        updateAppOptions(prev => [...(prev || []), data.option]);
+        await updateAppOptions();
       }
       return true;
     } catch (err) {
@@ -305,7 +305,7 @@ export default function Settings() {
     try {
       const res = await fetch('/api/options', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ id, label: newLabel })
       });
       const data = await res.json();
@@ -314,7 +314,7 @@ export default function Settings() {
       toast.success('Đã cập nhật tên hiển thị!');
       
       if (updateAppOptions) {
-        updateAppOptions(prev => (prev || []).map(opt => opt.id === id ? { ...opt, label: newLabel } : opt));
+        await updateAppOptions();
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật option:', err);
@@ -328,8 +328,8 @@ export default function Settings() {
     try {
       const res = await fetch('/api/options', {
         method: 'PUT', // We use PUT to soft delete by setting isActive to false
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, isActive: false })
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ id, is_active: false })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete option');
@@ -337,7 +337,7 @@ export default function Settings() {
       toast.success('Đã xoá tuỳ chọn!');
       
       if (updateAppOptions) {
-        updateAppOptions(prev => (prev || []).map(opt => opt.id === id ? { ...opt, is_active: false } : opt));
+        await updateAppOptions();
       }
     } catch (err) {
       console.error('Lỗi khi xoá option:', err);

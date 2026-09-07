@@ -37,7 +37,7 @@ export default function Dashboard() {
   const totalCapitalVnd = laptops.reduce((sum, l) => sum + (l.importPriceVnd || 0), 0);
   const totalProfitVnd = laptops.reduce((sum, l) => sum + (l.profitVnd || 0), 0);
   const realizedProfitVnd = orders.filter(o => isOrderCommitted(o, appOptions)).reduce((sum, order) => {
-    const laptop = laptops.find(item => item.id === order.laptopId);
+    const laptop = laptops.find(item => String(item.id) === String(order.laptopId));
     return sum + (Number(order.salePrice || 0) - Number(laptop?.importPriceVnd || 0) - Number(order.creditCardFee || 0));
   }, 0);
 
@@ -184,7 +184,7 @@ export default function Dashboard() {
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 {openWarrantyCases.map(wc => {
-                  const l = laptops.find(x => x.id === wc.laptopId);
+                  const l = laptops.find(x => String(x.id) === String(wc.laptopId));
                   return (
                     <li key={wc.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
                       <span><strong>{wc.laptopId}</strong> - {l?.name || 'Không rõ máy'}</span>

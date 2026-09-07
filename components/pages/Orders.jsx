@@ -256,7 +256,7 @@ export default function Orders() {
       alert('⛔ Đơn hàng đang ở trạng thái KHÔNG ĐƯỢC PHÉP thay đổi sản phẩm.\nVui lòng chuyển trạng thái đơn hàng về "MỚI TẠO" hoặc "ĐÃ CỌC" trước khi đổi máy.');
       return;
     }
-    const selected = laptops.find(l => l.id === newLaptopId);
+    const selected = laptops.find(l => String(l.id) === String(newLaptopId));
     let updates = { laptopId: newLaptopId };
     if (selected) {
       const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
@@ -305,7 +305,7 @@ export default function Orders() {
 
   // Select Laptop trong Modal Form
   const handleSelectLaptopChange = (laptopId) => {
-    const selected = laptops.find(l => l.id === laptopId);
+    const selected = laptops.find(l => String(l.id) === String(laptopId));
     let autoPrice = formData.salePrice;
     if (selected) {
       autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd || formData.salePrice;
@@ -368,24 +368,24 @@ export default function Orders() {
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchId = String(o.id).toLowerCase().includes(term);
-        const matchCustomer = (o.customerId || '').toLowerCase().includes(term);
-        const matchLaptop = (o.laptopId || '').toLowerCase().includes(term);
-        const matchTracking = (o.trackingCode || '').toLowerCase().includes(term);
-        const matchAddress = (o.customerAddress || '').toLowerCase().includes(term);
-        const matchNote = (o.note || o.note1 || o.note2 || '').toLowerCase().includes(term);
+        const matchCustomer = String(o.customerId || '').toLowerCase().includes(term);
+        const matchLaptop = String(o.laptopId || '').toLowerCase().includes(term);
+        const matchTracking = String(o.trackingCode || '').toLowerCase().includes(term);
+        const matchAddress = String(o.customerAddress || '').toLowerCase().includes(term);
+        const matchNote = String(o.note || o.note1 || o.note2 || '').toLowerCase().includes(term);
         if (!matchId && !matchCustomer && !matchLaptop && !matchTracking && !matchAddress && !matchNote) return false;
       }
 
-      if (filterSaleOnline && o.saleOnline !== filterSaleOnline) return false;
+      if (filterSaleOnline && labelToKey('saleOnline', o.saleOnline) !== labelToKey('saleOnline', filterSaleOnline)) return false;
       if (filterOrderStatus && o.orderStatus !== labelToKey('orderStatus', filterOrderStatus)) return false;
       if (filterPaymentStatus && o.paymentStatus !== labelToKey('paymentStatus', filterPaymentStatus)) return false;
       if (filterDeliveryStatus && o.deliveryStatus !== labelToKey('deliveryStatus', filterDeliveryStatus)) return false;
-      if (filterShippingMethod && o.shippingMethod !== filterShippingMethod) return false;
+      if (filterShippingMethod && labelToKey('shippingMethod', o.shippingMethod) !== labelToKey('shippingMethod', filterShippingMethod)) return false;
 
       // Lọc theo Phân Loại Sản Phẩm (join từ danh sách máy)
       if (filterCategory) {
-        const laptopObj = laptops.find(l => l.id === o.laptopId);
-        if (!laptopObj || laptopObj.categoryId !== filterCategory) return false;
+        const laptopObj = laptops.find(l => String(l.id) === String(o.laptopId));
+        if (!laptopObj || labelToKey('category', laptopObj.category) !== labelToKey('category', filterCategory)) return false;
       }
 
       return true;
@@ -491,13 +491,13 @@ export default function Orders() {
 
   const getOrderRowStatusClass = (ord) => {
     // 1. Đã hoàn thành, thu tiền xong -> Màu xám
-    if (isOrderCommitted(ord) && ord.paymentStatus === D.paymentPaid) {
+      if (isOrderCommitted(ord) && labelToKey('paymentStatus', ord.paymentStatus) === 'paid') {
       return 'order-row-completed';
     }
     // 2. Đang chờ COD, đang giao hàng -> Màu vàng
     if (isOrderCommitted(ord) ||
-      ord.deliveryStatus === D.deliveryShipped ||
-      ord.deliveryStatus === D.deliveryDelivered
+      labelToKey('deliveryStatus', ord.deliveryStatus) === 'shipped' ||
+      labelToKey('deliveryStatus', ord.deliveryStatus) === 'delivered'
     ) {
       return 'order-row-shipping';
     }
@@ -760,7 +760,7 @@ export default function Orders() {
                 </tr>
               ) : (
                 filteredOrders.map((ord) => {
-                  const laptopObj = laptops.find(l => l.id === ord.laptopId);
+                  const laptopObj = laptops.find(l => String(l.id) === String(ord.laptopId));
                   const noteValue = ord.note !== undefined ? ord.note : [ord.note1, ord.note2].filter(Boolean).join(' - ');
 
                   return (
@@ -969,7 +969,7 @@ export default function Orders() {
                             onChange={(val) => updateOrder(ord.id, { shipDate: val })} 
                             placeholder="Ngày gửi..."
                           />
-                          {(ord.shippingMethod === 'ViettelPost' || ord.shippingMethod === 'Shopee SPX') && (
+                          {(['viettelpost', 'shopee_spx'].includes(labelToKey('shippingMethod', ord.shippingMethod))) && (
                             <EditableCell 
                               type="text"
                               className="sheet-cell-input"

@@ -27,10 +27,15 @@ export default function Customers() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    let result;
     if (formData.id) {
-      await updateCustomer(formData.id, { name: formData.name, phone: formData.phone, address: formData.address });
+      result = await updateCustomer(formData.id, { name: formData.name, phone: formData.phone, address: formData.address });
     } else {
-      await createCustomer({ name: formData.name, phone: formData.phone, address: formData.address });
+      result = await createCustomer({ name: formData.name, phone: formData.phone, address: formData.address });
+    }
+    if (!result?.ok) {
+      window.alert(result?.message || 'Không thể lưu khách hàng.');
+      return;
     }
     setIsModalOpen(false);
   };
