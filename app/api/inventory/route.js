@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { fetchLaptopsFromCloud, saveLaptopToCloud } from '../../../lib/services/dbService';
-import { logActivity } from '../../../lib/services/logger';
-import { requireUser, filterSensitiveFields, sanitizePayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
+import { fetchLaptopsFromCloud, saveLaptopToCloud, keysToCamel } from '../../../lib/services/dbService';
+import { logActivity, diffObject, pickAuditFields } from '../../../lib/services/logger';
+import { requireUser, filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 export async function GET(request) {
@@ -14,9 +14,9 @@ export async function GET(request) {
   const monthKey = searchParams.get('monthKey');
   const all = searchParams.get('all') === 'true';
   const data = await fetchLaptopsFromCloud({ monthKey, all });
-  
+
   if (!data) return NextResponse.json({ error: 'Failed to fetch laptops' }, { status: 500 });
-  
+
   const filteredData = isAdmin ? data : filterSensitiveFields(data, SENSITIVE_LAPTOP_KEYS);
   return NextResponse.json(filteredData);
 }
@@ -28,47 +28,56 @@ export async function POST(request) {
   const isAdmin = profile.role === 'ADMIN';
 
   try {
-    const body = sanitizePayload(await request.json(), LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
+    const rawPayload = await request.json();
+    const body = sanitizePayload(rawPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
+
+    // P0.4: Trả lỗi nếu non-admin gửi field nhạy cảm
+    if (!isAdmin && SENSITIVE_LAPTOP_KEYS.some(k => rawPayload?.[k] !== undefined && rawPayload[k] !== null && rawPayload[k] !== '')) {
+      return NextResponse.json({ error: 'Bạn không có quyền thay đổi các trường tài chính nhạy cảm.' }, { status: 403 });
+    }
+
+    validateLaptopPayload(body);
+    const { searchParams } = new URL(request.url);
+    const isCreateRequest = searchParams.get('mode') === 'create';
+
+    // P0.1: Khi tạo mới, luôn bỏ ID để database tự sinh
+    if (isCreateRequest) {
+      delete body.id;
+    }
 
     // Lấy dữ liệu cũ để diff
     let oldData = null;
     let action = 'CREATE';
-    if (body.id && !String(body.id).startsWith('#')) {
+    if (!isCreateRequest && body.id) {
       const adminClient = getSupabaseAdminClient();
-      const { data } = await adminClient.from('laptops').select('*').eq('id', body.id).single();
+      const { data, error } = await adminClient.from('laptops').select('*').eq('id', Number(body.id)).maybeSingle();
+      if (error) throw error;
       if (data) {
         oldData = data;
         action = 'UPDATE';
       }
     }
 
-    const data = await saveLaptopToCloud(body);
+    let data;
+    try {
+      data = await saveLaptopToCloud(body, { create: isCreateRequest });
+    } catch (error) {
+      if (/duplicate key|unique constraint|already reserved/i.test(error.message || '')) {
+        return NextResponse.json({ error: 'Serial hoặc trạng thái máy bị trùng — kiểm tra lại dữ liệu.' }, { status: 409 });
+      }
+      throw error;
+    }
     if (!data) return NextResponse.json({ error: 'Failed to save laptop' }, { status: 500 });
 
-    // So sánh thay đổi (chỉ so sánh một số trường quan trọng hoặc toàn bộ)
+    // P0.5: Audit dùng data đã được chuẩn hóa từ server
     let changes = {};
     if (action === 'UPDATE' && oldData) {
-       Object.keys(body).forEach(k => {
-         // Chuyển đổi tên key về dạng snake_case nếu cần để so sánh, nhưng dbService keysToCamel đã handle
-         // Ta sẽ so sánh đơn giản các trường có trong body
-         const camelKey = k;
-         const snakeKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-         
-         let oldVal = oldData[snakeKey];
-         let newVal = body[k];
-         
-         // Bỏ qua nếu là updated_at
-         if (snakeKey === 'updated_at' || snakeKey === 'id') return;
-         
-         // So sánh loose vì string / number có thể lệch type
-         if (oldVal != newVal && (oldVal || newVal)) {
-           // Bỏ qua nếu 1 bên rỗng và 1 bên null
-           if ((oldVal === null || oldVal === '') && (newVal === null || newVal === '')) return;
-           changes[k] = { old: oldVal, new: newVal };
-         }
-       });
+      const oldCamel = keysToCamel(oldData);
+      changes = diffObject(oldCamel, data);
+      delete changes.id;
+      delete changes.updatedAt;
     } else {
-       changes = body; // Tạo mới thì lưu toàn bộ
+      changes = pickAuditFields(data, LAPTOP_PAYLOAD_KEYS.filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt'));
     }
 
     await logActivity('LAPTOP', data.id, action, changes, profile.name);
@@ -76,6 +85,6 @@ export async function POST(request) {
     const responseData = isAdmin ? data : filterSensitiveFields([data], SENSITIVE_LAPTOP_KEYS)[0];
     return NextResponse.json(responseData);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: error.message }, { status: error.status || 400 });
   }
 }

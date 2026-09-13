@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS } from '@/lib/apiAuth';
+import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '@/lib/apiAuth';
 import { fetchPaymentsFromCloud, savePaymentToCloud } from '@/lib/services/dbService';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
@@ -100,6 +100,7 @@ export async function POST(request) {
     }
     if (auth.profile.role !== 'ADMIN' && data.order) {
       data.order = filterSensitiveFields([data.order], SENSITIVE_ORDER_KEYS)[0];
+      if (data.laptop) data.laptop = filterSensitiveFields([data.laptop], SENSITIVE_LAPTOP_KEYS)[0];
     }
     return NextResponse.json(data, { status: 201 });
   } catch (error) {

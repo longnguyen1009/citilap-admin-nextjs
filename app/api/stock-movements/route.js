@@ -16,7 +16,9 @@ export async function POST(request) {
   if (!auth.ok) return auth.response;
   try {
     const body = sanitizePayload(await request.json(), STOCK_MOVEMENT_PAYLOAD_KEYS);
-    const data = await saveStockMovementToCloud(body);
+    // Server-set audit fields
+    delete body.createdAt;
+    const data = await saveStockMovementToCloud({ ...body, performedBy: auth.profile.name });
     if (!data) return NextResponse.json({ error: 'Failed to save stock movement' }, { status: 500 });
     await logActivity('STOCK_MOVEMENT', data.id, 'CREATE', pickAuditFields(data, ['laptopId', 'movementType', 'type', 'fromLocation', 'toLocation', 'orderId', 'warrantyCaseId', 'note', 'performedBy']), auth.profile.name);
     return NextResponse.json(data);

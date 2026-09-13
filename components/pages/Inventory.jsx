@@ -98,6 +98,39 @@ export default function Inventory() {
     actions: 70
   });
 
+  // Default to a focused list so the fields used every day stay visible without
+  // forcing a wide horizontal scan. The full spreadsheet remains one click away.
+  const [isCompactView, setIsCompactView] = useState(true);
+
+  const inventoryColumnKeys = useMemo(() => {
+    const keys = [
+      'id',
+      'actions',
+      'importDate',
+      'name',
+      'status',
+      'category',
+      'conditionNote',
+      'serial',
+      'chargerStatus',
+      'seller',
+      'location'
+    ];
+
+    if (isCompactView) {
+      return user?.role === 'ADMIN'
+        ? ['id', 'actions', 'importDate', 'name', 'status', 'category', 'location', 'importPriceVnd']
+        : ['id', 'actions', 'importDate', 'name', 'status', 'category', 'location'];
+    }
+
+    if (user?.role === 'ADMIN') {
+      keys.push('priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd');
+    }
+
+    keys.push('trackingCode');
+    return keys;
+  }, [user?.role, isCompactView]);
+
   const startResizing = (e, colKey) => {
     e.preventDefault();
     e.stopPropagation();
@@ -128,8 +161,21 @@ export default function Inventory() {
   };
 
   const totalTableWidth = useMemo(() => {
-    return Object.values(colWidths).reduce((acc, curr) => acc + curr, 0);
-  }, [colWidths]);
+    const compactWidths = {
+      id: 58,
+      actions: 64,
+      importDate: 68,
+      name: 420,
+      status: 130,
+      category: 150,
+      location: 90,
+      importPriceVnd: 95
+    };
+    const widths = isCompactView ? compactWidths : colWidths;
+    return inventoryColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0);
+  }, [colWidths, inventoryColumnKeys, isCompactView]);
+
+  const inventoryColumnCount = inventoryColumnKeys.length;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -163,10 +209,12 @@ export default function Inventory() {
     conditionNote: '',
     chargerStatus: CHARGER_OPTIONS[0]?.key || 'with_charger',
     seller: SELLER_OPTIONS[0]?.key || '',
-    status: D.laptopAvailable,
+    status: 'available',
     priceRmb: '',
     shippingRmb: '',
     exchangeRate: formulaConfig.defaultRate || 3550,
+    wholesalePriceVnd: '',
+    retailPriceVnd: '',
     importPriceVnd: '',
     importPriceManuallyEdited: false,
     trackingCode: ''
@@ -363,17 +411,19 @@ export default function Inventory() {
       id: laptop.id || '',
       serial: laptop.serial || '',
       name: laptop.name || '',
-      location: laptop.location || D.locStore,
+      location: laptop.location || 'store',
       category: laptop.category || CATEGORY_OPTIONS[0]?.key || '',
       cycleCount: laptop.cycleCount || '',
       warrantySupplier: laptop.warrantySupplier || '',
       conditionNote: laptop.conditionNote || '',
-      chargerStatus: laptop.chargerStatus || D.chargerWith,
+      chargerStatus: laptop.chargerStatus || 'with_charger',
       seller: laptop.seller || '',
-      status: laptop.status || D.laptopAvailable,
+      status: laptop.status || 'available',
       priceRmb: laptop.priceRmb || '',
       shippingRmb: laptop.shippingRmb || '',
       exchangeRate: laptop.exchangeRate || formulaConfig.defaultRate,
+      wholesalePriceVnd: laptop.wholesalePriceVnd || '',
+      retailPriceVnd: laptop.retailPriceVnd || '',
       importPriceVnd: laptop.importPriceVnd || '',
       importPriceManuallyEdited: Boolean(laptop.importPriceVnd && Number(laptop.importPriceVnd) !== computeImportPrice(laptop.priceRmb, laptop.shippingRmb, laptop.exchangeRate || formulaConfig.defaultRate, formulaConfig)),
       trackingCode: laptop.trackingCode || ''
@@ -418,13 +468,17 @@ export default function Inventory() {
   };
 
   // Lưu cấu hình Công thức
-  const handleSaveFormula = (e) => {
+  const handleSaveFormula = async (e) => {
     e.preventDefault();
-    updateFormulaConfig({
+    const result = await updateFormulaConfig({
       ...formulaConfig,
       shippingVnd: parseFloat(formulaForm.shippingVnd) || 400000,
       defaultRate: parseFloat(formulaForm.defaultRate) || 3550
     }, formulaForm.recalculateAll);
+    if (!result?.ok) {
+      alert(`⛔ ${result?.message || 'Không thể lưu công thức.'}`);
+      return;
+    }
     setIsFormulaModalOpen(false);
     alert('Đã cập nhật công thức tính Giá Nhập thành công!');
   };
@@ -568,12 +622,12 @@ export default function Inventory() {
   return (
     <section className="page-section">
       {/* COMPACT SECTION HEADER */}
-      <div className="section-title section-header">
+      <div className="section-title section-header list-page-header">
         <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+          <h1 className="list-page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
             <Box className="text-primary" size={24} /> Quản Lý Kho Laptop CitiLap
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+          <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
             <select
@@ -589,13 +643,22 @@ export default function Inventory() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn btn-sm btn-secondary" onClick={() => setIsSyncModalOpen(true)}>
             <RefreshCw size={14} /> Google Sheet
           </button>
 
-          <button className="btn btn-sm btn-success" onClick={handleOpenAdd}>
+          <button data-testid="product-add-button" className="btn btn-sm btn-success" onClick={handleOpenAdd}>
             <Plus size={16} /> Thêm Máy Mới
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline list-view-toggle"
+            onClick={() => setIsCompactView(prev => !prev)}
+            aria-pressed={isCompactView}
+            title={isCompactView ? 'Hiển thị toàn bộ cột' : 'Chỉ hiển thị các cột chính'}
+          >
+            {isCompactView ? 'Xem đầy đủ' : 'Xem gọn'}
           </button>
         </div>
       </div>
@@ -626,9 +689,18 @@ export default function Inventory() {
         </div>
       )}
 
+      <div className="list-summary-strip" aria-label="Tóm tắt kho">
+        <div className="list-summary-item"><span>Tổng máy</span><strong>{stats.totalCount}</strong></div>
+        <div className="list-summary-item list-summary-item-success"><span>Sẵn hàng</span><strong>{stats.availableCount}</strong></div>
+        <div className="list-summary-item list-summary-item-muted"><span>Đã bán</span><strong>{stats.soldCount}</strong></div>
+        {user?.role === 'ADMIN' && (
+          <div className="list-summary-item list-summary-item-value"><span>Giá nhập tồn</span><strong>{stats.totalImportValueVnd.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tr</strong></div>
+        )}
+      </div>
+
       {/* COMPACT FILTER & SEARCH CARD */}
-      <div className="card glass filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
-        <div className="filter-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'flex-end' }}>
+      <div className="card glass filter-card inventory-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
+        <div className="filter-grid inventory-filter-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'flex-end' }}>
           <div className="filter-item" style={{ flex: '1 1 220px' }}>
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}><Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh</label>
             <input 
@@ -680,6 +752,7 @@ export default function Inventory() {
                   top: '100%',
                   left: 0,
                   width: '320px',
+                  maxWidth: 'calc(100vw - 2rem)',
                   zIndex: 9999,
                   background: '#ffffff',
                   border: '1px solid #cbd5e1',
@@ -825,12 +898,12 @@ export default function Inventory() {
       </div>
 
       {/* DATA TABLE (RESPONSIVE INCL SERIAL & CHARGER) */}
-      <div className="card glass p-0" style={{ overflowX: 'auto' }}>
+      <div className="card glass p-0 list-table-card inventory-list-card">
         <div 
-          className="inventory-table-container"
+          className="inventory-table-container list-table-scroll"
           ref={tableContainerRef}
         >
-          <table className="data-table data-table-wide" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
+          <table className={`data-table data-table-wide inventory-list-table ${isCompactView ? 'is-compact' : ''} ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Inventory product list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative', textAlign: 'center' }}>
@@ -910,17 +983,18 @@ export default function Inventory() {
             <tbody>
               {filteredLaptops.length === 0 ? (
                 <tr>
-                  <td colSpan={19} className="empty-cell">
+                  <td colSpan={inventoryColumnCount} className="empty-cell">
                     Không tìm thấy máy nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
                 filteredLaptops.map((l, index) => (
-                  <tr key={l.id || index} className={getRowStatusClass(l.status)}>
+                  <tr key={l.id || index} data-testid={`inventory-row-${l.id}`} className={getRowStatusClass(l.status)}>
                     <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)', textAlign: 'center' }}>{l.id}</td>
                     <td className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', left: `${colWidths.id}px` }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                       <button
+                        data-testid={`product-edit-button-${l.id}`}
                         className="btn btn-sm btn-outline"
                         style={{ padding: '1px 6px', fontSize: '0.72rem', height: '22px', lineHeight: 1 }}
                         title="Sửa chi tiết máy"
@@ -1064,32 +1138,35 @@ export default function Inventory() {
                 <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div className="form-group">
                     <label>Mã ID</label>
-                    <input 
-                      type="text" 
-                      value={formData.id} 
-                      onChange={e => setFormData({ ...formData, id: e.target.value })}
-                      placeholder="#75" 
-                      className="form-control"
+                      <input
+                        type="text"
+                        data-testid="product-id-input"
+                        value={formData.id}
+                        onChange={e => setFormData({ ...formData, id: e.target.value })}
+                        placeholder="#75"
+                        className="form-control"
                     />
                   </div>
 
                   <div className="form-group">
                     <label>Ngày nhập (T.Quốc)</label>
-                    <input 
-                      type="date" 
-                      value={toYMD(formData.importDate)} 
-                      onChange={e => setFormData({ ...formData, importDate: toVnFormat(e.target.value) })}
-                      className="form-control"
+                      <input
+                        type="date"
+                        data-testid="product-import-date-input"
+                        value={toYMD(formData.importDate)}
+                        onChange={e => setFormData({ ...formData, importDate: toVnFormat(e.target.value) })}
+                        className="form-control"
                     />
                   </div>
                   
                   <div className="form-group">
                     <label>Ngày nhập kho</label>
-                    <input 
-                      type="date" 
-                      value={toYMD(formData.warehouseDate)} 
-                      onChange={e => setFormData({ ...formData, warehouseDate: toVnFormat(e.target.value) })}
-                      className="form-control"
+                      <input
+                        type="date"
+                        data-testid="product-warehouse-date-input"
+                        value={toYMD(formData.warehouseDate)}
+                        onChange={e => setFormData({ ...formData, warehouseDate: toVnFormat(e.target.value) })}
+                        className="form-control"
                     />
                   </div>
 
@@ -1139,6 +1216,7 @@ export default function Inventory() {
                     <label>Số Serial (SN)</label>
                     <input 
                       type="text" 
+                      data-testid="product-serial-input"
                       value={formData.serial} 
                       onChange={e => setFormData({ ...formData, serial: e.target.value })}
                       placeholder="SN12345678" 
@@ -1150,6 +1228,7 @@ export default function Inventory() {
                     <label>Mã đơn vận</label>
                     <input 
                       type="text" 
+                      data-testid="product-tracking-input"
                       value={formData.trackingCode} 
                       onChange={e => setFormData({ ...formData, trackingCode: e.target.value })}
                       placeholder="SF123456" 
@@ -1160,9 +1239,10 @@ export default function Inventory() {
 
                 <div className="form-group mt-3" style={{ position: 'relative' }}>
                   <label>Tên máy & Cấu hình chi tiết *</label>
-                  <input
-                    type="text"
-                    required
+                    <input
+                      type="text"
+                      data-testid="product-name-input"
+                      required
                     className="form-control"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -1238,6 +1318,7 @@ export default function Inventory() {
                     <label>Sạc Pin (Cycle Count)</label>
                     <input 
                       type="number" 
+                      data-testid="product-cycle-count-input"
                       className="form-control" 
                       value={formData.cycleCount} 
                       onChange={e => setFormData({ ...formData, cycleCount: e.target.value })} 
@@ -1249,6 +1330,7 @@ export default function Inventory() {
                     <label>Hạn BH Nguồn (TQ/US)</label>
                     <input 
                       type="text" 
+                      data-testid="product-warranty-supplier-input"
                       className="form-control" 
                       value={formData.warrantySupplier} 
                       onChange={e => setFormData({ ...formData, warrantySupplier: e.target.value })} 
@@ -1260,6 +1342,7 @@ export default function Inventory() {
                 <div className="form-group mt-3">
                   <label>Ghi chú check máy / Tình trạng ngoại hình</label>
                   <textarea 
+                    data-testid="product-condition-input"
                     rows={3}
                     value={formData.conditionNote} 
                     onChange={e => setFormData({ ...formData, conditionNote: e.target.value })}
@@ -1280,6 +1363,7 @@ export default function Inventory() {
                       <label>Giá tệ (¥)</label>
                       <input 
                         type="number" 
+                        data-testid="product-price-rmb-input"
                         step="any"
                         value={formData.priceRmb} 
                         onChange={e => setFormData({ ...formData, priceRmb: e.target.value })}
@@ -1292,6 +1376,7 @@ export default function Inventory() {
                       <label>Phí VC nội địa (¥)</label>
                       <input 
                         type="number" 
+                        data-testid="product-shipping-rmb-input"
                         step="any"
                         value={formData.shippingRmb} 
                         onChange={e => setFormData({ ...formData, shippingRmb: e.target.value })}
@@ -1304,6 +1389,7 @@ export default function Inventory() {
                       <label>Tỷ giá tệ</label>
                       <input 
                         type="number" 
+                        data-testid="product-exchange-rate-input"
                         step="any"
                         value={formData.exchangeRate} 
                         onChange={e => setFormData({ ...formData, exchangeRate: e.target.value })}
@@ -1321,12 +1407,41 @@ export default function Inventory() {
                       </label>
                       <input
                         type="number"
+                        data-testid="product-import-price-input"
                         step="any"
                         className="form-control"
                         value={formData.importPriceVnd}
                         onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })}
                         placeholder={liveImportPrice > 0 ? liveImportPrice : 'Tự tính từ giá tệ'}
                         style={{ fontWeight: 800, color: '#2563eb', fontSize: '1rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                    <div className="form-group">
+                      <label>Giá Bán Sỉ (tr)</label>
+                      <input
+                        type="number"
+                        data-testid="product-wholesale-price-input"
+                        step="any"
+                        className="form-control"
+                        value={formData.wholesalePriceVnd}
+                        onChange={e => setFormData({ ...formData, wholesalePriceVnd: e.target.value })}
+                        placeholder="VD: 23.5"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Giá Bán Lẻ (tr)</label>
+                      <input
+                        type="number"
+                        data-testid="product-retail-price-input"
+                        step="any"
+                        className="form-control"
+                        value={formData.retailPriceVnd}
+                        onChange={e => setFormData({ ...formData, retailPriceVnd: e.target.value })}
+                        placeholder="VD: 25.5"
                       />
                     </div>
                   </div>
@@ -1338,7 +1453,7 @@ export default function Inventory() {
 
               <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
                 <button type="button" className="btn btn-outline" onClick={() => setIsAddModalOpen(false)}>Hủy</button>
-                <button type="submit" className="btn btn-success">Lưu Thông Tin Máy</button>
+                <button type="submit" data-testid="product-save-button" className="btn btn-success">Lưu Thông Tin Máy</button>
               </div>
             </form>
             

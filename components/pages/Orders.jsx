@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useMemo, useRef } from 'react';
 import { useInventory, parseFlexibleFloat, isReservationActive, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
-import { D } from '../../lib/fieldOptions';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -44,13 +43,15 @@ const toVnFormat = (ymd) => {
 const EditableCell = ({ value, onChange, type = "text", rows, placeholder, className, style, step }) => {
   const incomingValue = value || '';
   const [localValue, setLocalValue] = React.useState(incomingValue);
-  const [previousValue, setPreviousValue] = React.useState(incomingValue);
   const textareaRef = React.useRef(null);
 
-  if (incomingValue !== previousValue) {
-    setPreviousValue(incomingValue);
+  // Sync external cell updates (for example, polling/reconciliation) into the editor.
+  // This local draft is intentionally reset when the server value changes.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  React.useEffect(() => {
     setLocalValue(incomingValue);
-  }
+  }, [incomingValue]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   React.useEffect(() => {
     if (type === 'textarea' && textareaRef.current) {
@@ -147,6 +148,25 @@ export default function Orders() {
   const { user } = useAuth();
   const tableContainerRef = useRef(null);
 
+  const getFormOptionKey = (groupKey, value) => {
+    const option = getOptions(groupKey).find(item => item.key === String(value) || item.label === value);
+    return option?.key || value;
+  };
+
+  const handleOrderStatusChange = (orderId, value) => {
+    const statusKey = getFormOptionKey('orderStatus', value);
+    const updates = { orderStatus: value };
+    if (statusKey === 'cancelled' || statusKey === 'returned') {
+      updates.deliveryStatus = 'returned';
+    }
+    if (statusKey === 'cancelled') {
+      updates.cancelledAt = new Date().toISOString();
+      updates.cancelReason = 'Hủy từ danh sách đơn hàng';
+    }
+    const result = updateOrder(orderId, updates);
+    if (!result.ok) alert(`⛔ ${result.message}`);
+  };
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSaleOnline, setFilterSaleOnline] = useState('');
@@ -213,6 +233,47 @@ export default function Orders() {
     gifts: 145
   });
 
+  // Keep the operational columns visible by default; secondary fields remain
+  // available through the full spreadsheet view.
+  const [isCompactView, setIsCompactView] = useState(true);
+
+  const orderColumnKeys = useMemo(() => {
+    const keys = [
+      'id',
+      'createdDate',
+      'note',
+      'laptopId',
+      'orderStatus',
+      'paymentStatus',
+      'paymentMethod',
+      'deliveryStatus',
+      'shippingMethod',
+      'salePrice'
+    ];
+
+    if (isCompactView) {
+      return ['id', 'createdDate', 'note', 'laptopId', 'orderStatus', 'paymentStatus', 'deliveryStatus', 'salePrice', 'codAmount', 'customerId'];
+    }
+
+    if (user?.role === 'ADMIN') {
+      keys.push('profitVnd');
+    }
+
+    keys.push(
+      'depositNote',
+      'codAmount',
+      'customerId',
+      'customerAddress',
+      'setupNote',
+      'warranty',
+      'gifts'
+    );
+
+    return keys;
+  }, [user?.role, isCompactView]);
+
+  const orderColumnCount = orderColumnKeys.length + 1;
+
   const startResizing = (e, colKey) => {
     e.preventDefault();
     e.stopPropagation();
@@ -243,8 +304,21 @@ export default function Orders() {
   };
 
   const totalTableWidth = useMemo(() => {
-    return Object.values(colWidths).reduce((acc, curr) => acc + curr, 0) + 24; // Thêm 24px để tránh bị che bởi thanh cuộn dọc
-  }, [colWidths]);
+    const compactWidths = {
+      id: 54,
+      createdDate: 90,
+      note: 130,
+      laptopId: 180,
+      orderStatus: 110,
+      paymentStatus: 110,
+      deliveryStatus: 100,
+      salePrice: 72,
+      codAmount: 72,
+      customerId: 120
+    };
+    const widths = isCompactView ? compactWidths : colWidths;
+    return orderColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0) + 24;
+  }, [colWidths, orderColumnKeys, isCompactView]);
 
   // Đổi máy trực tiếp trên bảng Google Sheet
   const handleDirectChangeLaptop = (ordId, newLaptopId) => {
@@ -326,17 +400,23 @@ export default function Orders() {
       alert(`⛔ ${assignmentError}`);
       return;
     }
+
+    const discountAmount = parseFlexibleFloat(formData.discountAmount);
+    const selectedLaptop = laptops.find(laptop => String(laptop.id) === String(formData.laptopId));
+    const retailPrice = parseFlexibleFloat(selectedLaptop?.retailPriceVnd);
+    const finalSalePrice = retailPrice > 0 ? Math.max(0, retailPrice - discountAmount) : parseFlexibleFloat(formData.salePrice);
+    const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalSalePrice);
     
     // Xử lý Thu cũ đổi mới
     let tradeInLaptopId = '';
-    if (formData.orderType === 'Thu cũ đổi mới (Trade-in)' && formData.tradeInLaptopName && formData.tradeInPrice) {
+    if (getFormOptionKey('orderType', formData.orderType) === 'trade_in' && formData.tradeInLaptopName && formData.tradeInPrice) {
       const result = await addLaptop({
         name: formData.tradeInLaptopName,
         category: 'Thu Cũ',
-        status: D.laptopAvailable,
+        status: 'available',
         importPriceVnd: parseFlexibleFloat(formData.tradeInPrice),
         conditionNote: 'Hàng thu lại từ khách (Trade-in)',
-        location: 'CH'
+        location: 'store'
       });
       if (!result.ok) {
         alert(`⛔ Không tạo được máy thu cũ: ${result.message}`);
@@ -345,7 +425,12 @@ export default function Orders() {
       tradeInLaptopId = result.laptop.id;
     }
 
-    const result = await addOrder({ ...formData, tradeInLaptopId });
+    const result = await addOrder({
+      ...formData,
+      salePrice: finalSalePrice,
+      codAmount: finalCodAmount,
+      tradeInLaptopId
+    });
     if (!result.ok) {
       alert(`⛔ Không tạo được đơn: ${result.message}`);
       return;
@@ -512,12 +597,12 @@ export default function Orders() {
   return (
     <section className="page-section">
       {/* SECTION HEADER */}
-      <div className="section-title section-header">
+      <div className="section-title section-header list-page-header">
         <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+          <h1 className="list-page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
             <ShoppingCart className="text-primary" size={24} /> Quản Lý Đơn Hàng & Xuất Bán ({filteredOrders.length} / {orders.length} đơn)
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+          <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
             <select
@@ -533,16 +618,25 @@ export default function Orders() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button className="btn btn-sm btn-outline" onClick={handleExportCSV}>
             <Download size={14} /> Xuất CSV / Excel
           </button>
 
           {(user?.role === 'ADMIN' || user?.role === 'SALES' || !user) && (
-            <button className="btn btn-sm btn-success" onClick={handleOpenAdd}>
+            <button data-testid="order-add-button" className="btn btn-sm btn-success" onClick={handleOpenAdd}>
               <Plus size={16} /> Tạo Đơn Hàng Mới
             </button>
           )}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline list-view-toggle"
+            onClick={() => setIsCompactView(prev => !prev)}
+            aria-pressed={isCompactView}
+            title={isCompactView ? 'Hiển thị toàn bộ cột' : 'Chỉ hiển thị các cột chính'}
+          >
+            {isCompactView ? 'Xem đầy đủ' : 'Xem gọn'}
+          </button>
         </div>
       </div>
 
@@ -554,8 +648,8 @@ export default function Orders() {
       )}
 
       {/* FILTER & SEARCH CARD */}
-      <div className="card glass filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
-        <div className="filter-grid" style={{ gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+      <div className="card glass filter-card orders-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
+        <div className="filter-grid orders-filter-grid" style={{ gap: '0.75rem' }}>
           <div className="filter-item" style={{ gridColumn: 'span 2' }}>
             <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
               <Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh
@@ -641,13 +735,19 @@ export default function Orders() {
         </div>
       </div>
 
+      <div className="list-summary-strip" aria-label="Tóm tắt đơn hàng">
+        <div className="list-summary-item"><span>Đang hiển thị</span><strong>{filteredOrders.length}/{orders.length}</strong></div>
+        <div className="list-summary-item list-summary-item-warning"><span>Chờ thanh toán</span><strong>{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus))).length}</strong></div>
+        <div className="list-summary-item list-summary-item-success"><span>Hoàn thành</span><strong>{orders.filter(order => labelToKey('orderStatus', order.orderStatus) === 'done').length}</strong></div>
+      </div>
+
       {/* ORDERS DATA TABLE (CỘT TRẠNG THÁI & THÀNH TOÁN LÊN TRƯỚC GIÁ BÁN, GỘP GHI CHÚ) */}
-      <div className="card glass p-0" style={{ overflow: 'hidden' }}>
+      <div className="card glass p-0 list-table-card orders-list-card">
         <div 
-          className="inventory-table-container"
+          className="inventory-table-container list-table-scroll orders-table-container"
           ref={tableContainerRef}
         >
-          <table className="data-table data-table-wide" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
+          <table className={`data-table data-table-wide orders-list-table ${isCompactView ? 'is-compact' : ''} ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Order list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative' }}>
@@ -754,7 +854,7 @@ export default function Orders() {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={22} className="empty-cell">
+                  <td colSpan={orderColumnCount} className="empty-cell">
                     Không tìm thấy đơn hàng nào phù hợp với bộ lọc.
                   </td>
                 </tr>
@@ -764,7 +864,7 @@ export default function Orders() {
                   const noteValue = ord.note !== undefined ? ord.note : [ord.note1, ord.note2].filter(Boolean).join(' - ');
 
                   return (
-                    <tr key={ord.id} className={getOrderRowStatusClass(ord)}>
+                    <tr key={ord.id} data-testid={`order-row-${ord.id}`} className={getOrderRowStatusClass(ord)}>
                       {/* ID Đơn */}
                       <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)' }}>
                         #{ord.id}
@@ -897,10 +997,11 @@ export default function Orders() {
                       {/* 6. TRẠNG THÁI ĐƠN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                       <td style={{ width: `${colWidths.orderStatus}px`, minWidth: `${colWidths.orderStatus}px` }}>
                         <select
+                          data-testid={`order-status-cell-${ord.id}`}
                           className={`sheet-cell-select ${getOrderStatusBadgeClass(ord.orderStatus)}`}
                           style={{ fontWeight: 700, borderRadius: '4px' }}
                           value={getLabel('orderStatus', ord.orderStatus)}
-                          onChange={(e) => updateOrder(ord.id, { orderStatus: e.target.value })}
+                          onChange={(e) => handleOrderStatusChange(ord.id, e.target.value)}
                         >
                           {ORDER_STATUS_OPTIONS.map(st => (
                             <option key={st} value={st}>{st}</option>
@@ -911,6 +1012,7 @@ export default function Orders() {
                       {/* 7. THANH TOÁN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                       <td style={{ width: `${colWidths.paymentStatus}px`, minWidth: `${colWidths.paymentStatus}px` }}>
                         <select
+                          data-testid={`order-payment-cell-${ord.id}`}
                           className={`sheet-cell-select ${getPaymentStatusBadgeClass(ord.paymentStatus)}`}
                           style={{ fontWeight: 700, borderRadius: '4px' }}
                           value={getLabel('paymentStatus', ord.paymentStatus)}
@@ -939,6 +1041,7 @@ export default function Orders() {
                       {/* 8. GIAO HÀNG (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                       <td style={{ width: `${colWidths.deliveryStatus}px`, minWidth: `${colWidths.deliveryStatus}px` }}>
                         <select
+                          data-testid={`order-delivery-cell-${ord.id}`}
                           className="sheet-cell-select"
                           value={getLabel('deliveryStatus', ord.deliveryStatus)}
                           onChange={(e) => updateOrder(ord.id, { deliveryStatus: e.target.value })}
@@ -1035,8 +1138,8 @@ export default function Orders() {
                           className="sheet-cell-textarea"
                           rows={3}
                           style={{ fontWeight: 600 }}
-                          value={ord.customerId || ''} 
-                          onChange={(val) => updateOrder(ord.id, { customerId: val })} 
+                          value={ord.customerInfo || customers.find(customer => String(customer.id) === String(ord.customerId))?.name || ''}
+                          onChange={(val) => updateOrder(ord.id, { customerInfo: val })}
                           placeholder="Tên - SĐT..."
                         />
                       </td>
@@ -1132,6 +1235,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>1. Ngày Tạo Đơn</label>
                   <input 
                     type="date" 
+                    data-testid="order-created-date-input"
                     className="form-control" 
                     value={toYMD(formData.createdDate)} 
                     onChange={e => setFormData({ ...formData, createdDate: toVnFormat(e.target.value) })} 
@@ -1143,6 +1247,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>3. SALE Online</label>
                   <select 
+                    data-testid="order-sale-online-select"
                     className="form-control" 
                     value={formData.saleOnline} 
                     onChange={e => setFormData({ ...formData, saleOnline: e.target.value })}
@@ -1157,6 +1262,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#8b5cf6' }}>Loại Đơn Hàng</label>
                   <select 
+                    data-testid="order-type-select"
                     className="form-control" 
                     value={formData.orderType} 
                     onChange={e => setFormData({ ...formData, orderType: e.target.value })}
@@ -1167,7 +1273,7 @@ export default function Orders() {
                   </select>
                 </div>
                 
-                {formData.orderType === 'Thu cũ đổi mới (Trade-in)' && (
+                {getFormOptionKey('orderType', formData.orderType) === 'trade_in' && (
                   <>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Tên Máy Khách Bán (Trade-in)</label>
@@ -1198,6 +1304,7 @@ export default function Orders() {
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>4. Ghi Chú Đơn Hàng</label>
                   <textarea 
+                    data-testid="order-note-input"
                     className="form-control" 
                     rows={2}
                     value={formData.note} 
@@ -1212,6 +1319,7 @@ export default function Orders() {
                     10. Máy Trong Kho (ID & Cấu hình)
                   </label>
                   <select 
+                    data-testid="order-laptop-select"
                     className="form-control" 
                     value={formData.laptopId} 
                     onChange={e => handleSelectLaptopChange(e.target.value)}
@@ -1231,6 +1339,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>7. Trạng Thái Đơn Hàng</label>
                   <select 
+                    data-testid="order-status-select"
                     className="form-control" 
                     value={formData.orderStatus} 
                     onChange={e => setFormData({ ...formData, orderStatus: e.target.value })}
@@ -1245,6 +1354,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>8. Trạng Thái Thanh Toán</label>
                   <select 
+                    data-testid="order-payment-status-select"
                     className="form-control" 
                     value={formData.paymentStatus} 
                     onChange={e => setFormData({ ...formData, paymentStatus: e.target.value })}
@@ -1259,6 +1369,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phương Thức TT</label>
                   <select 
+                    data-testid="order-payment-method-select"
                     className="form-control" 
                     value={formData.paymentMethod} 
                     onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
@@ -1269,7 +1380,7 @@ export default function Orders() {
                   </select>
                 </div>
 
-                {formData.paymentMethod === 'Quẹt thẻ (Tốn phí)' && (
+                {getFormOptionKey('paymentMethod', formData.paymentMethod) === 'card' && (
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phí Quẹt Thẻ (tr VNĐ)</label>
                     <input 
@@ -1286,6 +1397,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>9. Trạng Thái Giao Hàng</label>
                   <select 
+                    data-testid="order-delivery-status-select"
                     className="form-control" 
                     value={formData.deliveryStatus} 
                     onChange={e => setFormData({ ...formData, deliveryStatus: e.target.value })}
@@ -1300,6 +1412,7 @@ export default function Orders() {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>6. Phương Thức Gửi Hàng</label>
                   <select 
+                    data-testid="order-shipping-method-select"
                     className="form-control" 
                     value={formData.shippingMethod} 
                     onChange={e => setFormData({ ...formData, shippingMethod: e.target.value })}
@@ -1311,10 +1424,11 @@ export default function Orders() {
                 </div>
 
                 {/* 11. GIÁ BÁN */}
-                <div className="form-group">
+                  <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#2563eb' }}>11. Giá Bán Thực Tế (triệu VNĐ)</label>
                   <input 
                     type="number" 
+                    data-testid="order-sale-price-input"
                     step="any" 
                     className="form-control" 
                     value={formData.salePrice} 
@@ -1329,6 +1443,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ef4444' }}>11b. Giảm Giá Khách Quen/Sale (triệu VNĐ)</label>
                   <input 
                     type="number" 
+                    data-testid="order-discount-input"
                     step="any" 
                     className="form-control" 
                     value={formData.discountAmount} 
@@ -1342,6 +1457,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>12. Thông Tin Cọc</label>
                   <input 
                     type="text" 
+                    data-testid="order-deposit-note-input"
                     className="form-control" 
                     value={formData.depositNote} 
                     onChange={e => setFormData({ ...formData, depositNote: e.target.value })} 
@@ -1349,12 +1465,13 @@ export default function Orders() {
                   />
                 </div>
 
-                {formData.paymentStatus === D.paymentDeposit && (
+                {getFormOptionKey('paymentStatus', formData.paymentStatus) === 'deposited' && (
                   <>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Số Tiền Cọc (triệu VNĐ)</label>
                       <input
                         type="number"
+                        data-testid="order-deposit-amount-input"
                         step="any"
                         min="0.01"
                         className="form-control"
@@ -1368,6 +1485,7 @@ export default function Orders() {
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Giữ Máy Đến</label>
                       <input
                         type="datetime-local"
+                        data-testid="order-reservation-input"
                         className="form-control"
                         value={formData.reservationExpiresAt}
                         onChange={e => setFormData({ ...formData, reservationExpiresAt: e.target.value })}
@@ -1383,6 +1501,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#059669' }}>13. Thu Hộ COD (triệu VNĐ)</label>
                   <input 
                     type="number" 
+                    data-testid="order-cod-amount-input"
                     step="any" 
                     className="form-control" 
                     value={formData.codAmount} 
@@ -1397,6 +1516,7 @@ export default function Orders() {
                     17. Khách Hàng <span style={{ color: 'var(--primary)', cursor: 'pointer', marginLeft: '10px' }} onClick={() => window.open('/customers', '_blank')}>+ Thêm mới</span>
                   </label>
                   <select 
+                    data-testid="order-customer-select"
                     className="form-control" 
                     value={formData.customerId} 
                     onChange={e => setFormData({ ...formData, customerId: e.target.value })} 
@@ -1414,6 +1534,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>18. Ghi Chú Yêu Cầu Của Khách</label>
                   <input 
                     type="text" 
+                    data-testid="order-customer-note-input"
                     className="form-control" 
                     value={formData.customerNote} 
                     onChange={e => setFormData({ ...formData, customerNote: e.target.value })} 
@@ -1426,6 +1547,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>19. Mã Vận Đơn (ViettelPost / SPX...)</label>
                   <input 
                     type="text" 
+                    data-testid="order-tracking-input"
                     className="form-control" 
                     value={formData.trackingCode} 
                     onChange={e => setFormData({ ...formData, trackingCode: e.target.value })} 
@@ -1438,6 +1560,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>20. Ngày Gửi Hàng Thực Tế</label>
                   <input 
                     type="date" 
+                    data-testid="order-ship-date-input"
                     className="form-control" 
                     value={toYMD(formData.shipDate)} 
                     onChange={e => setFormData({ ...formData, shipDate: toVnFormat(e.target.value) })} 
@@ -1449,6 +1572,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>14. Yêu Cầu Cài Đặt</label>
                   <input 
                     type="text" 
+                    data-testid="order-setup-note-input"
                     className="form-control" 
                     value={formData.setupNote} 
                     onChange={e => setFormData({ ...formData, setupNote: e.target.value })} 
@@ -1461,6 +1585,7 @@ export default function Orders() {
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>15. Thời Gian Bảo Hành</label>
                   <input 
                     type="text" 
+                    data-testid="order-warranty-input"
                     className="form-control" 
                     value={formData.warranty} 
                     onChange={e => setFormData({ ...formData, warranty: e.target.value })} 
@@ -1472,6 +1597,7 @@ export default function Orders() {
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>16. Quà Tặng Kèm</label>
                   <select 
+                    data-testid="order-gift-select"
                     className="form-control" 
                     value={formData.gifts} 
                     onChange={e => setFormData({ ...formData, gifts: e.target.value })}
@@ -1488,7 +1614,7 @@ export default function Orders() {
                 <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
                   Hủy Bỏ
                 </button>
-                <button type="submit" className="btn btn-success">
+                <button type="submit" data-testid="order-save-button" className="btn btn-success">
                   <Check size={16} /> Lưu Tạo Đơn Hàng
                 </button>
               </div>

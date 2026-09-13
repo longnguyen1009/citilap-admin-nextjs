@@ -18,6 +18,10 @@ export async function POST(request) {
   if (!auth.ok) return auth.response;
   try {
     const body = sanitizePayload(await request.json(), WARRANTY_PAYLOAD_KEYS);
+    // Server-set audit fields: ignore client-sent timestamps and actor
+    delete body.createdAt;
+    delete body.updatedAt;
+    body.handledBy = auth.profile.name;
     const adminClient = getSupabaseAdminClient();
     let previous = null;
     if (adminClient && body.id && /^\d+$/.test(String(body.id))) {

@@ -30,17 +30,38 @@ export async function POST(request) {
   const name = String(payload.name || '').trim();
   if (!name) return NextResponse.json({ error: 'Tên khách hàng là bắt buộc' }, { status: 400 });
 
+  if (name.length > 160) return NextResponse.json({ error: 'Customer name is too long' }, { status: 400 });
+
   const customerData = {
     name,
     phone: String(payload.phone || '').trim() || null,
     address: String(payload.address || '').trim() || null
   };
+  if (customerData.phone && customerData.phone.length > 40) return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+  if (customerData.address && customerData.address.length > 500) return NextResponse.json({ error: 'Customer address is too long' }, { status: 400 });
   let previous = null;
   if (typeof payload.id === 'number' || (typeof payload.id === 'string' && /^\d+$/.test(payload.id))) {
     customerData.id = Number(payload.id);
     const { data: oldData, error: oldError } = await supabase.from('customers').select('*').eq('id', customerData.id).maybeSingle();
     if (oldError) return NextResponse.json({ error: oldError.message }, { status: 500 });
     previous = oldData ? keysToCamel(oldData) : null;
+  }
+
+  // Prevent duplicate customers when the same phone is entered in another format.
+  if (customerData.phone) {
+    const normalizedPhone = customerData.phone.replace(/\D/g, '');
+    if (normalizedPhone.length >= 8) {
+      const { data: candidates, error: phoneError } = await supabase
+        .from('customers')
+        .select('id, phone')
+        .not('phone', 'is', null);
+      if (phoneError) return NextResponse.json({ error: phoneError.message }, { status: 500 });
+      const duplicate = (candidates || []).find(row => (
+        String(row.phone || '').replace(/\D/g, '') === normalizedPhone
+        && String(row.id) !== String(customerData.id || '')
+      ));
+      if (duplicate) return NextResponse.json({ error: 'Số điện thoại khách hàng đã tồn tại.' }, { status: 409 });
+    }
   }
 
   const { data, error } = await supabase.from('customers').upsert(customerData, { onConflict: 'id' }).select().single();

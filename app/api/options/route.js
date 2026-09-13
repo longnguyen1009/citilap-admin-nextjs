@@ -22,16 +22,32 @@ export async function POST(request) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   const payload = await request.json();
-  if (!payload.group_key || !payload.option_key || !payload.label) {
+  const groupKey = String(payload.group_key || '').trim();
+  const optionKey = String(payload.option_key || '').trim();
+  const label = String(payload.label || '').trim();
+  if (!groupKey || !optionKey || !label) {
     return NextResponse.json({ error: 'group_key, option_key và label là bắt buộc' }, { status: 400 });
+  }
+  if (label.length > 120) {
+    return NextResponse.json({ error: 'label không được quá 120 ký tự' }, { status: 400 });
+  }
+
+  const { data: duplicate } = await supabase
+    .from('app_options')
+    .select('id')
+    .eq('group_key', groupKey)
+    .ilike('option_key', optionKey)
+    .maybeSingle();
+  if (duplicate) {
+    return NextResponse.json({ error: 'option_key đã tồn tại trong nhóm này' }, { status: 409 });
   }
 
   const { data, error } = await supabase
     .from('app_options')
     .insert([{
-      group_key: payload.group_key,
-      option_key: payload.option_key,
-      label: payload.label,
+      group_key: groupKey,
+      option_key: optionKey,
+      label,
       is_active: payload.is_active ?? true,
       sort_order: payload.sort_order ?? 0
     }])
@@ -70,10 +86,42 @@ export async function PUT(request) {
   if (!previous) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
 
   const updates = { updated_at: new Date().toISOString() };
-  if (payload.option_key !== undefined) updates.option_key = payload.option_key;
-  if (payload.label !== undefined) updates.label = payload.label;
-  if (payload.is_active !== undefined) updates.is_active = payload.is_active;
-  if (payload.sort_order !== undefined) updates.sort_order = payload.sort_order;
+  if (payload.option_key !== undefined) {
+    updates.option_key = String(payload.option_key).trim();
+    if (!updates.option_key) {
+      return NextResponse.json({ error: 'option_key không được để trống' }, { status: 400 });
+    }
+  }
+  if (payload.label !== undefined) {
+    updates.label = String(payload.label).trim();
+    if (!updates.label) {
+      return NextResponse.json({ error: 'label không được để trống' }, { status: 400 });
+    }
+    if (updates.label.length > 120) {
+      return NextResponse.json({ error: 'label không được quá 120 ký tự' }, { status: 400 });
+    }
+  }
+  if (payload.is_active !== undefined) updates.is_active = Boolean(payload.is_active);
+  if (payload.sort_order !== undefined) {
+    updates.sort_order = Number(payload.sort_order);
+    if (!Number.isFinite(updates.sort_order)) {
+      return NextResponse.json({ error: 'sort_order phải là số' }, { status: 400 });
+    }
+  }
+
+  // Tránh đổi option_key thành key trùng với option khác trong cùng nhóm
+  if (updates.option_key && updates.option_key !== previous.option_key) {
+    const { data: duplicate } = await supabase
+      .from('app_options')
+      .select('id')
+      .eq('group_key', previous.group_key)
+      .ilike('option_key', updates.option_key)
+      .neq('id', payload.id)
+      .maybeSingle();
+    if (duplicate) {
+      return NextResponse.json({ error: 'option_key đã tồn tại trong nhóm này' }, { status: 409 });
+    }
+  }
 
   const { data, error } = await supabase
     .from('app_options')

@@ -1,13 +1,13 @@
 "use client";
 import React, { useMemo, useState } from 'react';
 import { useInventory, isOrderCommitted } from '../../context/InventoryContext';
-import { D, RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
+import { RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
 import { labelToKey } from '../../lib/useFieldOptions';
 import { Wrench, Search, Plus, CheckCircle2 } from 'lucide-react';
 
 const emptyCase = () => ({
   laptopId: '', orderId: '', customerInfo: '', receivedDate: new Date().toLocaleDateString('vi-VN'),
-  reportedIssue: '', status: D.warrantyCaseReceived, diagnosis: '', resolution: '', repairCost: '', notes: ''
+  reportedIssue: '', status: 'received', diagnosis: '', resolution: '', repairCost: '', notes: ''
 });
 
 export default function Warranty() {
@@ -24,7 +24,7 @@ export default function Warranty() {
   }), [warrantyCases, laptops, searchTerm]);
   const openCases = rows.filter(item => {
     const k = labelToKey('warrantyCaseStatus', item.status);
-    return !RESOLVED_WARRANTY_STATUS_KEYS.includes(k) && !['HOÀN TẤT', 'ĐỔI MÁY', 'HOÀN TIỀN'].includes(item.status);
+    return !RESOLVED_WARRANTY_STATUS_KEYS.includes(k);
   }).length;
 
   const openCreate = () => { setEditingCase(null); setFormData(emptyCase()); setIsModalOpen(true); };
@@ -67,7 +67,7 @@ export default function Warranty() {
           <div className="form-group"><label>Khách hàng</label><input className="form-control" value={formData.customerInfo} onChange={event => setFormData({ ...formData, customerInfo: event.target.value })} /></div>
           <div className="form-group"><label>Ngày tiếp nhận</label><input className="form-control" value={formData.receivedDate} onChange={event => setFormData({ ...formData, receivedDate: event.target.value })} required /></div>
           <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Lỗi khách báo *</label><textarea className="form-control" rows={3} value={formData.reportedIssue} onChange={event => setFormData({ ...formData, reportedIssue: event.target.value })} required /></div>
-          <div className="form-group"><label>Trạng thái xử lý</label><select className="form-control" value={formData.status} onChange={event => setFormData({ ...formData, status: event.target.value })}>{WARRANTY_CASE_STATUS_OPTIONS.map(status => (<option key={status} value={status}>{status}</option>))}</select></div>
+          <div className="form-group"><label>Trạng thái xử lý</label><select className="form-control" value={formData.status} onChange={event => setFormData({ ...formData, status: event.target.value })}>{WARRANTY_CASE_STATUS_OPTIONS.map(option => (<option key={option.key} value={option.key}>{option.label}</option>))}</select></div>
           <div className="form-group"><label>Chi phí sửa (triệu VNĐ)</label><input type="number" step="any" min="0" className="form-control" value={formData.repairCost} onChange={event => setFormData({ ...formData, repairCost: event.target.value })} /></div>
           <div className="form-group"><label>Chẩn đoán kỹ thuật</label><textarea className="form-control" rows={3} value={formData.diagnosis} onChange={event => setFormData({ ...formData, diagnosis: event.target.value })} /></div>
           <div className="form-group"><label>Hướng xử lý / kết quả</label><textarea className="form-control" rows={3} value={formData.resolution} onChange={event => setFormData({ ...formData, resolution: event.target.value })} /></div>

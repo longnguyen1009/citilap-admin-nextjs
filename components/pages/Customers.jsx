@@ -61,7 +61,7 @@ export default function Customers() {
               style={{ paddingLeft: '38px', borderRadius: '8px', backgroundColor: 'var(--bg-glass-card)' }}
             />
           </div>
-          <button className="btn btn-primary" onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '8px' }}>
+          <button data-testid="customer-add-button" className="btn btn-primary" onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '8px' }}>
             <UserPlus size={18} /> Thêm Mới
           </button>
         </div>
@@ -89,13 +89,14 @@ export default function Customers() {
               </tr>
             ) : (
               filteredCustomers.map(c => (
-                <tr key={c.id} style={{ transition: 'all 0.2s ease' }} className="hover-row">
+                <tr key={c.id} data-testid={`customer-row-${c.id}`} style={{ transition: 'all 0.2s ease' }} className="hover-row">
                   <td style={{ color: 'var(--primary)', fontWeight: '600', textAlign: 'center' }}>{c.id}</td>
                   <td><strong style={{ fontSize: '1.05rem' }}>{c.name}</strong></td>
                   <td style={{ color: 'var(--text-muted)' }}>{c.phone || <span style={{opacity: 0.5}}>-</span>}</td>
                   <td style={{ color: 'var(--text-muted)' }}>{c.address || <span style={{opacity: 0.5}}>-</span>}</td>
                   <td style={{ textAlign: 'center' }}>
                     <button 
+                      data-testid={`customer-edit-button-${c.id}`}
                       className="btn-icon" 
                       title="Cập nhật" 
                       onClick={() => openEdit(c)}
@@ -132,6 +133,7 @@ export default function Customers() {
                   </label>
                   <input 
                     type="text" 
+                    data-testid="customer-name-input"
                     className="form-control" 
                     value={formData.name} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
@@ -145,6 +147,7 @@ export default function Customers() {
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '0.9rem' }}>Số Điện Thoại</label>
                   <input 
                     type="text" 
+                    data-testid="customer-phone-input"
                     className="form-control" 
                     value={formData.phone} 
                     onChange={e => setFormData({...formData, phone: e.target.value})} 
@@ -157,6 +160,7 @@ export default function Customers() {
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '0.9rem' }}>Địa Chỉ</label>
                   <input 
                     type="text" 
+                    data-testid="customer-address-input"
                     className="form-control" 
                     value={formData.address} 
                     onChange={e => setFormData({...formData, address: e.target.value})} 
@@ -169,7 +173,7 @@ export default function Customers() {
                   <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)} style={{ borderRadius: '8px', padding: '8px 20px' }}>
                     Hủy Bỏ
                   </button>
-                  <button type="submit" className="btn btn-primary" style={{ borderRadius: '8px', padding: '8px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button type="submit" data-testid="customer-save-button" className="btn btn-primary" style={{ borderRadius: '8px', padding: '8px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {formData.id ? <Edit2 size={16}/> : <UserPlus size={16}/>} 
                     Lưu Khách Hàng
                   </button>

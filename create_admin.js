@@ -1,10 +1,37 @@
 const { createClient } = require('@supabase/supabase-js');
+const fs = require('node:fs');
+const path = require('node:path');
+
+function parseEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+
+  return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).reduce((values, line) => {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) return values;
+
+    let value = match[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    values[match[1]] = value;
+    return values;
+  }, {});
+}
+
+const fileEnv = {
+  ...parseEnvFile(path.join(__dirname, '.env')),
+  ...parseEnvFile(path.join(__dirname, '.env.local')),
+};
+
+Object.entries(fileEnv).forEach(([key, value]) => {
+  if (process.env[key] === undefined) process.env[key] = value;
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running this script.');
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Add them to .env or set them in the terminal.');
   process.exit(1);
 }
 
@@ -15,7 +42,7 @@ async function main() {
   const password = process.env.ADMIN_PASSWORD;
 
   if (!email || !password) {
-    console.error('Set ADMIN_EMAIL and ADMIN_PASSWORD before running this script.');
+    console.error('Missing ADMIN_EMAIL or ADMIN_PASSWORD. Set both in the terminal or add them to .env.local.');
     process.exit(1);
   }
 
@@ -64,4 +91,7 @@ async function makeAdmin(userId) {
   console.log('Admin user created successfully.');
 }
 
-main();
+main().catch(error => {
+  console.error('Unexpected error:', error.message);
+  process.exit(1);
+});

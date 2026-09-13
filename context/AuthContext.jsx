@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { fetchUsersFromCloud, saveUserToCloud, updateUserStatus } from '../lib/apiFetchers';
+import { getMockUserRole, isMockAuthAllowed } from '../lib/authPolicy';
 
 const AuthContext = createContext();
 
@@ -68,16 +69,9 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Lỗi load user profile:', err);
-      const newUser = {
-        id: authUser.id,
-        name: authUser.email,
-        role: 'SALES',
-        email: authUser.email,
-      };
-      if (!lastUserRef.current || lastUserRef.current.id !== newUser.id) {
-        lastUserRef.current = newUser;
-        setUser(newUser);
-      }
+      await client.auth.signOut().catch(() => {});
+      lastUserRef.current = null;
+      setUser(null);
     }
     loadingProfileRef.current = false;
     setLoading(false);
@@ -119,11 +113,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const client = getSupabaseClient();
     if (!client) {
-      if (process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH !== 'true') {
+      if (!isMockAuthAllowed()) {
         return { ok: false, message: 'Supabase chưa được cấu hình.' };
       }
-      // Mock auth chỉ dành cho môi trường phát triển được bật rõ ràng.
-      const role = email.includes('admin') ? 'ADMIN' : email.includes('tech') ? 'TECH' : 'SALES';
+      const role = getMockUserRole(email);
+      if (!role) {
+        return { ok: false, message: 'Tài khoản mock không nằm trong allowlist.' };
+      }
       const mockUser = MOCK_USERS[role];
       setUser(mockUser);
       localStorage.setItem('citilap_user', JSON.stringify(mockUser));
@@ -147,7 +143,7 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Mock login (fallback khi không có Supabase) ────────────────────
   const mockLogin = (role) => {
-    if (process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH !== 'true') return false;
+    if (!isMockAuthAllowed()) return false;
     const mockUser = MOCK_USERS[role];
     if (mockUser) {
       setUser(mockUser);

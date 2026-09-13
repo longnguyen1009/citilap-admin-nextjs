@@ -35,6 +35,7 @@ Với database đang có dữ liệu, không chạy lại `init_full_db.sql`. Ch
 
 1. `20260907_security_and_schema.sql`
 2. `20260907_payments_finance_ledger.sql`
+3. `20260908_order_inventory_consistency.sql`
 
 Migration thanh toán tạo RPC ghi giao dịch theo transaction, cập nhật công nợ và bổ sung bảng `payments`, `financial_records`.
 
@@ -55,3 +56,5 @@ Trình tự khởi tạo database dev:
 1. Mở lại Supabase SQL Editor và dán toàn bộ nội dung mới nhất của file init_full_db.sql vào chạy. (Thao tác này sẽ reset lại DB, tạo bảng và cấp quyền truy cập đầy đủ).
 2. Chạy tiếp file reseed_data.sql bên trong SQL Editor để chèn dữ liệu mẫu.
 3. Cuối cùng, gõ lại lệnh này ở Terminal của VSCode để tạo tài khoản Admin: node create_admin.js
+
+Các cột tiền trong `laptops`, `orders`, `payments` và `financial_records` dùng đơn vị triệu VNĐ, khớp với các form nhập liệu của ứng dụng.

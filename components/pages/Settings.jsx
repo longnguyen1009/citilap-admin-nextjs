@@ -15,7 +15,7 @@ const GROUP_SECTIONS = [
   },
   {
     sectionLabel: '🛒 Đơn hàng',
-    groups: ['orderStatus', 'paymentStatus', 'deliveryStatus', 'orderType', 'paymentMethod', 'shippingMethod', 'giftOptions', 'saleOnline'],
+    groups: ['orderStatus', 'paymentStatus', 'deliveryStatus', 'orderType', 'paymentMethod', 'shippingMethod', 'giftOptions', 'saleOnline', 'saleOffline'],
   },
   {
     sectionLabel: '🔧 Bảo hành',
@@ -39,6 +39,7 @@ const GROUP_TITLES = {
   shippingMethod: 'Đơn vị Vận chuyển',
   giftOptions: 'Gói Quà tặng',
   saleOnline: 'Nhân viên Sale (Kênh bán)',
+  saleOffline: 'Nhân viên Sale (Tại shop)',
   warrantyCaseStatus: 'Trạng thái Bảo hành'
 };
 
@@ -57,7 +58,7 @@ function OptionRow({ option, onUpdate, onDelete }) {
   };
 
   return (
-    <div style={{
+    <div data-testid={`option-row-${option.option_key}`} style={{
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
@@ -82,6 +83,7 @@ function OptionRow({ option, onUpdate, onDelete }) {
       {editing ? (
         <input
           autoFocus
+          data-testid={`option-label-input-${option.option_key}`}
           value={draftLabel}
           onChange={e => setDraftLabel(e.target.value)}
           onBlur={commit}
@@ -94,6 +96,7 @@ function OptionRow({ option, onUpdate, onDelete }) {
         />
       ) : (
         <span
+          data-testid={`option-label-${option.option_key}`}
           onClick={() => { setDraftLabel(option.label); setEditing(true); }}
           title="Click để đổi tên"
           style={{
@@ -114,7 +117,7 @@ function OptionRow({ option, onUpdate, onDelete }) {
           <Check size={14} />
         </button>
       ) : (
-        <button onClick={() => onDelete(option.id)} title="Xoá option này" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+        <button data-testid={`option-delete-${option.option_key}`} onClick={() => onDelete(option.id)} title="Xoá option này" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
           <Trash2 size={16} />
         </button>
       )}
@@ -162,7 +165,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
   };
 
   return (
-    <div style={{
+    <div data-testid={`option-group-${groupKey}`} style={{
       borderRadius: '12px',
       border: '1px solid #e2e8f0',
       background: '#fff',
@@ -171,6 +174,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
     }}>
       {/* Header */}
       <div
+        data-testid={`option-collapse-toggle-${groupKey}`}
         onClick={() => setCollapsed(p => !p)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -215,6 +219,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
             <form onSubmit={handleAddNewOption} style={{ display: 'flex', gap: '8px', marginTop: '8px', padding: '4px 0', flexWrap: 'wrap' }}>
               <input
                 autoFocus
+                data-testid="option-key-input"
                 placeholder="Mã key (vd: new_item)"
                 value={newKeyInput}
                 onChange={e => setNewKeyInput(e.target.value)}
@@ -222,13 +227,14 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
                 disabled={isSubmitting}
               />
               <input
+                data-testid="option-label-input"
                 placeholder="Tên hiển thị (vd: Hàng mới về)"
                 value={newLabelInput}
                 onChange={e => setNewLabelInput(e.target.value)}
                 style={{ flex: 1, minWidth: '180px', padding: '6px 12px', borderRadius: '6px', border: '1.5px solid #3b82f6', outline: 'none', fontSize: '0.85rem' }}
                 disabled={isSubmitting}
               />
-              <button disabled={isSubmitting} type="submit" style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+              <button disabled={isSubmitting} type="submit" data-testid="option-submit-button" style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
                 {isSubmitting ? 'Đang lưu...' : 'Thêm'}
               </button>
               <button disabled={isSubmitting} type="button" onClick={() => setShowAddForm(false)} style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem' }}>
@@ -237,6 +243,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
             </form>
           ) : (
             <button
+              data-testid={`option-add-toggle-${groupKey}`}
               onClick={() => setShowAddForm(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',

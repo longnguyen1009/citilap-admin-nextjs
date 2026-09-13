@@ -27,14 +27,19 @@ export async function POST(request) {
     }
     if (body.formula !== undefined) {
       const formula = body.formula;
-      if (!formula || typeof formula !== 'object' || Array.isArray(formula)
-        || !Number.isFinite(Number(formula.shippingVnd))
-        || !Number.isFinite(Number(formula.divisor))
-        || !Number.isFinite(Number(formula.defaultRate))
-        || Number(formula.shippingVnd) < 0
-        || Number(formula.divisor) <= 0
-        || Number(formula.defaultRate) <= 0) {
+      if (!formula || typeof formula !== 'object' || Array.isArray(formula)) {
         return NextResponse.json({ error: 'Cấu hình công thức không hợp lệ' }, { status: 400 });
+      }
+      const formulaKeys = Object.keys(formula);
+      const allowedFormulaKeys = ['shippingVnd', 'divisor', 'defaultRate'];
+      const unknown = formulaKeys.find(k => !allowedFormulaKeys.includes(k));
+      if (unknown) {
+        return NextResponse.json({ error: `Field không được phép trong formula: ${unknown}` }, { status: 400 });
+      }
+      if (!Number.isFinite(Number(formula.shippingVnd)) || Number(formula.shippingVnd) < 0 || Number(formula.shippingVnd) > 1e9
+        || !Number.isFinite(Number(formula.divisor)) || Number(formula.divisor) <= 0 || Number(formula.divisor) > 1e9
+        || !Number.isFinite(Number(formula.defaultRate)) || Number(formula.defaultRate) <= 0 || Number(formula.defaultRate) > 1e9) {
+        return NextResponse.json({ error: 'Cấu hình công thức không hợp lệ (giá trị ngoài phạm vi)' }, { status: 400 });
       }
       body.formula = {
         shippingVnd: Number(formula.shippingVnd),
