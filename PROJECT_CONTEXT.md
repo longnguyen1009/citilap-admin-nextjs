@@ -85,6 +85,9 @@ Với database đã có dữ liệu, chạy lần lượt trong Supabase SQL Edi
 1. `db/migrations/20260907_security_and_schema.sql`
 2. `db/migrations/20260907_payments_finance_ledger.sql`
 3. `db/migrations/20260908_order_inventory_consistency.sql`
+4. `db/migrations/20260913_financial_guards.sql`
+5. `db/migrations/20260913_remove_cycle_count.sql`
+6. `db/migrations/20260914_manual_payment_status.sql`
 
 `init_full_db.sql` là script khởi tạo/reset toàn bộ schema và dữ liệu; chỉ dùng cho database development. `reseed_data.sql` chỉ dùng để nạp dữ liệu mẫu sau khi reset.
 

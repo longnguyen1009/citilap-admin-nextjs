@@ -83,7 +83,6 @@ export default function Inventory() {
     name: 420,
     location: 95,
     category: 180,
-    cycleCount: 70,
     warrantySupplier: 100,
     conditionNote: 220,
     serial: 90,
@@ -204,7 +203,7 @@ export default function Inventory() {
     name: '',
     location: LOCATION_OPTIONS[0]?.key || 'wh_vn',
     category: CATEGORY_OPTIONS[0]?.key || '',
-    cycleCount: '',
+    batteryHealth: 100,
     warrantySupplier: '',
     conditionNote: '',
     chargerStatus: CHARGER_OPTIONS[0]?.key || 'with_charger',
@@ -413,7 +412,7 @@ export default function Inventory() {
       name: laptop.name || '',
       location: laptop.location || 'store',
       category: laptop.category || CATEGORY_OPTIONS[0]?.key || '',
-      cycleCount: laptop.cycleCount || '',
+      batteryHealth: laptop.batteryHealth ?? 100,
       warrantySupplier: laptop.warrantySupplier || '',
       conditionNote: laptop.conditionNote || '',
       chargerStatus: laptop.chargerStatus || 'with_charger',
@@ -1315,28 +1314,31 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label>Sạc Pin (Cycle Count)</label>
-                    <input 
-                      type="number" 
-                      data-testid="product-cycle-count-input"
-                      className="form-control" 
-                      value={formData.cycleCount} 
-                      onChange={e => setFormData({ ...formData, cycleCount: e.target.value })} 
-                      placeholder="Số lần sạc..." 
+                    <label>Pin (%)</label>
+                    <input
+                      type="number"
+                      data-testid="product-battery-health-input"
+                      className="form-control"
+                      min="0"
+                      max="100"
+                      value={formData.batteryHealth}
+                      onChange={e => setFormData({ ...formData, batteryHealth: e.target.value })}
+                      placeholder="100"
                     />
                   </div>
 
                   <div className="form-group">
                     <label>Hạn BH Nguồn (TQ/US)</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       data-testid="product-warranty-supplier-input"
-                      className="form-control" 
-                      value={formData.warrantySupplier} 
-                      onChange={e => setFormData({ ...formData, warrantySupplier: e.target.value })} 
-                      placeholder="VD: 25/12/2026..." 
+                      className="form-control"
+                      value={formData.warrantySupplier}
+                      onChange={e => setFormData({ ...formData, warrantySupplier: e.target.value })}
+                      placeholder="VD: 25/12/2026..."
                     />
                   </div>
+
                 </div>
 
                 <div className="form-group mt-3">

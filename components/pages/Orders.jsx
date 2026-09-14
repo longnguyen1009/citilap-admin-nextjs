@@ -138,6 +138,7 @@ export default function Orders() {
     ORDER_TYPES,
     PAYMENT_METHODS,
     addLaptop,
+    createCustomer,
     getSelectableLaptops,
     getLaptopAssignmentError,
     getOptions,
@@ -179,6 +180,8 @@ export default function Orders() {
   // Modal State (cho nút "Tạo Đơn Hàng Mới")
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '' });
 
   // Form State cho Modal 20 trường thông tin
   const [formData, setFormData] = useState({
@@ -191,7 +194,6 @@ export default function Orders() {
     deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
     laptopId: '',
     salePrice: '',
-    discountAmount: '',
     depositAmount: '',
     depositNote: '',
     reservationExpiresAt: '',
@@ -317,7 +319,7 @@ export default function Orders() {
       customerId: 120
     };
     const widths = isCompactView ? compactWidths : colWidths;
-    return orderColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0) + 24;
+    return orderColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0) + 64;
   }, [colWidths, orderColumnKeys, isCompactView]);
 
   // Đổi máy trực tiếp trên bảng Google Sheet
@@ -345,6 +347,8 @@ export default function Orders() {
 
   // Mở modal tạo đơn mới
   const handleOpenAdd = () => {
+    setShowCustomerForm(false);
+    setNewCustomer({ name: '', phone: '', address: '' });
     setFormData({
       createdDate: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       saleOnline: SALE_ONLINE_OPTIONS[0],
@@ -355,7 +359,6 @@ export default function Orders() {
       deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
       laptopId: '',
       salePrice: '',
-      discountAmount: '',
       depositAmount: '',
       depositNote: '',
       reservationExpiresAt: '',
@@ -377,6 +380,62 @@ export default function Orders() {
     setIsModalOpen(true);
   };
 
+  const handleOpenEdit = (order) => {
+    setShowCustomerForm(false);
+    setNewCustomer({ name: '', phone: '', address: '' });
+    setShowTimeline(false);
+    setFormData({
+      ...order,
+      id: order.id,
+      createdDate: order.createdDate || '',
+      saleOnline: order.saleOnline || SALE_ONLINE_OPTIONS[0],
+      note: order.note || '',
+      shippingMethod: order.shippingMethod || SHIPPING_METHOD_OPTIONS[0],
+      orderStatus: order.orderStatus || ORDER_STATUS_OPTIONS[0],
+      paymentStatus: order.paymentStatus || PAYMENT_STATUS_OPTIONS[0],
+      deliveryStatus: order.deliveryStatus || DELIVERY_STATUS_OPTIONS[0],
+      laptopId: order.laptopId || '',
+      salePrice: order.salePrice ?? '',
+      depositAmount: order.depositAmount ?? '',
+      depositNote: order.depositNote || '',
+      reservationExpiresAt: order.reservationExpiresAt || '',
+      codAmount: order.codAmount ?? '',
+      setupNote: order.setupNote || '',
+      warranty: order.warranty || '',
+      gifts: order.gifts || GIFT_OPTIONS[0],
+      customerId: order.customerId || '',
+      customerNote: order.customerNote || '',
+      trackingCode: order.trackingCode || '',
+      shipDate: order.shipDate || '',
+      orderType: order.orderType || ORDER_TYPES[0],
+      paymentMethod: order.paymentMethod || PAYMENT_METHODS[0],
+      tradeInLaptopName: '',
+      tradeInPrice: '',
+      creditCardFee: order.creditCardFee ?? ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCreateCustomer = async () => {
+    const payload = {
+      name: newCustomer.name.trim(),
+      phone: newCustomer.phone.trim(),
+      address: newCustomer.address.trim()
+    };
+    if (!payload.name) {
+      alert('Vui lòng nhập tên khách hàng.');
+      return;
+    }
+    const result = await createCustomer(payload);
+    if (!result?.ok) {
+      alert(`Không tạo được khách hàng: ${result?.message || 'Lỗi không xác định.'}`);
+      return;
+    }
+    setFormData(prev => ({ ...prev, customerId: String(result.customer.id) }));
+    setNewCustomer({ name: '', phone: '', address: '' });
+    setShowCustomerForm(false);
+  };
+
   // Select Laptop trong Modal Form
   const handleSelectLaptopChange = (laptopId) => {
     const selected = laptops.find(l => String(l.id) === String(laptopId));
@@ -395,16 +454,13 @@ export default function Orders() {
   // Submit Modal Form
   const handleSubmitForm = async (e) => {
     e.preventDefault();
-    const assignmentError = getLaptopAssignmentError(formData.laptopId);
+    const assignmentError = getLaptopAssignmentError(formData.laptopId, formData.id);
     if (assignmentError) {
       alert(`⛔ ${assignmentError}`);
       return;
     }
 
-    const discountAmount = parseFlexibleFloat(formData.discountAmount);
-    const selectedLaptop = laptops.find(laptop => String(laptop.id) === String(formData.laptopId));
-    const retailPrice = parseFlexibleFloat(selectedLaptop?.retailPriceVnd);
-    const finalSalePrice = retailPrice > 0 ? Math.max(0, retailPrice - discountAmount) : parseFlexibleFloat(formData.salePrice);
+    const finalSalePrice = parseFlexibleFloat(formData.salePrice);
     const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalSalePrice);
     
     // Xử lý Thu cũ đổi mới
@@ -425,17 +481,22 @@ export default function Orders() {
       tradeInLaptopId = result.laptop.id;
     }
 
-    const result = await addOrder({
+    const orderPayload = {
       ...formData,
       salePrice: finalSalePrice,
       codAmount: finalCodAmount,
       tradeInLaptopId
-    });
+    };
+    const result = formData.id
+      ? updateOrder(formData.id, orderPayload)
+      : await addOrder(orderPayload);
     if (!result.ok) {
       alert(`⛔ Không tạo được đơn: ${result.message}`);
       return;
     }
-    alert(`🎉 Đã tạo thành công Đơn hàng mới #${result.order.id}!`);
+    alert(formData.id
+      ? `✅ Đã cập nhật đơn hàng #${formData.id}.`
+      : `🎉 Đã tạo thành công Đơn hàng mới #${result.order.id}!`);
     setIsModalOpen(false);
   };
 
@@ -575,22 +636,17 @@ export default function Orders() {
   };
 
   const getOrderRowStatusClass = (ord) => {
-    // 1. Đã hoàn thành, thu tiền xong -> Màu xám
-      if (isOrderCommitted(ord) && labelToKey('paymentStatus', ord.paymentStatus) === 'paid') {
+    const statusKey = labelToKey('orderStatus', ord.orderStatus);
+
+    // 1. Hoàn thành / BACK MÁY / HỦY ĐƠN → Màu xám (chỉ phụ thuộc trạng thái đơn)
+    if (statusKey === 'done' || statusKey === 'cancelled' || statusKey === 'returned') {
       return 'order-row-completed';
     }
-    // 2. Đang chờ COD, đang giao hàng -> Màu vàng
-    if (isOrderCommitted(ord) ||
-      labelToKey('deliveryStatus', ord.deliveryStatus) === 'shipped' ||
-      labelToKey('deliveryStatus', ord.deliveryStatus) === 'delivered'
-    ) {
+    // 2. Đã xác nhận, đang chờ/giao hàng → Màu vàng
+    if (isOrderCommitted(ord)) {
       return 'order-row-shipping';
     }
-    // 3. Hủy đơn / Back máy -> Màu đỏ nhạt
-    if (isOrderCancelled(ord)) {
-      return 'order-row-cancelled';
-    }
-    // 4. Đang chuẩn bị, chưa giao hàng (ĐÃ CHUẨN BỊ XONG, ĐÃ CỌC...) -> Màu hồng
+    // 3. Còn lại (chuẩn bị, mới, đặt cọc...) → Màu hồng
     return 'order-row-preparing';
   };
 
@@ -848,7 +904,7 @@ export default function Orders() {
                   Quà Tặng
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'gifts')} title="Kéo để chỉnh rộng hẹp cột Quà Tặng" />
                 </th>
-                <th style={{ width: '24px', minWidth: '24px' }}></th>
+                <th style={{ width: '64px', minWidth: '64px' }}>Sửa</th>
               </tr>
             </thead>
             <tbody>
@@ -1193,8 +1249,18 @@ export default function Orders() {
                           ))}
                         </select>
                       </td>
-                      {/* Cột đệm cuối bảng */}
-                      <td style={{ width: '24px', minWidth: '24px' }}></td>
+                      {/* Mở form sửa chi tiết */}
+                      <td style={{ width: '64px', minWidth: '64px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          data-testid={`order-edit-button-${ord.id}`}
+                          onClick={() => handleOpenEdit(ord)}
+                          title="Chỉnh sửa đơn hàng"
+                        >
+                          Sửa
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -1209,8 +1275,8 @@ export default function Orders() {
 
       {/* MODAL TẠO ĐƠN HÀNG MỚI */}
       {isModalOpen && (
-        <div className="modal-backdrop active">
-          <div className="modal-box glass" style={{ maxWidth: '850px' }}>
+        <div className="modal-backdrop active order-modal-backdrop">
+          <div className="modal-box glass order-modal-box">
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShoppingCart className="text-primary" size={20} />
@@ -1226,9 +1292,9 @@ export default function Orders() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'row', minHeight: '500px', maxHeight: '80vh', overflow: 'hidden' }}>
-              <form onSubmit={handleSubmitForm} style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+            <div className="order-modal-scroll">
+              <form onSubmit={handleSubmitForm} className="order-modal-form">
+                <div className="order-modal-grid">
                 
                 {/* 1. Ngày tạo đơn */}
                 <div className="form-group">
@@ -1438,20 +1504,6 @@ export default function Orders() {
                   />
                 </div>
 
-                {/* 11b. GIẢM GIÁ */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ef4444' }}>11b. Giảm Giá Khách Quen/Sale (triệu VNĐ)</label>
-                  <input 
-                    type="number" 
-                    data-testid="order-discount-input"
-                    step="any" 
-                    className="form-control" 
-                    value={formData.discountAmount} 
-                    onChange={e => setFormData({ ...formData, discountAmount: e.target.value })} 
-                    placeholder="VD: 0.5"
-                  />
-                </div>
-
                 {/* 12. CỌC */}
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>12. Thông Tin Cọc</label>
@@ -1513,7 +1565,7 @@ export default function Orders() {
                 {/* 17. KHÁCH HÀNG */}
                 <div className="form-group" style={{ gridColumn: 'span 4' }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                    17. Khách Hàng <span style={{ color: 'var(--primary)', cursor: 'pointer', marginLeft: '10px' }} onClick={() => window.open('/customers', '_blank')}>+ Thêm mới</span>
+                    17. Khách Hàng <button type="button" className="inline-add-button" onClick={() => setShowCustomerForm(prev => !prev)}>{showCustomerForm ? '× Đóng' : '+ Thêm mới'}</button>
                   </label>
                   <select 
                     data-testid="order-customer-select"
@@ -1527,6 +1579,32 @@ export default function Orders() {
                       <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
                     ))}
                   </select>
+                  {showCustomerForm && (
+                    <div className="inline-customer-form">
+                      <input
+                        data-testid="order-new-customer-name-input"
+                        className="form-control"
+                        placeholder="Tên khách hàng"
+                        value={newCustomer.name}
+                        onChange={e => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                      <input
+                        data-testid="order-new-customer-phone-input"
+                        className="form-control"
+                        placeholder="Số điện thoại"
+                        value={newCustomer.phone}
+                        onChange={e => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
+                      />
+                      <input
+                        data-testid="order-new-customer-address-input"
+                        className="form-control"
+                        placeholder="Địa chỉ"
+                        value={newCustomer.address}
+                        onChange={e => setNewCustomer(prev => ({ ...prev, address: e.target.value }))}
+                      />
+                      <button type="button" data-testid="order-new-customer-save-button" className="btn btn-sm btn-primary" onClick={handleCreateCustomer}>Lưu khách hàng</button>
+                    </div>
+                  )}
                 </div>
 
                 {/* 18. GHI CHÚ KHÁCH HÀNG / YÊU CẦU ĐẶC BIỆT */}
@@ -1621,7 +1699,7 @@ export default function Orders() {
             </form>
             
             {showTimeline && formData.id && (
-              <div style={{ width: '350px', background: '#f8fafc', borderLeft: '1px solid var(--border-color)', overflowY: 'auto' }}>
+              <div className="order-modal-timeline">
                 <ActivityTimeline entityType="ORDER" entityId={formData.id} />
               </div>
             )}

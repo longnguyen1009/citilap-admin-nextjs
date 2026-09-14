@@ -4,6 +4,14 @@ import { logActivity, diffObject, pickAuditFields } from '../../../lib/services/
 import { requireUser, filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
+const LAPTOP_AUDIT_FIELDS = [
+  'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
+  'chargerStatus', 'status', 'priceRmb', 'shippingRmb', 'exchangeRate',
+  'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd', 'trackingCode',
+  'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth', 'isLocked',
+  'screenStatus', 'cameraMicStatus', 'mainboardStatus', 'partsHistory'
+];
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
   if (!auth.ok) return auth.response;
@@ -73,11 +81,9 @@ export async function POST(request) {
     let changes = {};
     if (action === 'UPDATE' && oldData) {
       const oldCamel = keysToCamel(oldData);
-      changes = diffObject(oldCamel, data);
-      delete changes.id;
-      delete changes.updatedAt;
+      changes = diffObject(oldCamel, data, LAPTOP_AUDIT_FIELDS);
     } else {
-      changes = pickAuditFields(data, LAPTOP_PAYLOAD_KEYS.filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt'));
+      changes = pickAuditFields(data, LAPTOP_AUDIT_FIELDS);
     }
 
     await logActivity('LAPTOP', data.id, action, changes, profile.name);

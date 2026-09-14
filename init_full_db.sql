@@ -102,8 +102,7 @@ CREATE TABLE laptops (
   tracking_code TEXT,
   customer_note TEXT,
   battery_health INTEGER DEFAULT 100,
-  cycle_count INTEGER DEFAULT 0,
-  warranty_supplier VARCHAR(100),
+  warranty_supplier TEXT,
   is_locked BOOLEAN DEFAULT false,
   screen_status VARCHAR(100),
   camera_mic_status VARCHAR(100),
@@ -121,7 +120,6 @@ CREATE TABLE laptops (
     AND COALESCE(import_price_vnd, 0) >= 0
     AND COALESCE(wholesale_price_vnd, 0) >= 0
     AND COALESCE(retail_price_vnd, 0) >= 0
-    AND COALESCE(cycle_count, 0) >= 0
   ),
   CONSTRAINT laptops_battery_health_range CHECK (
     battery_health IS NULL OR battery_health BETWEEN 0 AND 100
@@ -570,15 +568,13 @@ DECLARE
 BEGIN
   v_order.is_active := COALESCE(v_order.is_active, true);
   v_order.sale_price := GREATEST(COALESCE(v_order.sale_price, 0), 0);
-  v_order.deposit_amount := GREATEST(COALESCE(v_order.deposit_amount, 0), 0);
-  v_order.cod_amount := GREATEST(COALESCE(v_order.cod_amount, 0), 0);
-  v_order.amount_paid := GREATEST(COALESCE(v_order.amount_paid, 0), v_order.deposit_amount);
+  v_order.deposit_amount := LEAST(v_order.sale_price, GREATEST(COALESCE(v_order.deposit_amount, 0), 0));
+  v_order.amount_paid := LEAST(v_order.sale_price,
+    GREATEST(COALESCE(v_order.amount_paid, 0), v_order.deposit_amount));
+  v_order.debt_amount := GREATEST(v_order.sale_price - v_order.amount_paid, 0);
+  v_order.cod_amount := LEAST(v_order.debt_amount, GREATEST(COALESCE(v_order.cod_amount, 0), 0));
   v_order.credit_card_fee := GREATEST(COALESCE(v_order.credit_card_fee, 0), 0);
   v_order.profit_vnd := COALESCE(v_order.profit_vnd, 0);
-
-  IF v_order.payment_status = 'paid' AND v_order.sale_price > 0 THEN
-    v_order.amount_paid := v_order.sale_price;
-  END IF;
 
   IF v_order.laptop_id IS NOT NULL
      AND v_order.is_active IS TRUE
@@ -587,18 +583,10 @@ BEGIN
     v_order.reservation_expires_at := timezone('utc'::text, now()) + INTERVAL '48 hours';
   END IF;
 
-  IF v_order.amount_paid > v_order.sale_price THEN
-    RAISE EXCEPTION 'amount_paid cannot exceed sale_price';
+  v_order.payment_status := lower(btrim(COALESCE(v_order.payment_status, '')));
+  IF v_order.payment_status NOT IN ('unpaid', 'deposited', 'cod', 'paid', 'refunded') THEN
+    v_order.payment_status := 'unpaid';
   END IF;
-
-  v_order.debt_amount := GREATEST(v_order.sale_price - v_order.amount_paid, 0);
-  v_order.payment_status := CASE
-    WHEN v_order.payment_status = 'refunded' AND v_order.amount_paid = 0 THEN 'refunded'
-    WHEN v_order.debt_amount = 0 AND v_order.sale_price > 0 THEN 'paid'
-    WHEN v_order.payment_status = 'cod' AND v_order.debt_amount > 0 THEN 'cod'
-    WHEN v_order.amount_paid > 0 THEN 'deposited'
-    ELSE 'unpaid'
-  END;
   v_order.laptop_locked := public.order_uses_laptop(
     v_order.laptop_id,
     v_order.is_active,

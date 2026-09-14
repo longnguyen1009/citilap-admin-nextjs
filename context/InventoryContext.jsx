@@ -518,8 +518,11 @@ export const InventoryProvider = ({ children }) => {
 
   useEffect(() => {
     // KHÔNG fetch nếu: chưa login, hoặc đang ở màn login
-    if (!userId) return;
-    if (window.location.pathname === '/login') return;
+    // Chỉ tải dữ liệu khi đã có user. Không dựa vào pathname vì router có thể
+    // vẫn đang ở /login trong lúc chuyển hướng sau đăng nhập.
+    if (!userId) {
+      return;
+    }
 
     let unsubscribe = () => {};
     let cancelled = false;
@@ -527,6 +530,7 @@ export const InventoryProvider = ({ children }) => {
       ? { all: true }
       : { monthKey: selectedMonth };
     const loadCloudData = async () => {
+      setCloudStatus('checking');
       const { url, anonKey } = getSupabaseCredentials();
       if (!url || !anonKey) {
         setCloudStatus('disconnected');
@@ -793,8 +797,12 @@ export const InventoryProvider = ({ children }) => {
       (isOrderCommitted(order) || isReservationActive(order))
     ));
     if (blockingOrder) return `Máy ${laptopId} đang thuộc đơn #${blockingOrder.id}.`;
-    if (statusKey === 'sold') return `Máy ${laptopId} đã được bán.`;
-    if (statusKey === 'deposited') return `Máy ${laptopId} đang được giữ chỗ.`;
+    const currentOrder = currentOrderId
+      ? orders.find(order => String(order.id) === String(currentOrderId))
+      : null;
+    const belongsToCurrentOrder = currentOrder && String(currentOrder.laptopId) === String(laptopId);
+    if (statusKey === 'sold' && !belongsToCurrentOrder) return `Máy ${laptopId} đã được bán.`;
+    if (statusKey === 'deposited' && !belongsToCurrentOrder) return `Máy ${laptopId} đang được giữ chỗ.`;
     return '';
   };
 
@@ -1020,7 +1028,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       if (!isLatestMutation()) return; // Có mutation mới hơn, không rollback đè
       setOrders(prev => prev.map(order => String(order.id) === String(id) ? currentOrder : order));
       applyAndSaveLaptopStatuses(orders, false);
-      console.error('Không thể đồng bộ đơn hàng:', error);
+      const message = error?.message || 'Không thể cập nhật đơn hàng.';
+      if (typeof window !== 'undefined') window.alert(message);
     });
     return { ok: true, order: merged };
   };

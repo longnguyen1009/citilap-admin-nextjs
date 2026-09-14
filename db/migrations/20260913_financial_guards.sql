@@ -33,7 +33,7 @@ ALTER TABLE public.orders
   ADD CONSTRAINT orders_cod_amount_lte_debt_amount_chk
     CHECK (COALESCE(cod_amount, 0) >= 0 AND COALESCE(cod_amount, 0) <= GREATEST(COALESCE(sale_price, 0) - COALESCE(amount_paid, 0), 0));
 
--- Do not infer full payment from a client-provided status; totals are authoritative.
+-- Payment status is an explicit order field; totals are normalized separately.
 CREATE OR REPLACE FUNCTION public.normalize_order_financials(p_order orders)
 RETURNS orders
 LANGUAGE plpgsql
@@ -60,13 +60,10 @@ BEGIN
     v_order.reservation_expires_at := timezone('utc'::text, now()) + INTERVAL '48 hours';
   END IF;
 
-  v_order.payment_status := CASE
-    WHEN v_order.payment_status = 'refunded' AND v_order.amount_paid = 0 THEN 'refunded'
-    WHEN v_order.debt_amount = 0 AND v_order.sale_price > 0 THEN 'paid'
-    WHEN v_order.payment_status = 'cod' AND v_order.debt_amount > 0 THEN 'cod'
-    WHEN v_order.amount_paid > 0 THEN 'deposited'
-    ELSE 'unpaid'
-  END;
+  v_order.payment_status := lower(btrim(COALESCE(v_order.payment_status, '')));
+  IF v_order.payment_status NOT IN ('unpaid', 'deposited', 'cod', 'paid', 'refunded') THEN
+    v_order.payment_status := 'unpaid';
+  END IF;
   v_order.laptop_locked := public.order_uses_laptop(
     v_order.laptop_id, v_order.is_active, v_order.order_status,
     v_order.payment_status, v_order.reservation_expires_at

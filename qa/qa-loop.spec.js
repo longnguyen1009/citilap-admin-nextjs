@@ -79,7 +79,7 @@ async function createCustomer(page, prefix) {
   await page.locator('[data-testid="customer-add-button"]').click();
   const modal = page.locator('.modal-backdrop.active').last();
   await modal.locator('[data-testid="customer-name-input"]').fill(`${prefix} Customer`);
-  await modal.locator('[data-testid="customer-phone-input"]').fill('0999000111');
+  await modal.locator('[data-testid="customer-phone-input"]').fill(`0999${String(Date.now()).slice(-7)}`);
   await modal.locator('[data-testid="customer-address-input"]').fill(`${prefix} address`);
   const result = await waitApi(page, '/api/customers', () => modal.locator('[data-testid="customer-save-button"]').click());
   expect(result.status).toBe(200);
@@ -92,7 +92,6 @@ async function createOrder(page, prefix, product, customer) {
   await page.locator('[data-testid="order-add-button"]').click();
   const modal = page.locator('.modal-backdrop.active').last();
   await modal.locator('[data-testid="order-note-input"]').fill(`${prefix} order`);
-  await modal.locator('[data-testid="order-discount-input"]').fill('0.2');
   await modal.locator('[data-testid="order-cod-amount-input"]').fill('24.5');
   await modal.locator('[data-testid="order-laptop-select"]').selectOption(String(product.id));
   await modal.locator('[data-testid="order-customer-select"]').selectOption(String(customer.id));
@@ -108,7 +107,7 @@ async function createOrder(page, prefix, product, customer) {
 async function updateOrderStatus(page, order, optionIndex, expectedKey) {
   const row = page.locator(`[data-testid="order-row-${order.id}"]`);
   const selector = row.locator(`[data-testid="order-status-cell-${order.id}"]`);
-  const result = await waitApi(page, '/api/orders', () => selector.selectOption({ index: optionIndex }));
+  const result = await waitApi(page, '/api/orders', () => selector.selectOption(optionIndex === 3 ? { label: '\u0110\u00c3 THANH TO\u00c1N' } : { index: optionIndex }));
   expect(result.status).toBe(200);
   expect((result.body.order || result.body).orderStatus).toBe(expectedKey);
   return result.body.order || result.body;
@@ -181,11 +180,14 @@ test('run CitiLap full flow iteration', async ({ page }) => {
     const prepared = await updateOrderStatus(page, order, 2, 'prepared');
     expect(prepared.laptopLocked).toBe(true);
     const paid = await updatePaymentStatus(page, prepared, 3, 'paid');
-    expect(paid.amountPaid).toBe(paid.salePrice);
-    expect(paid.debtAmount).toBe(0);
+    // Payment status is user-selected; changing it does not fabricate a payment.
+    expect(paid.paymentStatus).toBe('paid');
+    expect(paid.amountPaid).toBe(prepared.amountPaid ?? 0);
+    expect(paid.debtAmount).toBe(prepared.debtAmount ?? paid.salePrice);
 
     await page.goto('http://localhost:3000/orders', { waitUntil: 'networkidle' });
     await expect(page.locator(`[data-testid="order-row-${order.id}"]`)).toBeVisible();
+    await expect(page.locator(`[data-testid="order-payment-cell-${order.id}"]`)).toHaveValue('\u0110\u00c3 THANH TO\u00c1N');
     expect(failures).toEqual([]);
   } finally {
     await cleanupIteration(prefix, optionKey);

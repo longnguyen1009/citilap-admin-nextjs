@@ -41,25 +41,25 @@ INSERT INTO laptops (
   location, charger_status, status, seller,
   price_rmb, shipping_rmb, exchange_rate, import_price_vnd,
   wholesale_price_vnd, retail_price_vnd,
-  condition_note, is_active, is_locked, cycle_count, warranty_supplier
+  condition_note, is_active, is_locked, warranty_supplier
 ) VALUES
   (
     'SN-LEGION-001', 'Lenovo Legion 5 Pro 2023 (R7 7745HX/16GB/1TB/RTX4060)',
     '6', '2026-08-01', '2026-08-05', 'store', 'with_charger', 'available', 'guangzhou',
     6000, 50, 3550, 21.88, 23.5, 25.5,
-    'Máy đẹp như mới, pin 100%', true, false, 0, NULL
+    'Máy đẹp như mới, pin 100%', true, false, NULL
   ),
   (
     'SN-ROG-002', 'ASUS ROG Zephyrus G14 2022 (R9 6900HS/16GB/512GB/RX6700S)',
     '4', '2026-08-10', NULL, 'wh_cn', 'no_charger', 'not_imported', 'shenzhen',
     4500, 40, 3550, 16.52, 18, 19.5,
-    'Xước nhẹ mặt A', true, false, 0, NULL
+    'Xước nhẹ mặt A', true, false, NULL
   ),
   (
     'SN-TUF-003', 'ASUS TUF Gaming A15 (R7 5800H/8GB/512GB/RTX3050Ti)',
     '8', '2026-07-20', '2026-07-25', 'store', 'with_charger', 'sold', 'xiao',
     3000, 30, 3550, 11.16, 12, 13,
-    'Móp góc trái nhẹ', true, true, 0, NULL
+    'Móp góc trái nhẹ', true, true, NULL
   );
 
 INSERT INTO orders (

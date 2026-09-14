@@ -72,7 +72,7 @@ test('single CitiLap product and order flow', async ({ page }) => {
   await page.locator('[data-testid="customer-add-button"]').click();
   const customerModal = page.locator('.modal-backdrop.active').last();
   await customerModal.locator('[data-testid="customer-name-input"]').fill(`${prefix} Customer`);
-  await customerModal.locator('[data-testid="customer-phone-input"]').fill('0999000111');
+  await customerModal.locator('[data-testid="customer-phone-input"]').fill(`0999${String(Date.now()).slice(-7)}`);
   await customerModal.locator('[data-testid="customer-address-input"]').fill('QA address');
   const customerResult = await waitApi(page, '/api/customers', 'POST', () => customerModal.locator('[data-testid="customer-save-button"]').click());
   console.log('CUSTOMER_RESULT=', JSON.stringify(customerResult));
@@ -100,7 +100,7 @@ test('single CitiLap product and order flow', async ({ page }) => {
   const preparedResult = await waitApi(page, '/api/orders', 'POST', () => row.locator('[data-testid="order-status-cell-' + order.id + '"]').selectOption({ index: 2 }));
   console.log('PREPARED_RESULT=', JSON.stringify(preparedResult));
   await page.waitForTimeout(1200);
-  const paidResult = await waitApi(page, '/api/orders', 'POST', () => row.locator('[data-testid="order-payment-cell-' + order.id + '"]').selectOption({ index: 3 }));
+  const paidResult = await waitApi(page, '/api/orders', 'POST', () => row.locator('[data-testid="order-payment-cell-' + order.id + '"]').selectOption({ label: '\u0110\u00c3 THANH TO\u00c1N' }));
   console.log('PAID_RESULT=', JSON.stringify(paidResult));
   await page.waitForTimeout(1500);
 
@@ -108,6 +108,8 @@ test('single CitiLap product and order flow', async ({ page }) => {
   await page.waitForTimeout(700);
   const persistedRow = page.locator('[data-testid="order-row-' + order.id + '"]');
   console.log('PERSISTED_ROW=', JSON.stringify(await persistedRow.innerText().catch(() => 'missing')));
+  await expect(persistedRow).toContainText(product.name);
+  await expect(persistedRow.locator('[data-testid="order-payment-cell-' + order.id + '"]')).toHaveValue('\u0110\u00c3 THANH TO\u00c1N');
   console.log('DIALOGS=', JSON.stringify(dialogs));
   console.log('FAILURES=', JSON.stringify(failures));
 });

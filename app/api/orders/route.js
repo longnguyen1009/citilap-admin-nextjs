@@ -4,6 +4,14 @@ import { diffObject, pickAuditFields, logActivity } from '../../../lib/services/
 import { requireUser, filterSensitiveFields, sanitizePayload, validateOrderPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
+const ORDER_AUDIT_FIELDS = [
+  'createdDate', 'saleOnline', 'saleOffline', 'note', 'orderType', 'orderStatus',
+  'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId',
+  'salePrice', 'depositAmount', 'depositNote', 'codAmount', 'creditCardFee',
+  'tradeInLaptopId', 'customerId', 'customerInfo', 'customerNote', 'customerAddress', 'trackingCode',
+  'shipDate', 'setupNote', 'warranty', 'gifts', 'reservationExpiresAt'
+];
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
@@ -85,11 +93,9 @@ export async function POST(request) {
     let changes = {};
     if (action === 'UPDATE' && oldData) {
       const oldCamel = keysToCamel(oldData);
-      changes = diffObject(oldCamel, activityOrder);
-      delete changes.id;
-      delete changes.updatedAt;
+      changes = diffObject(oldCamel, activityOrder, ORDER_AUDIT_FIELDS);
     } else {
-      changes = pickAuditFields(activityOrder, ORDER_PAYLOAD_KEYS.filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt'));
+      changes = pickAuditFields(activityOrder, ORDER_AUDIT_FIELDS);
     }
 
     await logActivity('ORDER', activityOrder.id, action, changes, profile.name);

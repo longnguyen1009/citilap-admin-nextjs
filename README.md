@@ -36,6 +36,9 @@ Với database đang có dữ liệu, không chạy lại `init_full_db.sql`. Ch
 1. `20260907_security_and_schema.sql`
 2. `20260907_payments_finance_ledger.sql`
 3. `20260908_order_inventory_consistency.sql`
+4. `20260913_financial_guards.sql`
+5. `20260913_remove_cycle_count.sql`
+6. `20260914_manual_payment_status.sql`
 
 Migration thanh toán tạo RPC ghi giao dịch theo transaction, cập nhật công nợ và bổ sung bảng `payments`, `financial_records`.
 
