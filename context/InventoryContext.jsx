@@ -301,73 +301,17 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
   });
 };
 
-// Hàm lọc Kho Laptop theo Tháng (Tự động kế thừa máy chưa bán từ các tháng trước)
-// FIX: Máy đã bán trong tháng hiện tại vẫn được hiển thị (dùa vào ngày của đơn hàng, không dùa vào ngày nhập máy)
-export const filterLaptopsByMonth = (laptops, selectedMonth, orders = []) => {
+// Hàm lọc Kho Laptop theo Tháng — server đã trả đúng dữ liệu theo month_key
+// Chỉ cần match monthKey trên client (phòng khi load ALL mode)
+export const filterLaptopsByMonth = (laptops, selectedMonth) => {
   if (!selectedMonth || selectedMonth === 'ALL') return laptops;
-
-  const targetKey = monthYearToKey(selectedMonth);
-
-  // Build map: laptopId -> tháng bán (từ đơn hàng)
-  // Lấy đơn mới nhất có liên kết máy & có ngày giao/tạo đơn
-  const soldMonthByLaptopId = {};
-  orders.forEach(order => {
-    if (!order.laptopId || order.isActive === false || isOrderCancelled(order)) return;
-    // Lấy ngày bán: ưu tiên createdDate (ngày chốt đơn) để đồng bộ với filterOrdersByMonth
-    const saleDate = order.createdDate || order.shipDate;
-    const saleMonth = parseMonthYear(saleDate, order.created_at || order.createdAt);
-    if (!saleMonth) return;
-    const saleKey = monthYearToKey(saleMonth);
-    const existing = soldMonthByLaptopId[order.laptopId];
-    // Lưu lại tháng bán mới nhất của máy (nếu có nhiều đơn, lấy tháng lớn nhất)
-    if (!existing || saleKey > existing.key) {
-      soldMonthByLaptopId[order.laptopId] = { key: saleKey, month: saleMonth };
-    }
-  });
-
-  return laptops.filter(laptop => {
-    const itemMonth = parseMonthYear(laptop.importDate, laptop.created_at || laptop.createdAt);
-    const itemKey = monthYearToKey(itemMonth);
-
-    // 1. Máy nhập đúng tháng được chọn -> Hiển thị
-    if (itemKey === targetKey) return true;
-
-    // 2. Máy nhập ở tháng SAU -> Không hiện ở tháng cũ
-    if (itemKey > targetKey) return false;
-
-    // 3. Máy nhập trước tháng được chọn:
-    const soldInfo = soldMonthByLaptopId[laptop.id];
-
-    if (soldInfo) {
-      // Máy đã có đơn hàng liên kết
-      if (soldInfo.key === targetKey) {
-        // Bán đúng trong tháng này -> HIỈN THỊ
-        return true;
-      }
-      if (soldInfo.key < targetKey) {
-        // Bán trước tháng này -> KHÔNG HIỈN (xuất kho rồi)
-        return false;
-      }
-      // soldInfo.key > targetKey: đơn hàng ở tương lai, máy vẫn tồn kho tại tháng này
-      return !isInactiveStatus(laptop.status);
-    }
-
-    // Không có đơn hàng -> dựa vào trạng thái kho
-    return !isInactiveStatus(laptop.status);
-  });
+  return laptops.filter(l => l.monthKey === selectedMonth);
 };
 
-// Hàm lọc Đơn Hàng theo Tháng
+// Hàm lọc Đơn Hàng theo Tháng — server đã trả đúng dữ liệu theo month_key
 export const filterOrdersByMonth = (orders, selectedMonth) => {
   if (!selectedMonth || selectedMonth === 'ALL') return orders;
-
-  const targetKey = monthYearToKey(selectedMonth);
-
-  return orders.filter(order => {
-    const orderMonth = parseMonthYear(order.createdDate, order.created_at || order.createdAt);
-    const orderKey = monthYearToKey(orderMonth);
-    return orderKey === targetKey;
-  });
+  return orders.filter(o => o.monthKey === selectedMonth && o.isActive !== false);
 };
 
 // Dữ liệu mẫu giàu có ban đầu với danh sách Trạng Thái Mới
@@ -558,8 +502,8 @@ export const InventoryProvider = ({ children }) => {
       if (cancelled) return;
 
       const observedMonths = [
-        ...(Array.isArray(cloudLaptops) ? cloudLaptops.map(laptop => parseMonthYear(laptop.importDate, laptop.created_at || laptop.createdAt)) : []),
-        ...(Array.isArray(cloudOrders) ? cloudOrders.map(order => parseMonthYear(order.createdDate, order.created_at || order.createdAt)) : []),
+        ...(Array.isArray(cloudLaptops) ? cloudLaptops.map(laptop => laptop.monthKey || parseMonthYear(laptop.importDate, laptop.created_at || laptop.createdAt)) : []),
+        ...(Array.isArray(cloudOrders) ? cloudOrders.map(order => order.monthKey || parseMonthYear(order.createdDate, order.created_at || order.createdAt)) : []),
         selectedMonth !== 'ALL' ? selectedMonth : null
       ].filter(Boolean);
       setKnownMonths(prev => {
@@ -688,6 +632,20 @@ export const InventoryProvider = ({ children }) => {
     return () => { cancelled = true; window.clearInterval(refreshIntervalId); unsubscribe(); };
   }, [userId, selectedMonth]);
 
+  // Discover historical periods independently of the currently filtered dataset.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    getAuthHeaders().then(headers => fetch('/api/months', { headers }))
+      .then(response => response.ok ? response.json() : [])
+      .then(months => {
+        if (!cancelled && Array.isArray(months)) {
+          setKnownMonths(prev => [...new Set([...prev, ...months])]);
+        }
+      }).catch(error => console.error('Không thể tải danh sách tháng:', error));
+    return () => { cancelled = true; };
+  }, [userId]);
+
   // Trích xuất danh sách tất cả các tháng có dữ liệu
   const availableMonths = useMemo(() => {
     const monthSet = new Set(knownMonths);
@@ -695,12 +653,12 @@ export const InventoryProvider = ({ children }) => {
     if (selectedMonth && selectedMonth !== 'ALL') monthSet.add(selectedMonth);
 
     laptops.forEach(l => {
-      const m = parseMonthYear(l.importDate, l.created_at || l.createdAt);
+      const m = l.monthKey || parseMonthYear(l.importDate, l.created_at || l.createdAt);
       if (m) monthSet.add(m);
     });
 
     orders.forEach(o => {
-      const m = parseMonthYear(o.createdDate, o.created_at || o.createdAt);
+      const m = o.monthKey || parseMonthYear(o.createdDate, o.created_at || o.createdAt);
       if (m) monthSet.add(m);
     });
 
@@ -710,8 +668,8 @@ export const InventoryProvider = ({ children }) => {
   }, [knownMonths, laptops, orders, selectedMonth, currentMonthStr]);
 
   const filteredLaptops = useMemo(() => {
-    return filterLaptopsByMonth(laptops, selectedMonth, orders);
-  }, [laptops, selectedMonth, orders]);
+    return filterLaptopsByMonth(laptops, selectedMonth);
+  }, [laptops, selectedMonth]);
 
   const filteredOrders = useMemo(() => {
     return filterOrdersByMonth(orders, selectedMonth);
@@ -806,7 +764,7 @@ export const InventoryProvider = ({ children }) => {
     return '';
   };
 
-  const getSelectableLaptops = (currentOrderId = null) => laptops.filter(laptop => (
+  const getSelectableLaptops = (currentOrderId = null) => filterLaptopsByMonth(laptops, selectedMonth).filter(laptop => (
     laptop.id == orders.find(order => String(order.id) === String(currentOrderId))?.laptopId ||
     !getLaptopAssignmentError(laptop.id, currentOrderId)
   ));
@@ -885,6 +843,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       ? [selectedCustomer.name, selectedCustomer.phone].filter(Boolean).join(' - ')
       : '';
     const newOrder = normalizeReservation({
+      monthKey: orderData.monthKey || (selectedMonth === 'ALL' ? parseMonthYear(orderData.createdDate || todayVi()) : selectedMonth),
       id: orderData.id,
       createdDate: orderData.createdDate || todayVi(),
       saleOnline: labelToKey('saleOnline', orderData.saleOnline, _cfg()) || orderData.saleOnline || '',
@@ -921,6 +880,9 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
     const assignmentError = getLaptopAssignmentError(newOrder.laptopId);
     if (assignmentError) return { ok: false, message: assignmentError };
+    if (isOrderCommitted(newOrder) && !newOrder.laptopId) {
+      return { ok: false, message: 'Phải gán máy trước khi chuyển sang giao hàng/hoàn thành.' };
+    }
 
     // Tính profit_vnd = salePrice - giá nhập máy liên kết
     if (newOrder.laptopId && newOrder.salePrice > 0) {
@@ -966,7 +928,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     return { ok: true, order: newOrder };
   };
 
-  const updateOrder = (id, rawUpdatedFields) => {
+  const updateOrder = (id, rawUpdatedFields, { awaitPersistence = false } = {}) => {
     const updatedFields = mapLabelsToKeys(rawUpdatedFields, appOptions);
     const currentOrder = orders.find(order => String(order.id) === String(id));
     if (!currentOrder) return { ok: false, message: 'Không tìm thấy đơn hàng.' };
@@ -1010,7 +972,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     setOrders(nextOrders);
     applyAndSaveLaptopStatuses(nextOrders, false);
 
-    void saveOrderToCloud(merged).then(savedData => {
+    const persistence = saveOrderToCloud(merged).then(savedData => {
       if (!isLatestMutation()) return; // Có mutation mới hơn, bỏ qua response cũ
       const persistedOrder = savedData?.order || savedData;
       setOrders(prev => prev.map(order => String(order.id) === String(id) ? persistedOrder : order));
@@ -1024,14 +986,16 @@ const mapLabelsToKeys = (fields, appOpts) => {
         }
         return next;
       });
+      return { ok: true, order: persistedOrder };
     }).catch(error => {
       if (!isLatestMutation()) return; // Có mutation mới hơn, không rollback đè
       setOrders(prev => prev.map(order => String(order.id) === String(id) ? currentOrder : order));
       applyAndSaveLaptopStatuses(orders, false);
       const message = error?.message || 'Không thể cập nhật đơn hàng.';
-      if (typeof window !== 'undefined') window.alert(message);
+      if (!awaitPersistence && typeof window !== 'undefined') window.alert(message);
+      return { ok: false, message };
     });
-    return { ok: true, order: merged };
+    return awaitPersistence ? persistence : { ok: true, order: merged };
   };
 
   // Giữ lịch sử đơn để sau này đối soát, thay cho xóa cứng.
@@ -1158,7 +1122,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const prof = computeProfit(laptopData.retailPriceVnd, laptopData.wholesalePriceVnd, imp, laptopData.customProfit);
 
     const newItem = {
+      monthKey: laptopData.monthKey || (selectedMonth === 'ALL' ? parseMonthYear(laptopData.importDate || todayVi()) : selectedMonth),
       importDate: laptopData.importDate || todayVi(),
+      warehouseDate: laptopData.warehouseDate || '',
+      warrantySupplier: laptopData.warrantySupplier || '',
       id: laptopData.id,
       serial,
       name,
@@ -1423,6 +1390,40 @@ const mapLabelsToKeys = (fields, appOpts) => {
       : { ok: false, imported: saved.length, failed, message: `${failed} dòng không thể lưu lên cloud.` };
   };
 
+  // ─── Chuyển tháng mới ───
+  // Gọi API month-roll để chuyển các item chưa hoàn thành sang tháng mới,
+  // sau đó refresh dữ liệu và đổi selectedMonth.
+  const rollToNewMonth = useCallback(async (newMonthKey) => {
+    try {
+      const res = await fetch('/api/month-roll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
+        body: JSON.stringify({ monthKey: newMonthKey })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        return { ok: false, message: data.error || 'Chuyển tháng thất bại.' };
+      }
+      // Refresh dữ liệu từ server với tháng mới
+      const monthQuery = { monthKey: newMonthKey };
+      const [newLaptops, newOrders] = await Promise.all([
+        fetchLaptopsFromCloud(monthQuery),
+        fetchOrdersFromCloud(monthQuery),
+      ]);
+      if (newLaptops !== null) setLaptops(newLaptops);
+      if (newOrders !== null) setOrders(newOrders);
+      setSelectedMonth(newMonthKey);
+      return {
+        ok: true,
+        laptopsMoved: data.laptopsMoved,
+        ordersMoved: data.ordersMoved,
+        monthKey: newMonthKey,
+      };
+    } catch (err) {
+      return { ok: false, message: err?.message || 'Lỗi khi chuyển tháng.' };
+    }
+  }, [setSelectedMonth]);
+
   return (
     <InventoryContext.Provider value={{
       laptops: viewLaptops,
@@ -1469,7 +1470,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updateCustomer,
       createWarrantyCase,
       updateWarrantyCase,
-      importSheetData
+      importSheetData,
+      rollToNewMonth
     }}>
       {children}
     </InventoryContext.Provider>

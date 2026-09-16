@@ -1,0 +1,89 @@
+/* Tailwind v4: chỉ lấy theme + utilities, KHÔNG preflight reset
+   để không phá vỡ thiết kế gốc trong globals.css.
+   Biến shadcn dùng prefix `sh-` để không ghi đè biến --primary/--border
+   của design system cũ (định dạng hex khác HSL). */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+:root {
+  --sh-background: 0 0% 100%;
+  --sh-foreground: 222.2 84% 4.9%;
+  --sh-card: 0 0% 100%;
+  --sh-card-foreground: 222.2 84% 4.9%;
+  --sh-popover: 0 0% 100%;
+  --sh-popover-foreground: 222.2 84% 4.9%;
+  --sh-primary: 221.2 83.2% 53.3%;
+  --sh-primary-foreground: 210 40% 98%;
+  --sh-secondary: 210 40% 96.1%;
+  --sh-secondary-foreground: 222.2 47.4% 11.2%;
+  --sh-muted: 210 40% 96.1%;
+  --sh-muted-foreground: 215.4 16.3% 46.9%;
+  --sh-accent: 210 40% 96.1%;
+  --sh-accent-foreground: 222.2 47.4% 11.2%;
+  --sh-destructive: 0 84.2% 60.2%;
+  --sh-destructive-foreground: 210 40% 98%;
+  --sh-border: 214.3 31.8% 91.4%;
+  --sh-input: 214.3 31.8% 91.4%;
+  --sh-ring: 221.2 83.2% 53.3%;
+  --sh-radius: 0.5rem;
+}
+
+.dark {
+  --sh-background: 222.2 84% 4.9%;
+  --sh-foreground: 210 40% 98%;
+  --sh-card: 222.2 84% 4.9%;
+  --sh-card-foreground: 210 40% 98%;
+  --sh-popover: 222.2 84% 4.9%;
+  --sh-popover-foreground: 210 40% 98%;
+  --sh-primary: 217.2 91.2% 59.8%;
+  --sh-primary-foreground: 222.2 47.4% 11.2%;
+  --sh-secondary: 217.2 32.6% 17.5%;
+  --sh-secondary-foreground: 210 40% 98%;
+  --sh-muted: 217.2 32.6% 17.5%;
+  --sh-muted-foreground: 215 20.2% 65.1%;
+  --sh-accent: 217.2 32.6% 17.5%;
+  --sh-accent-foreground: 210 40% 98%;
+  --sh-destructive: 0 62.8% 30.6%;
+  --sh-destructive-foreground: 210 40% 98%;
+  --sh-border: 217.2 32.6% 17.5%;
+  --sh-input: 217.2 32.6% 17.5%;
+  --sh-ring: 224.3 76.3% 48%;
+}
+
+@layer base {
+  /* Replicate Tailwind preflight border reset (without the rest of preflight):
+     width 0 + style solid so Tailwind `border` utility works, but elements
+     without it keep no border (design system gốc không bị ép viền). */
+  *,
+  ::before,
+  ::after {
+    border-width: 0;
+    border-style: solid;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--sh-background));
+  --color-foreground: hsl(var(--sh-foreground));
+  --color-card: hsl(var(--sh-card));
+  --color-card-foreground: hsl(var(--sh-card-foreground));
+  --color-popover: hsl(var(--sh-popover));
+  --color-popover-foreground: hsl(var(--sh-popover-foreground));
+  --color-primary: hsl(var(--sh-primary));
+  --color-primary-foreground: hsl(var(--sh-primary-foreground));
+  --color-secondary: hsl(var(--sh-secondary));
+  --color-secondary-foreground: hsl(var(--sh-secondary-foreground));
+  --color-muted: hsl(var(--sh-muted));
+  --color-muted-foreground: hsl(var(--sh-muted-foreground));
+  --color-accent: hsl(var(--sh-accent));
+  --color-accent-foreground: hsl(var(--sh-accent-foreground));
+  --color-destructive: hsl(var(--sh-destructive));
+  --color-destructive-foreground: hsl(var(--sh-destructive-foreground));
+  --color-border: hsl(var(--sh-border));
+  --color-input: hsl(var(--sh-input));
+  --color-ring: hsl(var(--sh-ring));
+  --radius-lg: var(--sh-radius);
+  --radius-md: calc(var(--sh-radius) - 2px);
+  --radius-sm: calc(var(--sh-radius) - 4px);
+}

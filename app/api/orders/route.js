@@ -73,6 +73,12 @@ export async function POST(request) {
       }
     }
 
+    const effectiveStatus = body.orderStatus ?? oldData?.order_status;
+    const effectiveLaptopId = body.laptopId !== undefined ? body.laptopId : oldData?.laptop_id;
+    if (['prepared', 'shipping', 'done'].includes(effectiveStatus) && !effectiveLaptopId) {
+      return NextResponse.json({ error: 'Phải gán máy trước khi chuyển sang giao hàng/hoàn thành.' }, { status: 400 });
+    }
+
     let data;
     try {
       data = persistedId

@@ -61,3 +61,15 @@ Trình tự khởi tạo database dev:
 3. Cuối cùng, gõ lại lệnh này ở Terminal của VSCode để tạo tài khoản Admin: node create_admin.js
 
 Các cột tiền trong `laptops`, `orders`, `payments` và `financial_records` dùng đơn vị triệu VNĐ, khớp với các form nhập liệu của ứng dụng.
+
+`reseed_data.sql` tạo dữ liệu có `month_key` đúng định dạng bộ lọc tháng:
+
+| Tháng | Laptop | Đơn hàng |
+| --- | ---: | ---: |
+| 07/2026 | 17 | 10 |
+| 08/2026 | 17 | 10 |
+| 09/2026 | 16 | 10 |
+
+50 laptop không chia hết cho 3 nên chia gần đều 17/17/16. Mỗi tháng có 6 đơn hoàn thành, 1 đơn đã chuẩn bị, 1 đơn đang giao/COD, 1 đơn mới và 1 đơn hủy. Script tạo khách hàng, lịch sử nhập/xuất kho, thanh toán và sổ thu tương ứng; tự kiểm tra số lượng và công nợ trước khi commit.
+
+Nếu database đã có schema mới nhất, chỉ cần chạy `reseed_data.sql`; file này xóa dữ liệu nghiệp vụ và cấu hình mẫu, giữ tài khoản đăng nhập, `user_profiles` và danh mục `app_options`. Với schema cũ, áp dụng đủ migration, bao gồm `20260915_month_key.sql` và `20260915_rpc_month_key.sql`, trước khi reseed. Không cần chạy lại migration sau khi khởi tạo bằng `init_full_db.sql` mới nhất.

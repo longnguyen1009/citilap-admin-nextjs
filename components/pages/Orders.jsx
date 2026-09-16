@@ -1,22 +1,28 @@
 "use client";
 import React, { useState, useMemo, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useInventory, parseFlexibleFloat, isReservationActive, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  ShoppingCart, 
-  Plus, 
-  Search, 
-  Filter, 
-  Calendar, 
-  Download, 
-  Trash2, 
-  X, 
+import {
+  ShoppingCart,
+  Plus,
+  Search,
+  Filter,
+  Calendar,
+  Download,
+  Trash2,
+  X,
   Check,
-  History
+  History,
+  TrendingUp,
+  Package
 } from 'lucide-react';
 import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
 import ActivityTimeline from '../ActivityTimeline';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
   if (vnDate.includes('-')) return vnDate;
@@ -179,6 +185,9 @@ export default function Orders() {
 
   // Modal State (cho nút "Tạo Đơn Hàng Mới")
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState('');
   const [showTimeline, setShowTimeline] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '' });
@@ -235,10 +244,6 @@ export default function Orders() {
     gifts: 145
   });
 
-  // Keep the operational columns visible by default; secondary fields remain
-  // available through the full spreadsheet view.
-  const [isCompactView, setIsCompactView] = useState(true);
-
   const orderColumnKeys = useMemo(() => {
     const keys = [
       'id',
@@ -252,10 +257,6 @@ export default function Orders() {
       'shippingMethod',
       'salePrice'
     ];
-
-    if (isCompactView) {
-      return ['id', 'createdDate', 'note', 'laptopId', 'orderStatus', 'paymentStatus', 'deliveryStatus', 'salePrice', 'codAmount', 'customerId'];
-    }
 
     if (user?.role === 'ADMIN') {
       keys.push('profitVnd');
@@ -272,7 +273,7 @@ export default function Orders() {
     );
 
     return keys;
-  }, [user?.role, isCompactView]);
+  }, [user?.role]);
 
   const orderColumnCount = orderColumnKeys.length + 1;
 
@@ -306,21 +307,8 @@ export default function Orders() {
   };
 
   const totalTableWidth = useMemo(() => {
-    const compactWidths = {
-      id: 54,
-      createdDate: 90,
-      note: 130,
-      laptopId: 180,
-      orderStatus: 110,
-      paymentStatus: 110,
-      deliveryStatus: 100,
-      salePrice: 72,
-      codAmount: 72,
-      customerId: 120
-    };
-    const widths = isCompactView ? compactWidths : colWidths;
-    return orderColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0) + 64;
-  }, [colWidths, orderColumnKeys, isCompactView]);
+    return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0) + 64;
+  }, [colWidths, orderColumnKeys]);
 
   // Đổi máy trực tiếp trên bảng Google Sheet
   const handleDirectChangeLaptop = (ordId, newLaptopId) => {
@@ -347,10 +335,11 @@ export default function Orders() {
 
   // Mở modal tạo đơn mới
   const handleOpenAdd = () => {
+    setSaveError('');
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setFormData({
-      createdDate: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      createdDate: selectedMonth === 'ALL' ? new Date().toLocaleDateString('en-GB') : `01/${selectedMonth}`,
       saleOnline: SALE_ONLINE_OPTIONS[0],
       note: '',
       shippingMethod: SHIPPING_METHOD_OPTIONS[0],
@@ -381,6 +370,7 @@ export default function Orders() {
   };
 
   const handleOpenEdit = (order) => {
+    setSaveError('');
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setShowTimeline(false);
@@ -454,12 +444,17 @@ export default function Orders() {
   // Submit Modal Form
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    setSaveError('');
     const assignmentError = getLaptopAssignmentError(formData.laptopId, formData.id);
     if (assignmentError) {
-      alert(`⛔ ${assignmentError}`);
+      setSaveError(assignmentError);
       return;
     }
 
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
     const finalSalePrice = parseFlexibleFloat(formData.salePrice);
     const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalSalePrice);
     
@@ -475,7 +470,7 @@ export default function Orders() {
         location: 'store'
       });
       if (!result.ok) {
-        alert(`⛔ Không tạo được máy thu cũ: ${result.message}`);
+        setSaveError(`Không tạo được máy thu cũ: ${result.message}`);
         return;
       }
       tradeInLaptopId = result.laptop.id;
@@ -488,16 +483,22 @@ export default function Orders() {
       tradeInLaptopId
     };
     const result = formData.id
-      ? updateOrder(formData.id, orderPayload)
+      ? await updateOrder(formData.id, orderPayload, { awaitPersistence: true })
       : await addOrder(orderPayload);
     if (!result.ok) {
-      alert(`⛔ Không tạo được đơn: ${result.message}`);
+      setSaveError(`Không lưu được đơn: ${result.message}`);
       return;
     }
-    alert(formData.id
-      ? `✅ Đã cập nhật đơn hàng #${formData.id}.`
-      : `🎉 Đã tạo thành công Đơn hàng mới #${result.order.id}!`);
+    toast.success(formData.id
+      ? `Đã cập nhật đơn hàng #${formData.id}.`
+      : `Đã tạo đơn hàng #${result.order.id}.`);
     setIsModalOpen(false);
+    } catch (error) {
+      setSaveError(error.message || 'Không thể lưu đơn. Vui lòng thử lại.');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   // Hủy đơn nhưng vẫn giữ lịch sử để đối soát.
@@ -662,6 +663,7 @@ export default function Orders() {
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
             <select
+              aria-label="Tháng đơn hàng"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1d4ed8', background: '#eff6ff', cursor: 'pointer' }}
@@ -675,24 +677,15 @@ export default function Orders() {
         </div>
 
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button className="btn btn-sm btn-outline" onClick={handleExportCSV}>
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
             <Download size={14} /> Xuất CSV / Excel
-          </button>
+          </Button>
 
           {(user?.role === 'ADMIN' || user?.role === 'SALES' || !user) && (
-            <button data-testid="order-add-button" className="btn btn-sm btn-success" onClick={handleOpenAdd}>
+            <Button data-testid="order-add-button" variant="default" size="sm" onClick={handleOpenAdd}>
               <Plus size={16} /> Tạo Đơn Hàng Mới
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className="btn btn-sm btn-outline list-view-toggle"
-            onClick={() => setIsCompactView(prev => !prev)}
-            aria-pressed={isCompactView}
-            title={isCompactView ? 'Hiển thị toàn bộ cột' : 'Chỉ hiển thị các cột chính'}
-          >
-            {isCompactView ? 'Xem đầy đủ' : 'Xem gọn'}
-          </button>
         </div>
       </div>
 
@@ -707,12 +700,11 @@ export default function Orders() {
       <div className="card glass filter-card orders-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
         <div className="filter-grid orders-filter-grid" style={{ gap: '0.75rem' }}>
           <div className="filter-item" style={{ gridColumn: 'span 2' }}>
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
+            <label htmlFor="order-field-1" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
               <Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh
             </label>
-            <input 
-              type="text" 
-              className="filter-input form-control"
+            <Input id="order-field-1"
+              type="text"
               placeholder="Tìm theo ID (#1001), Tên/SĐT khách, Mã máy (#709), Note, Mã vận đơn..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -720,8 +712,8 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Online</label>
-            <select 
+            <label htmlFor="order-field-2" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Online</label>
+            <select id="order-field-2"
               className="form-control filter-input"
               value={filterSaleOnline} 
               onChange={e => setFilterSaleOnline(e.target.value)}
@@ -734,8 +726,8 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Đơn</label>
-            <select 
+            <label htmlFor="order-field-3" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Đơn</label>
+            <select id="order-field-3"
               className="form-control filter-input"
               value={filterOrderStatus} 
               onChange={e => setFilterOrderStatus(e.target.value)}
@@ -748,8 +740,8 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Thanh Toán</label>
-            <select 
+            <label htmlFor="order-field-4" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Trạng Thái Thanh Toán</label>
+            <select id="order-field-4"
               className="form-control filter-input"
               value={filterPaymentStatus} 
               onChange={e => setFilterPaymentStatus(e.target.value)}
@@ -762,8 +754,8 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Hình Thức Gửi Hàng</label>
-            <select 
+            <label htmlFor="order-field-5" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Hình Thức Gửi Hàng</label>
+            <select id="order-field-5"
               className="form-control filter-input"
               value={filterShippingMethod} 
               onChange={e => setFilterShippingMethod(e.target.value)}
@@ -776,8 +768,8 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Phân Loại Sản Phẩm</label>
-            <select 
+            <label htmlFor="order-field-6" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Phân Loại Sản Phẩm</label>
+            <select id="order-field-6"
               className="form-control filter-input"
               value={filterCategory} 
               onChange={e => setFilterCategory(e.target.value)}
@@ -792,9 +784,27 @@ export default function Orders() {
       </div>
 
       <div className="list-summary-strip" aria-label="Tóm tắt đơn hàng">
-        <div className="list-summary-item"><span>Đang hiển thị</span><strong>{filteredOrders.length}/{orders.length}</strong></div>
-        <div className="list-summary-item list-summary-item-warning"><span>Chờ thanh toán</span><strong>{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus))).length}</strong></div>
-        <div className="list-summary-item list-summary-item-success"><span>Hoàn thành</span><strong>{orders.filter(order => labelToKey('orderStatus', order.orderStatus) === 'done').length}</strong></div>
+        <div className="list-summary-item">
+          <div className="summary-icon"><Package size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đang hiển thị</span>
+            <strong className="summary-value">{filteredOrders.length}/{orders.length}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-warning">
+          <div className="summary-icon"><TrendingUp size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Chờ thanh toán</span>
+            <strong className="summary-value">{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus))).length}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-success">
+          <div className="summary-icon"><Check size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Hoàn thành</span>
+            <strong className="summary-value">{orders.filter(order => labelToKey('orderStatus', order.orderStatus) === 'done').length}</strong>
+          </div>
+        </div>
       </div>
 
       {/* ORDERS DATA TABLE (CỘT TRẠNG THÁI & THÀNH TOÁN LÊN TRƯỚC GIÁ BÁN, GỘP GHI CHÚ) */}
@@ -803,7 +813,7 @@ export default function Orders() {
           className="inventory-table-container list-table-scroll orders-table-container"
           ref={tableContainerRef}
         >
-          <table className={`data-table data-table-wide orders-list-table ${isCompactView ? 'is-compact' : ''} ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Order list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
+          <table className={`data-table data-table-wide orders-list-table ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Order list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative' }}>
@@ -1275,31 +1285,28 @@ export default function Orders() {
 
       {/* MODAL TẠO ĐƠN HÀNG MỚI */}
       {isModalOpen && (
-        <div className="modal-backdrop active order-modal-backdrop">
-          <div className="modal-box glass order-modal-box">
-            <div className="modal-header">
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShoppingCart className="text-primary" size={20} />
-                {formData.id ? `Chỉnh Sửa Đơn Hàng #${formData.id}` : 'Tạo Đơn Hàng Mới'}
-              </h3>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {formData.id && (
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowTimeline(!showTimeline)} style={{ height: '32px' }}>
-                    <History size={14} style={{ marginRight: '6px' }} /> Lịch sử
-                  </button>
-                )}
-                <button className="modal-close" type="button" onClick={() => setIsModalOpen(false)}>&times;</button>
-              </div>
-            </div>
-
+        <Modal
+          open={isModalOpen}
+          onOpenChange={(o) => !o && !isSaving && setIsModalOpen(false)}
+          title={
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShoppingCart className="text-primary" size={20} />
+              {formData.id ? `Chỉnh Sửa Đơn Hàng #${formData.id}` : 'Tạo Đơn Hàng Mới'}
+            </span>
+          }
+          maxWidth="max-w-5xl"
+          description={formData.id ? 'Cập nhật đơn hàng trong kỳ đã lưu.' : `Lưu vào tháng ${selectedMonth === 'ALL' ? 'theo ngày tạo đơn' : selectedMonth}.`}
+          footer={null}
+        >
+            <div className="modal-header" style={{ display: 'none' }} />
             <div className="order-modal-scroll">
               <form onSubmit={handleSubmitForm} className="order-modal-form">
                 <div className="order-modal-grid">
                 
                 {/* 1. Ngày tạo đơn */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>1. Ngày Tạo Đơn</label>
-                  <input 
+                  <label htmlFor="order-field-7" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Ngày Tạo Đơn</label>
+                  <input id="order-field-7"
                     type="date" 
                     data-testid="order-created-date-input"
                     className="form-control" 
@@ -1311,8 +1318,8 @@ export default function Orders() {
 
                 {/* 3. SALE Online */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>3. SALE Online</label>
-                  <select 
+                  <label htmlFor="order-field-8" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Online</label>
+                  <select id="order-field-8"
                     data-testid="order-sale-online-select"
                     className="form-control" 
                     value={formData.saleOnline} 
@@ -1326,8 +1333,8 @@ export default function Orders() {
 
                 {/* Phân loại Đơn hàng (Phase 2) */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#8b5cf6' }}>Loại Đơn Hàng</label>
-                  <select 
+                  <label htmlFor="order-field-9" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#8b5cf6' }}>Loại Đơn Hàng</label>
+                  <select id="order-field-9"
                     data-testid="order-type-select"
                     className="form-control" 
                     value={formData.orderType} 
@@ -1342,8 +1349,8 @@ export default function Orders() {
                 {getFormOptionKey('orderType', formData.orderType) === 'trade_in' && (
                   <>
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Tên Máy Khách Bán (Trade-in)</label>
-                      <input 
+                      <label htmlFor="order-field-10" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Tên Máy Khách Bán (Trade-in)</label>
+                      <input id="order-field-10"
                         type="text" 
                         className="form-control" 
                         value={formData.tradeInLaptopName} 
@@ -1353,8 +1360,8 @@ export default function Orders() {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Giá Thu Lại (tr VNĐ)</label>
-                      <input 
+                      <label htmlFor="order-field-11" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Giá Thu Lại (tr VNĐ)</label>
+                      <input id="order-field-11"
                         type="number" step="any"
                         className="form-control" 
                         value={formData.tradeInPrice} 
@@ -1368,8 +1375,8 @@ export default function Orders() {
 
                 {/* 4. GHI CHÚ ĐƠN HÀNG (GỘP THÀNH 1 THÀNH PHẦN) */}
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>4. Ghi Chú Đơn Hàng</label>
-                  <textarea 
+                  <label htmlFor="order-field-12" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Ghi Chú Đơn Hàng</label>
+                  <textarea id="order-field-12"
                     data-testid="order-note-input"
                     className="form-control" 
                     rows={2}
@@ -1381,10 +1388,10 @@ export default function Orders() {
 
                 {/* 10. Chọn Máy trong kho */}
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
+                  <label htmlFor="order-field-13" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
                     10. Máy Trong Kho (ID & Cấu hình)
                   </label>
-                  <select 
+                  <select id="order-field-13"
                     data-testid="order-laptop-select"
                     className="form-control" 
                     value={formData.laptopId} 
@@ -1403,8 +1410,8 @@ export default function Orders() {
 
                 {/* 7. TRẠNG THÁI ĐƠN */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>7. Trạng Thái Đơn Hàng</label>
-                  <select 
+                  <label htmlFor="order-field-14" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Trạng Thái Đơn Hàng</label>
+                  <select id="order-field-14"
                     data-testid="order-status-select"
                     className="form-control" 
                     value={formData.orderStatus} 
@@ -1418,8 +1425,8 @@ export default function Orders() {
 
                 {/* 8. TRẠNG THÁI Thanh toán */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>8. Trạng Thái Thanh Toán</label>
-                  <select 
+                  <label htmlFor="order-field-15" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Trạng Thái Thanh Toán</label>
+                  <select id="order-field-15"
                     data-testid="order-payment-status-select"
                     className="form-control" 
                     value={formData.paymentStatus} 
@@ -1433,8 +1440,8 @@ export default function Orders() {
 
                 {/* Phương thức thanh toán (Phase 2) */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phương Thức TT</label>
-                  <select 
+                  <label htmlFor="order-field-16" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phương Thức TT</label>
+                  <select id="order-field-16"
                     data-testid="order-payment-method-select"
                     className="form-control" 
                     value={formData.paymentMethod} 
@@ -1448,8 +1455,8 @@ export default function Orders() {
 
                 {getFormOptionKey('paymentMethod', formData.paymentMethod) === 'card' && (
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phí Quẹt Thẻ (tr VNĐ)</label>
-                    <input 
+                    <label htmlFor="order-field-17" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#ec4899' }}>Phí Quẹt Thẻ (tr VNĐ)</label>
+                    <input id="order-field-17"
                       type="number" step="any"
                       className="form-control" 
                       value={formData.creditCardFee} 
@@ -1461,8 +1468,8 @@ export default function Orders() {
                 
                 {/* 9. Trạng thái giao hàng */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>9. Trạng Thái Giao Hàng</label>
-                  <select 
+                  <label htmlFor="order-field-18" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Trạng Thái Giao Hàng</label>
+                  <select id="order-field-18"
                     data-testid="order-delivery-status-select"
                     className="form-control" 
                     value={formData.deliveryStatus} 
@@ -1476,8 +1483,8 @@ export default function Orders() {
 
                 {/* 6. GỬI HÀNG */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>6. Phương Thức Gửi Hàng</label>
-                  <select 
+                  <label htmlFor="order-field-19" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Phương Thức Gửi Hàng</label>
+                  <select id="order-field-19"
                     data-testid="order-shipping-method-select"
                     className="form-control" 
                     value={formData.shippingMethod} 
@@ -1491,10 +1498,11 @@ export default function Orders() {
 
                 {/* 11. GIÁ BÁN */}
                   <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#2563eb' }}>11. Giá Bán Thực Tế (triệu VNĐ)</label>
-                  <input 
+                  <label htmlFor="order-field-20" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#2563eb' }}>Giá Bán Thực Tế (triệu VNĐ)</label>
+                  <input id="order-field-20"
                     type="number" 
-                    data-testid="order-sale-price-input"
+                    min="0"
+                        data-testid="order-sale-price-input"
                     step="any" 
                     className="form-control" 
                     value={formData.salePrice} 
@@ -1506,8 +1514,8 @@ export default function Orders() {
 
                 {/* 12. CỌC */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>12. Thông Tin Cọc</label>
-                  <input 
+                  <label htmlFor="order-field-21" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Thông Tin Cọc</label>
+                  <input id="order-field-21"
                     type="text" 
                     data-testid="order-deposit-note-input"
                     className="form-control" 
@@ -1520,8 +1528,8 @@ export default function Orders() {
                 {getFormOptionKey('paymentStatus', formData.paymentStatus) === 'deposited' && (
                   <>
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Số Tiền Cọc (triệu VNĐ)</label>
-                      <input
+                      <label htmlFor="order-field-22" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Số Tiền Cọc (triệu VNĐ)</label>
+                      <input id="order-field-22"
                         type="number"
                         data-testid="order-deposit-amount-input"
                         step="any"
@@ -1534,8 +1542,8 @@ export default function Orders() {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Giữ Máy Đến</label>
-                      <input
+                      <label htmlFor="order-field-23" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Giữ Máy Đến</label>
+                      <input id="order-field-23"
                         type="datetime-local"
                         data-testid="order-reservation-input"
                         className="form-control"
@@ -1550,10 +1558,11 @@ export default function Orders() {
 
                 {/* 13. THU HỘ COD */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#059669' }}>13. Thu Hộ COD (triệu VNĐ)</label>
-                  <input 
+                  <label htmlFor="order-field-24" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#059669' }}>Thu Hộ COD (triệu VNĐ)</label>
+                  <input id="order-field-24"
                     type="number" 
-                    data-testid="order-cod-amount-input"
+                    min="0"
+                        data-testid="order-cod-amount-input"
                     step="any" 
                     className="form-control" 
                     value={formData.codAmount} 
@@ -1564,10 +1573,10 @@ export default function Orders() {
 
                 {/* 17. KHÁCH HÀNG */}
                 <div className="form-group" style={{ gridColumn: 'span 4' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                  <label htmlFor="order-field-25" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>
                     17. Khách Hàng <button type="button" className="inline-add-button" onClick={() => setShowCustomerForm(prev => !prev)}>{showCustomerForm ? '× Đóng' : '+ Thêm mới'}</button>
                   </label>
-                  <select 
+                  <select id="order-field-25"
                     data-testid="order-customer-select"
                     className="form-control" 
                     value={formData.customerId} 
@@ -1602,15 +1611,15 @@ export default function Orders() {
                         value={newCustomer.address}
                         onChange={e => setNewCustomer(prev => ({ ...prev, address: e.target.value }))}
                       />
-                      <button type="button" data-testid="order-new-customer-save-button" className="btn btn-sm btn-primary" onClick={handleCreateCustomer}>Lưu khách hàng</button>
+                      <Button type="button" size="sm" data-testid="order-new-customer-save-button" onClick={handleCreateCustomer}>Lưu khách hàng</Button>
                     </div>
                   )}
                 </div>
 
                 {/* 18. GHI CHÚ KHÁCH HÀNG / YÊU CẦU ĐẶC BIỆT */}
                 <div className="form-group" style={{ gridColumn: 'span 4' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>18. Ghi Chú Yêu Cầu Của Khách</label>
-                  <input 
+                  <label htmlFor="order-field-26" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Ghi Chú Yêu Cầu Của Khách</label>
+                  <input id="order-field-26"
                     type="text" 
                     data-testid="order-customer-note-input"
                     className="form-control" 
@@ -1622,8 +1631,8 @@ export default function Orders() {
 
                 {/* 19. MÃ VẬN ĐƠN */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>19. Mã Vận Đơn (ViettelPost / SPX...)</label>
-                  <input 
+                  <label htmlFor="order-field-27" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Mã Vận Đơn (ViettelPost / SPX...)</label>
+                  <input id="order-field-27"
                     type="text" 
                     data-testid="order-tracking-input"
                     className="form-control" 
@@ -1635,8 +1644,8 @@ export default function Orders() {
 
                 {/* 20. Ngày gửi hàng */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>20. Ngày Gửi Hàng Thực Tế</label>
-                  <input 
+                  <label htmlFor="order-field-28" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Ngày Gửi Hàng Thực Tế</label>
+                  <input id="order-field-28"
                     type="date" 
                     data-testid="order-ship-date-input"
                     className="form-control" 
@@ -1647,8 +1656,8 @@ export default function Orders() {
 
                 {/* 14. CÀI ĐẶT */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>14. Yêu Cầu Cài Đặt</label>
-                  <input 
+                  <label htmlFor="order-field-29" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Yêu Cầu Cài Đặt</label>
+                  <input id="order-field-29"
                     type="text" 
                     data-testid="order-setup-note-input"
                     className="form-control" 
@@ -1660,8 +1669,8 @@ export default function Orders() {
 
                 {/* 15. Bảo hành */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>15. Thời Gian Bảo Hành</label>
-                  <input 
+                  <label htmlFor="order-field-30" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Thời Gian Bảo Hành</label>
+                  <input id="order-field-30"
                     type="text" 
                     data-testid="order-warranty-input"
                     className="form-control" 
@@ -1673,8 +1682,8 @@ export default function Orders() {
 
                 {/* 16. QUÀ TẶNG */}
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>16. Quà Tặng Kèm</label>
-                  <select 
+                  <label htmlFor="order-field-31" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Quà Tặng Kèm</label>
+                  <select id="order-field-31"
                     data-testid="order-gift-select"
                     className="form-control" 
                     value={formData.gifts} 
@@ -1689,24 +1698,24 @@ export default function Orders() {
               </div>
 
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
+                {saveError && <p role="alert" className="form-save-error">{saveError}</p>}
+                <Button type="button" variant="outline" disabled={isSaving} onClick={() => setIsModalOpen(false)}>
                   Hủy Bỏ
-                </button>
-                <button type="submit" data-testid="order-save-button" className="btn btn-success">
-                  <Check size={16} /> Lưu Tạo Đơn Hàng
-                </button>
+                </Button>
+                <Button type="submit" disabled={isSaving} data-testid="order-save-button">
+                  <Check size={16} /> {isSaving ? 'Đang lưu...' : formData.id ? 'Lưu thay đổi' : 'Lưu Tạo Đơn Hàng'}
+                </Button>
               </div>
             </form>
-            
+
             {showTimeline && formData.id && (
               <div className="order-modal-timeline">
                 <ActivityTimeline entityType="ORDER" entityId={formData.id} />
               </div>
             )}
           </div>
-        </div>
-      </div>
-    )}
+        </Modal>
+      )}
     </section>
   );
 }

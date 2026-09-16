@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./globals.tw.css";
 import Providers from "../components/Providers";
 
 export const metadata = {

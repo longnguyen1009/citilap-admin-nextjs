@@ -1,4 +1,6 @@
 -- DEV ONLY: XÓA TRẮNG TOÀN BỘ CƠ SỞ DỮ LIỆU. KHÔNG CHẠY TRÊN DATABASE ĐANG CÓ DỮ LIỆU.
+-- Includes month_key columns/indexes and order RPC support. Run reseed_data.sql
+-- afterward for 50 laptops and 30 orders across 07/2026, 08/2026, 09/2026.
 BEGIN;
 
 DROP SCHEMA public CASCADE;
@@ -111,6 +113,7 @@ CREATE TABLE laptops (
   seller VARCHAR(100),
   is_active BOOLEAN DEFAULT true,
   parts_history JSONB DEFAULT '[]'::jsonb,
+  month_key VARCHAR(10),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   CONSTRAINT laptops_non_negative_values CHECK (
@@ -171,6 +174,7 @@ CREATE TABLE orders (
   reservation_expires_at TIMESTAMP WITH TIME ZONE,
   cancel_reason TEXT,
   cancelled_at TIMESTAMP WITH TIME ZONE,
+  month_key VARCHAR(10),
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
@@ -356,6 +360,8 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX orders_laptop_active_idx ON orders (laptop_id, is_active, order_status, payment_status);
 CREATE INDEX laptops_active_status_import_date_idx ON laptops (is_active, status, import_date DESC);
+CREATE INDEX idx_laptops_month_key ON laptops (month_key);
+CREATE INDEX idx_orders_month_key ON orders (month_key);
 CREATE INDEX warranty_cases_laptop_created_at_idx ON warranty_cases (laptop_id, created_at DESC);
 CREATE INDEX stock_movements_laptop_created_at_idx ON stock_movements (laptop_id, created_at DESC);
 
@@ -873,7 +879,7 @@ BEGIN
     credit_card_fee, profit_vnd, trade_in_laptop_id, customer_id, customer_info,
     customer_address, tracking_code, ship_date, setup_note, warranty, gifts,
     laptop_locked, reservation_expires_at, cancel_reason, cancelled_at, is_active,
-    created_at, updated_at
+    month_key, created_at, updated_at
   ) VALUES (
     v_input.created_date, v_input.sale_online, v_input.sale_offline, v_input.note,
     v_input.order_type, v_input.order_status, v_input.payment_status,
@@ -884,7 +890,9 @@ BEGIN
     v_input.customer_info, v_input.customer_address, v_input.tracking_code,
     v_input.ship_date, v_input.setup_note, v_input.warranty, v_input.gifts,
     v_input.laptop_locked, v_input.reservation_expires_at, v_input.cancel_reason,
-    v_input.cancelled_at, v_input.is_active, v_input.created_at, v_input.updated_at
+    v_input.cancelled_at, v_input.is_active,
+    COALESCE(NULLIF(btrim(v_input.month_key), ''), TO_CHAR(CURRENT_DATE, 'MM/YYYY')),
+    v_input.created_at, v_input.updated_at
   ) RETURNING * INTO v_order;
 
   -- Keep the order opening balance and the payment ledger in sync.
@@ -1085,6 +1093,7 @@ BEGIN
       cancel_reason = v_next.cancel_reason,
       cancelled_at = v_next.cancelled_at,
       is_active = v_next.is_active,
+      month_key = COALESCE(NULLIF(btrim(v_next.month_key), ''), v_existing.month_key, TO_CHAR(CURRENT_DATE, 'MM/YYYY')),
       updated_at = v_next.updated_at
   WHERE id = v_order_id
   RETURNING * INTO v_order;

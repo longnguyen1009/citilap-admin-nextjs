@@ -91,6 +91,7 @@ export default function MainLayout({ children }) {
           {user?.role === 'ADMIN' && (
             <Link 
               href="/" 
+              aria-current={pathname === '/' ? 'page' : undefined}
               className="nav-item" 
               title={isCollapsed ? "Tổng Quan Dashboard" : ""}
             >
@@ -102,7 +103,8 @@ export default function MainLayout({ children }) {
           {/* All Roles */}
           <Link 
             href="/inventory" 
-            className="nav-item"
+            aria-current={pathname === '/inventory' ? 'page' : undefined}
+              className="nav-item"
             title={isCollapsed ? "Kho Laptop" : ""}
           >
             <Package size={20} />
@@ -113,6 +115,7 @@ export default function MainLayout({ children }) {
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
             <Link 
               href="/orders" 
+              aria-current={pathname === '/orders' ? 'page' : undefined}
               className="nav-item"
               title={isCollapsed ? "Đơn Hàng & Xuất Bán" : ""}
             >
@@ -124,6 +127,7 @@ export default function MainLayout({ children }) {
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
             <Link
               href="/payments"
+              aria-current={pathname === '/payments' ? 'page' : undefined}
               className="nav-item"
               title={isCollapsed ? "Thanh toán & Tài chính" : ""}
             >
@@ -135,7 +139,8 @@ export default function MainLayout({ children }) {
           {/* All Roles */}
           <Link 
             href="/warranty" 
-            className="nav-item"
+            aria-current={pathname === '/warranty' ? 'page' : undefined}
+              className="nav-item"
             title={isCollapsed ? "Bảo Hành & Đổi Trả" : ""}
           >
             <Wrench size={20} />
@@ -146,6 +151,7 @@ export default function MainLayout({ children }) {
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
             <Link 
               href="/customers" 
+              aria-current={pathname === '/customers' ? 'page' : undefined}
               className="nav-item"
               title={isCollapsed ? "Khách Hàng" : ""}
             >
@@ -157,6 +163,7 @@ export default function MainLayout({ children }) {
           {user?.role === 'ADMIN' && (
             <Link 
               href="/settings" 
+              aria-current={pathname === '/settings' ? 'page' : undefined}
               className="nav-item"
               title={isCollapsed ? "Cài đặt Thuộc tính" : ""}
             >
@@ -231,6 +238,11 @@ export default function MainLayout({ children }) {
 
       {/* Main Content */}
       <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
+        <nav className="mobile-navigation" aria-label="Điều hướng trên điện thoại">
+          <Link href="/inventory" aria-current={pathname === '/inventory' ? 'page' : undefined}><Package size={18} /> Kho laptop</Link>
+          {(user?.role === 'ADMIN' || user?.role === 'SALES') && <Link href="/orders" aria-current={pathname === '/orders' ? 'page' : undefined}><ShoppingCart size={18} /> Đơn hàng</Link>}
+          <button type="button" onClick={handleLogout} aria-label="Đăng xuất"><LogOut size={18} /></button>
+        </nav>
         {children}
       </main>
     </div>

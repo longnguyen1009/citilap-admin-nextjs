@@ -16,6 +16,10 @@ import {
 import TechCheckModal from '../TechCheckModal';
 import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
 import ActivityTimeline from '../ActivityTimeline';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Modal } from '@/components/ui/modal';
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -79,7 +83,7 @@ export default function Inventory() {
   // State quản lý độ rộng của từng cột (Mặc định chuẩn kích thước như ảnh yêu cầu của User)
   const [colWidths, setColWidths] = useState({
     id: 65,
-    importDate: 48,
+    importDate: 76,
     name: 420,
     location: 95,
     category: 180,
@@ -94,12 +98,8 @@ export default function Inventory() {
     exchangeRate: 70,
     importPriceVnd: 95,
     trackingCode: 160,
-    actions: 70
+    actions: 92
   });
-
-  // Default to a focused list so the fields used every day stay visible without
-  // forcing a wide horizontal scan. The full spreadsheet remains one click away.
-  const [isCompactView, setIsCompactView] = useState(true);
 
   const inventoryColumnKeys = useMemo(() => {
     const keys = [
@@ -116,19 +116,13 @@ export default function Inventory() {
       'location'
     ];
 
-    if (isCompactView) {
-      return user?.role === 'ADMIN'
-        ? ['id', 'actions', 'importDate', 'name', 'status', 'category', 'location', 'importPriceVnd']
-        : ['id', 'actions', 'importDate', 'name', 'status', 'category', 'location'];
-    }
-
     if (user?.role === 'ADMIN') {
       keys.push('priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd');
     }
 
     keys.push('trackingCode');
     return keys;
-  }, [user?.role, isCompactView]);
+  }, [user?.role]);
 
   const startResizing = (e, colKey) => {
     e.preventDefault();
@@ -160,19 +154,8 @@ export default function Inventory() {
   };
 
   const totalTableWidth = useMemo(() => {
-    const compactWidths = {
-      id: 58,
-      actions: 64,
-      importDate: 68,
-      name: 420,
-      status: 130,
-      category: 150,
-      location: 90,
-      importPriceVnd: 95
-    };
-    const widths = isCompactView ? compactWidths : colWidths;
-    return inventoryColumnKeys.reduce((total, key) => total + (widths[key] || 0), 0);
-  }, [colWidths, inventoryColumnKeys, isCompactView]);
+    return inventoryColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0);
+  }, [colWidths, inventoryColumnKeys]);
 
   const inventoryColumnCount = inventoryColumnKeys.length;
 
@@ -190,6 +173,9 @@ export default function Inventory() {
   const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [editingLaptop, setEditingLaptop] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState('');
   const [isTechCheckModalOpen, setIsTechCheckModalOpen] = useState(false);
   const [techCheckLaptop, setTechCheckLaptop] = useState(null);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -326,7 +312,9 @@ export default function Inventory() {
     const totalCount = laptops.length;
     const availableCount = laptops.filter(l => l.status === 'available' || l.status === 'Chưa bán' || l.status === 'Đã nhập kho').length;
     const soldCount = laptops.filter(l => l.status === 'sold' || l.status === D.laptopSold).length;
-    const totalImportValueVnd = laptops.reduce((sum, l) => sum + (l.importPriceVnd || 0), 0);
+    const totalImportValueVnd = laptops
+      .filter(l => !['sold', 'returned_cn', 'skipped'].includes(labelToKey('laptopStatus', l.status)))
+      .reduce((sum, l) => sum + (Number(l.importPriceVnd) || 0), 0);
 
     return { totalCount, availableCount, soldCount, totalImportValueVnd };
   }, [laptops]);
@@ -391,9 +379,11 @@ export default function Inventory() {
 
   // Mở Modal Thêm mới
   const handleOpenAdd = () => {
+    setSaveError('');
     setEditingLaptop(null);
     setFormData({
       ...emptyForm,
+      importDate: selectedMonth === 'ALL' ? emptyForm.importDate : `01/${selectedMonth}`,
       category: CATEGORY_OPTIONS[0]?.key || '',
       exchangeRate: formulaConfig.defaultRate
     });
@@ -403,6 +393,7 @@ export default function Inventory() {
 
   // Mở Modal Chỉnh Sửa
   const handleOpenEdit = (laptop) => {
+    setSaveError('');
     setEditingLaptop(laptop);
     setFormData({
       importDate: laptop.importDate || '',
@@ -434,28 +425,39 @@ export default function Inventory() {
   // Lưu Form Thêm / Sửa
   const handleSaveLaptop = async (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    setSaveError('');
     if (!formData.name.trim()) {
       alert('Vui lòng nhập Tên Máy!');
       return;
     }
 
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
     const computedPayload = !formData.importPriceManuallyEdited && liveImportPrice > 0
       ? { ...formData, importPriceVnd: liveImportPrice }
       : formData;
     if (editingLaptop) {
       const result = await updateLaptop(editingLaptop.id, computedPayload);
       if (!result.ok) {
-        alert(`⛔ ${result.message}`);
+        setSaveError(result.message);
         return;
       }
     } else {
       const result = await addLaptop(computedPayload);
       if (!result.ok) {
-        alert(`⛔ ${result.message}`);
+        setSaveError(result.message);
         return;
       }
     }
     setIsAddModalOpen(false);
+    } catch (error) {
+      setSaveError(error.message || 'Không thể lưu máy. Vui lòng thử lại.');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   // Xóa Laptop
@@ -630,6 +632,7 @@ export default function Inventory() {
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
             <select
+              aria-label="Tháng kho laptop"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1d4ed8', background: '#eff6ff', cursor: 'pointer' }}
@@ -643,22 +646,13 @@ export default function Inventory() {
         </div>
         
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button className="btn btn-sm btn-secondary" onClick={() => setIsSyncModalOpen(true)}>
+          <Button variant="secondary" size="sm" onClick={() => setIsSyncModalOpen(true)}>
             <RefreshCw size={14} /> Google Sheet
-          </button>
+          </Button>
 
-          <button data-testid="product-add-button" className="btn btn-sm btn-success" onClick={handleOpenAdd}>
+          <Button data-testid="product-add-button" variant="default" size="sm" onClick={handleOpenAdd}>
             <Plus size={16} /> Thêm Máy Mới
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline list-view-toggle"
-            onClick={() => setIsCompactView(prev => !prev)}
-            aria-pressed={isCompactView}
-            title={isCompactView ? 'Hiển thị toàn bộ cột' : 'Chỉ hiển thị các cột chính'}
-          >
-            {isCompactView ? 'Xem đầy đủ' : 'Xem gọn'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -689,11 +683,35 @@ export default function Inventory() {
       )}
 
       <div className="list-summary-strip" aria-label="Tóm tắt kho">
-        <div className="list-summary-item"><span>Tổng máy</span><strong>{stats.totalCount}</strong></div>
-        <div className="list-summary-item list-summary-item-success"><span>Sẵn hàng</span><strong>{stats.availableCount}</strong></div>
-        <div className="list-summary-item list-summary-item-muted"><span>Đã bán</span><strong>{stats.soldCount}</strong></div>
+        <div className="list-summary-item">
+          <div className="summary-icon"><Layers size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Tổng máy</span>
+            <strong className="summary-value">{stats.totalCount}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-success">
+          <div className="summary-icon"><CheckCircle2 size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Sẵn hàng</span>
+            <strong className="summary-value">{stats.availableCount}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-muted">
+          <div className="summary-icon"><Box size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đã bán</span>
+            <strong className="summary-value">{stats.soldCount}</strong>
+          </div>
+        </div>
         {user?.role === 'ADMIN' && (
-          <div className="list-summary-item list-summary-item-value"><span>Giá nhập tồn</span><strong>{stats.totalImportValueVnd.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tr</strong></div>
+          <div className="list-summary-item list-summary-item-value">
+            <div className="summary-icon"><Calculator size={15} /></div>
+            <div className="summary-text">
+              <span className="summary-label">Giá nhập tồn</span>
+              <strong className="summary-value">{stats.totalImportValueVnd.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tr</strong>
+            </div>
+          </div>
         )}
       </div>
 
@@ -701,11 +719,10 @@ export default function Inventory() {
       <div className="card glass filter-card inventory-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
         <div className="filter-grid inventory-filter-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'flex-end' }}>
           <div className="filter-item" style={{ flex: '1 1 220px' }}>
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}><Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh</label>
-            <input 
-              type="text" 
-              className="filter-input"
-              placeholder="Tìm theo Tên máy, Mã ID, Serial, Mã vận đơn, Ngày nhập..." 
+            <label htmlFor="inventory-field-1" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}><Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh</label>
+            <Input id="inventory-field-1"
+              type="text"
+              placeholder="Tìm theo Tên máy, Mã ID, Serial, Mã vận đơn, Ngày nhập..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -713,7 +730,7 @@ export default function Inventory() {
 
           {/* MULTI-SELECT BỘ LỌC PHÂN LOẠI MÁY (DẠNG XỔ XUỐNG DIRECT INLINE DROPDOWN) */}
           <div className="filter-item" ref={catDropdownRef} style={{ flex: '0 1 170px', position: 'relative' }}>
-            <label style={{ fontSize: '0.75rem', marginBottom: '0.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label htmlFor="inventory-field-2" style={{ fontSize: '0.75rem', marginBottom: '0.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span><Tag size={13} style={{ display: 'inline', marginRight: '3px' }} /> Phân loại máy (Chọn nhiều)</span>
             </label>
             
@@ -830,7 +847,7 @@ export default function Inventory() {
 
           <div className="filter-item" style={{ flex: '0 1 130px' }}>
             <label style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Layers size={11} style={{ display: 'inline', marginRight: '3px' }} /> Vị trí kho</label>
-            <select className="filter-input" value={selectedLoc} onChange={e => setSelectedLoc(e.target.value)}>
+            <select id="inventory-field-2" className="filter-input" value={selectedLoc} onChange={e => setSelectedLoc(e.target.value)}>
               <option value="ALL">-- Tất cả Vị trí --</option>
               {getOptions('laptopLocation').map(loc => (
                 <option key={loc.key} value={loc.key}>{loc.label}</option>
@@ -839,8 +856,8 @@ export default function Inventory() {
           </div>
 
           <div className="filter-item" style={{ flex: '0 1 140px' }}>
-            <label style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Trạng thái</label>
-            <select className="filter-input" value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}>
+            <label htmlFor="inventory-field-3" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Trạng thái</label>
+            <select id="inventory-field-3" className="filter-input" value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}>
               <option value="ALL">-- Tất cả Trạng thái --</option>
               {getOptions('laptopStatus').map(st => (
                 <option key={st.key} value={st.key}>{st.label}</option>
@@ -849,12 +866,12 @@ export default function Inventory() {
           </div>
 
           <div className="filter-item" style={{ flex: '0 1 150px' }}>
-            <label style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Từ ngày</label>
-            <input type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateFrom} onChange={e => setWarehouseDateFrom(e.target.value)} />
+            <label htmlFor="inventory-field-4" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Từ ngày</label>
+            <input id="inventory-field-4" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateFrom} onChange={e => setWarehouseDateFrom(e.target.value)} />
           </div>
           <div className="filter-item" style={{ flex: '0 1 150px' }}>
-            <label style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Đến ngày</label>
-            <input type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateTo} onChange={e => setWarehouseDateTo(e.target.value)} />
+            <label htmlFor="inventory-field-5" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Đến ngày</label>
+            <input id="inventory-field-5" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateTo} onChange={e => setWarehouseDateTo(e.target.value)} />
           </div>
         </div>
 
@@ -902,7 +919,7 @@ export default function Inventory() {
           className="inventory-table-container list-table-scroll"
           ref={tableContainerRef}
         >
-          <table className={`data-table data-table-wide inventory-list-table ${isCompactView ? 'is-compact' : ''} ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Inventory product list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
+          <table className={`data-table data-table-wide inventory-list-table ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Inventory product list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative', textAlign: 'center' }}>
@@ -1112,23 +1129,17 @@ export default function Inventory() {
 
       {/* MODAL THÊM / SỬA CHI TIẾT LAPTOP */}
       {isAddModalOpen && (
-        <div className="modal-backdrop active">
-          <div className="modal-box glass" style={{ maxWidth: '880px' }}>
-            <div className="modal-header">
-              <h3>{editingLaptop ? `Chỉnh Sửa Máy ${editingLaptop.id}` : 'Thêm Máy Mới Vào Kho'}</h3>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {editingLaptop && (
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowTimeline(!showTimeline)} style={{ height: '32px' }}>
-                    <History size={14} style={{ marginRight: '6px' }} /> Lịch sử
-                  </button>
-                )}
-                <button className="modal-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'row', minHeight: '500px', maxHeight: '80vh', overflow: 'hidden' }}>
-              <form onSubmit={handleSaveLaptop} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-                <div className="modal-body" style={{ flex: 1 }}>
+        <Modal
+          open={isAddModalOpen}
+          onOpenChange={(o) => !o && !isSaving && setIsAddModalOpen(false)}
+          title={editingLaptop ? `Chỉnh Sửa Máy ${editingLaptop.id}` : 'Thêm Máy Mới Vào Kho'}
+          description={editingLaptop ? 'Cập nhật thông tin máy trong kỳ đã lưu.' : `Lưu vào tháng ${selectedMonth === 'ALL' ? 'theo ngày nhập' : selectedMonth}.`}
+          maxWidth="max-w-3xl"
+          footer={null}
+        >
+          <div className="inventory-editor" style={{ display: 'flex', flexDirection: 'row', minHeight: 0, overflow: 'hidden' }}>
+            <form onSubmit={handleSaveLaptop} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              <div className="modal-body" style={{ flex: 1 }}>
                 {/* SECTION 1: THÔNG TIN CƠ BẢN */}
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Box size={16} /> 1. Thông Tin Máy & Phân Loại
@@ -1136,42 +1147,40 @@ export default function Inventory() {
                 
                 <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div className="form-group">
-                    <label>Mã ID</label>
-                      <input
+                    <label htmlFor="inventory-field-6">Mã ID</label>
+                      <Input id="inventory-field-6"
                         type="text"
                         data-testid="product-id-input"
+                        disabled
                         value={formData.id}
                         onChange={e => setFormData({ ...formData, id: e.target.value })}
-                        placeholder="#75"
-                        className="form-control"
-                    />
+                        placeholder="Tự động tạo"
+                      />
                   </div>
 
                   <div className="form-group">
-                    <label>Ngày nhập (T.Quốc)</label>
-                      <input
+                    <label htmlFor="inventory-field-7">Ngày nhập (T.Quốc)</label>
+                      <Input id="inventory-field-7"
                         type="date"
                         data-testid="product-import-date-input"
                         value={toYMD(formData.importDate)}
                         onChange={e => setFormData({ ...formData, importDate: toVnFormat(e.target.value) })}
-                        className="form-control"
-                    />
+                      />
                   </div>
-                  
+
                   <div className="form-group">
-                    <label>Ngày nhập kho</label>
-                      <input
+                    <label htmlFor="inventory-field-8">Ngày nhập kho</label>
+                      <Input id="inventory-field-8"
                         type="date"
                         data-testid="product-warehouse-date-input"
                         value={toYMD(formData.warehouseDate)}
                         onChange={e => setFormData({ ...formData, warehouseDate: toVnFormat(e.target.value) })}
-                        className="form-control"
-                    />
+                      />
                   </div>
 
                   <div className="form-group">
-                    <label>Trạng thái máy</label>
-                    <select 
+                    <label htmlFor="inventory-field-9">Trạng thái máy</label>
+                    <select id="inventory-field-9"
                       value={formData.status} 
                       onChange={e => setFormData({ ...formData, status: e.target.value })}
                       className="form-control"
@@ -1185,8 +1194,8 @@ export default function Inventory() {
 
                 <div className="form-row mt-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div className="form-group">
-                    <label>Phân loại máy</label>
-                    <select 
+                    <label htmlFor="inventory-field-10">Phân loại máy</label>
+                    <select id="inventory-field-10"
                       value={formData.category} 
                       onChange={e => setFormData({ ...formData, category: e.target.value })}
                       className="form-control"
@@ -1199,8 +1208,8 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label>Nguồn nhập</label>
-                    <select 
+                    <label htmlFor="inventory-field-11">Nguồn nhập</label>
+                    <select id="inventory-field-11"
                       value={formData.seller} 
                       onChange={e => setFormData({ ...formData, seller: e.target.value })}
                       className="form-control"
@@ -1212,43 +1221,40 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label>Số Serial (SN)</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="inventory-field-12">Số Serial (SN)</label>
+                    <Input id="inventory-field-12"
+                      type="text"
                       data-testid="product-serial-input"
-                      value={formData.serial} 
+                      value={formData.serial}
                       onChange={e => setFormData({ ...formData, serial: e.target.value })}
-                      placeholder="SN12345678" 
-                      className="form-control"
+                      placeholder="SN12345678"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>Mã đơn vận</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="inventory-field-13">Mã đơn vận</label>
+                    <Input id="inventory-field-13"
+                      type="text"
                       data-testid="product-tracking-input"
-                      value={formData.trackingCode} 
+                      value={formData.trackingCode}
                       onChange={e => setFormData({ ...formData, trackingCode: e.target.value })}
-                      placeholder="SF123456" 
-                      className="form-control"
+                      placeholder="SF123456"
                     />
                   </div>
                 </div>
 
                 <div className="form-group mt-3" style={{ position: 'relative' }}>
-                  <label>Tên máy & Cấu hình chi tiết *</label>
-                    <input
+                  <label htmlFor="inventory-field-14">Tên máy & Cấu hình chi tiết *</label>
+                    <Input id="inventory-field-14"
                       type="text"
                       data-testid="product-name-input"
                       required
-                    className="form-control"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    onFocus={() => setShowPresets(true)}
-                    onBlur={() => setTimeout(() => setShowPresets(false), 200)}
-                    placeholder="Legion 5 2022 R7000P R5-6600H/16/512/3050Ti/2.5K 165Hz"
-                  />
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      onFocus={() => setShowPresets(true)}
+                      onBlur={() => setTimeout(() => setShowPresets(false), 200)}
+                      placeholder="Legion 5 2022 R7000P R5-6600H/16/512/3050Ti/2.5K 165Hz"
+                    />
                   {/* Dropdown gợi ý cấu hình mẫu */}
                   {showPresets && matchedPresets.length > 0 && (
                     <div style={{
@@ -1288,8 +1294,8 @@ export default function Inventory() {
 
                 <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                   <div className="form-group">
-                    <label>Vị trí kho</label>
-                    <select 
+                    <label htmlFor="inventory-field-15">Vị trí kho</label>
+                    <select id="inventory-field-15"
                       value={formData.location} 
                       onChange={e => setFormData({ ...formData, location: e.target.value })}
                       className="form-control"
@@ -1301,8 +1307,8 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label><Zap size={13} style={{ display: 'inline', color: '#fbbf24' }} /> Tình trạng Sạc</label>
-                    <select 
+                    <label htmlFor="inventory-field-16"><Zap size={13} style={{ display: 'inline', color: '#fbbf24' }} /> Tình trạng Sạc</label>
+                    <select id="inventory-field-16"
                       value={formData.chargerStatus} 
                       onChange={e => setFormData({ ...formData, chargerStatus: e.target.value })}
                       className="form-control"
@@ -1314,12 +1320,11 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label>Pin (%)</label>
-                    <input
+                    <label htmlFor="inventory-field-17">Pin (%)</label>
+                    <Input id="inventory-field-17"
                       type="number"
-                      data-testid="product-battery-health-input"
-                      className="form-control"
                       min="0"
+                        data-testid="product-battery-health-input"
                       max="100"
                       value={formData.batteryHealth}
                       onChange={e => setFormData({ ...formData, batteryHealth: e.target.value })}
@@ -1328,11 +1333,10 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label>Hạn BH Nguồn (TQ/US)</label>
-                    <input
+                    <label htmlFor="inventory-field-18">Hạn BH Nguồn (TQ/US)</label>
+                    <Input id="inventory-field-18"
                       type="text"
                       data-testid="product-warranty-supplier-input"
-                      className="form-control"
                       value={formData.warrantySupplier}
                       onChange={e => setFormData({ ...formData, warrantySupplier: e.target.value })}
                       placeholder="VD: 25/12/2026..."
@@ -1342,13 +1346,13 @@ export default function Inventory() {
                 </div>
 
                 <div className="form-group mt-3">
-                  <label>Ghi chú check máy / Tình trạng ngoại hình</label>
-                  <textarea 
+                  <label htmlFor="inventory-field-19">Ghi chú check máy / Tình trạng ngoại hình</label>
+                  <Textarea id="inventory-field-19"
                     data-testid="product-condition-input"
                     rows={3}
-                    value={formData.conditionNote} 
+                    value={formData.conditionNote}
                     onChange={e => setFormData({ ...formData, conditionNote: e.target.value })}
-                    placeholder="Máy đẹp 99%, pin 98%, màn không xước, test full chức năng OK..." 
+                    placeholder="Máy đẹp 99%, pin 98%, màn không xước, test full chức năng OK..."
                   />
                 </div>
 
@@ -1362,56 +1366,56 @@ export default function Inventory() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                     <div className="form-group">
-                      <label>Giá tệ (¥)</label>
-                      <input 
-                        type="number" 
+                      <label htmlFor="inventory-field-20">Giá tệ (¥)</label>
+                      <Input id="inventory-field-20"
+                        type="number"
+                        min="0"
                         data-testid="product-price-rmb-input"
                         step="any"
-                        value={formData.priceRmb} 
+                        value={formData.priceRmb}
                         onChange={e => setFormData({ ...formData, priceRmb: e.target.value })}
-                        placeholder="4200" 
-                        className="form-control"
+                        placeholder="4200"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label>Phí VC nội địa (¥)</label>
-                      <input 
-                        type="number" 
+                      <label htmlFor="inventory-field-21">Phí VC nội địa (¥)</label>
+                      <Input id="inventory-field-21"
+                        type="number"
+                        min="0"
                         data-testid="product-shipping-rmb-input"
                         step="any"
-                        value={formData.shippingRmb} 
+                        value={formData.shippingRmb}
                         onChange={e => setFormData({ ...formData, shippingRmb: e.target.value })}
-                        placeholder="50" 
-                        className="form-control"
+                        placeholder="50"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label>Tỷ giá tệ</label>
-                      <input 
-                        type="number" 
+                      <label htmlFor="inventory-field-22">Tỷ giá tệ</label>
+                      <Input id="inventory-field-22"
+                        type="number"
+                        min="0"
                         data-testid="product-exchange-rate-input"
                         step="any"
-                        value={formData.exchangeRate} 
+                        value={formData.exchangeRate}
                         onChange={e => setFormData({ ...formData, exchangeRate: e.target.value })}
-                        placeholder="3550" 
-                        className="form-control"
+                        placeholder="3550"
                       />
                     </div>
 
                     <div className="form-group" style={{ position: 'relative' }}>
-                      <label style={{ color: '#60a5fa', fontWeight: 700 }}>
+                      <label htmlFor="inventory-field-23" style={{ color: '#60a5fa', fontWeight: 700 }}>
                         Giá Nhập (tr)
                         <span style={{ fontSize: '0.65rem', fontWeight: 400, color: '#94a3b8', marginLeft: '4px' }}>
                           {formData.importPriceManuallyEdited ? '(tự nhập)' : '(tự tính)'}
                         </span>
                       </label>
-                      <input
+                      <Input id="inventory-field-23"
                         type="number"
+                        min="0"
                         data-testid="product-import-price-input"
                         step="any"
-                        className="form-control"
                         value={formData.importPriceVnd}
                         onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })}
                         placeholder={liveImportPrice > 0 ? liveImportPrice : 'Tự tính từ giá tệ'}
@@ -1422,12 +1426,12 @@ export default function Inventory() {
 
                   <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                     <div className="form-group">
-                      <label>Giá Bán Sỉ (tr)</label>
-                      <input
+                      <label htmlFor="inventory-field-24">Giá Bán Sỉ (tr)</label>
+                      <Input id="inventory-field-24"
                         type="number"
+                        min="0"
                         data-testid="product-wholesale-price-input"
                         step="any"
-                        className="form-control"
                         value={formData.wholesalePriceVnd}
                         onChange={e => setFormData({ ...formData, wholesalePriceVnd: e.target.value })}
                         placeholder="VD: 23.5"
@@ -1435,12 +1439,12 @@ export default function Inventory() {
                     </div>
 
                     <div className="form-group">
-                      <label>Giá Bán Lẻ (tr)</label>
-                      <input
+                      <label htmlFor="inventory-field-25">Giá Bán Lẻ (tr)</label>
+                      <Input id="inventory-field-25"
                         type="number"
+                        min="0"
                         data-testid="product-retail-price-input"
                         step="any"
-                        className="form-control"
                         value={formData.retailPriceVnd}
                         onChange={e => setFormData({ ...formData, retailPriceVnd: e.target.value })}
                         placeholder="VD: 25.5"
@@ -1453,31 +1457,31 @@ export default function Inventory() {
                 </>)}
               </div>
 
-              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setIsAddModalOpen(false)}>Hủy</button>
-                <button type="submit" data-testid="product-save-button" className="btn btn-success">Lưu Thông Tin Máy</button>
+              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {saveError && <p role="alert" className="form-save-error">{saveError}</p>}
+                <Button type="button" variant="outline" disabled={isSaving} onClick={() => setIsAddModalOpen(false)}>Hủy</Button>
+                <Button type="submit" disabled={isSaving} data-testid="product-save-button">{isSaving ? 'Đang lưu...' : 'Lưu Thông Tin Máy'}</Button>
               </div>
             </form>
-            
+
             {showTimeline && editingLaptop && (
               <div style={{ width: '350px', background: '#f8fafc', borderLeft: '1px solid var(--border-color)', overflowY: 'auto' }}>
                 <ActivityTimeline entityType="LAPTOP" entityId={editingLaptop.id} />
               </div>
             )}
           </div>
-        </div>
-      </div>
-    )}
+        </Modal>
+      )}
 
       {/* MODAL CẤU HÌNH CÔNG THỨC GIÁ NHẬP */}
       {isFormulaModalOpen && (
-        <div className="modal-backdrop active">
-          <div className="modal-box glass" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h3><Calculator size={18} style={{ display: 'inline', marginRight: '6px' }} /> Cấu Hình Công Thức Tính Giá Nhập</h3>
-              <button className="modal-close" onClick={() => setIsFormulaModalOpen(false)}>&times;</button>
-            </div>
-
+        <Modal
+          open={isFormulaModalOpen}
+          onOpenChange={(o) => !o && setIsFormulaModalOpen(false)}
+          title={<span><Calculator size={18} style={{ display: 'inline', marginRight: '6px' }} /> Cấu Hình Công Thức Tính Giá Nhập</span>}
+          maxWidth="max-w-2xl"
+          footer={null}
+        >
             <form onSubmit={handleSaveFormula}>
               <div className="modal-body">
                 <div className="formula-box">
@@ -1488,8 +1492,8 @@ export default function Inventory() {
                 </div>
 
                 <div className="form-group mt-3">
-                  <label>Phí Vận Chuyển Cố Định (VNĐ) - Cộng thêm mỗi máy</label>
-                  <input 
+                  <label htmlFor="inventory-field-26">Phí Vận Chuyển Cố Định (VNĐ) - Cộng thêm mỗi máy</label>
+                  <input id="inventory-field-26"
                     type="number" 
                     required
                     value={formulaForm.shippingVnd} 
@@ -1502,8 +1506,8 @@ export default function Inventory() {
                 </div>
 
                 <div className="form-group mt-3">
-                  <label>Tỷ Giá Mặc Định (RMB/VND)</label>
-                  <input 
+                  <label htmlFor="inventory-field-27">Tỷ Giá Mặc Định (RMB/VND)</label>
+                  <input id="inventory-field-27"
                     type="number" 
                     required
                     value={formulaForm.defaultRate} 
@@ -1526,24 +1530,23 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setIsFormulaModalOpen(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary">Lưu Cấu Hình</button>
+              <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <Button type="button" variant="outline" onClick={() => setIsFormulaModalOpen(false)}>Hủy</Button>
+                <Button type="submit">Lưu Cấu Hình</Button>
               </div>
             </form>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {/* MODAL ĐỒNG BỘ GOOGLE SHEET */}
       {isSyncModalOpen && (
-        <div className="modal-backdrop active">
-          <div className="modal-box glass" style={{ maxWidth: '700px' }}>
-            <div className="modal-header">
-              <h3><RefreshCw size={18} style={{ display: 'inline', marginRight: '6px' }} /> Đồng Bộ Google Sheet Dữ Liệu Kho</h3>
-              <button className="modal-close" onClick={() => setIsSyncModalOpen(false)}>&times;</button>
-            </div>
-
+        <Modal
+          open={isSyncModalOpen}
+          onOpenChange={(o) => !o && setIsSyncModalOpen(false)}
+          title={<span><RefreshCw size={18} style={{ display: 'inline', marginRight: '6px' }} /> Đồng Bộ Google Sheet Dữ Liệu Kho</span>}
+          maxWidth="max-w-3xl"
+          footer={null}
+        >
             <div className="modal-body">
               {/* 1-CLICK DIRECT GOOGLE SHEET SYNC CARD */}
               <div style={{ background: 'rgba(37, 99, 235, 0.08)', padding: '1.25rem', borderRadius: '10px', border: '1.5px solid rgba(37, 99, 235, 0.3)', marginBottom: '1.5rem' }}>
@@ -1687,11 +1690,10 @@ export default function Inventory() {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)' }}>
-              <button className="btn btn-outline" onClick={() => setIsSyncModalOpen(false)}>Đóng</button>
+            <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="outline" onClick={() => setIsSyncModalOpen(false)}>Đóng</Button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
       {/* TECH CHECK MODAL */}
       <TechCheckModal

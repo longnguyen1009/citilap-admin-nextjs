@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useMemo } from 'react';
-import { useInventory } from '../../context/InventoryContext';
+import { useInventory, monthYearToKey } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
-import { Settings as SettingsIcon, Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Check, ChevronDown, ChevronUp, Plus, Trash2, Calendar, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserManagementSection from './UserManagementSection';
 import PresetManagementSection from './PresetManagementSection';
 import { getAuthHeaders } from '../../lib/apiFetchers';
+import { labelToKey } from '../../lib/useFieldOptions';
 
 const GROUP_SECTIONS = [
   {
@@ -265,9 +266,9 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
 export default function Settings() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  
+
   // get appOptions from context (which fetches from DB on load)
-  const { appOptions, updateAppOptions } = useInventory();
+  const { appOptions, updateAppOptions, selectedMonth, laptops, orders, rollToNewMonth, parseMonthYear } = useInventory();
 
   // Group options by group_key
   const groupedOptions = useMemo(() => {
@@ -361,6 +362,36 @@ export default function Settings() {
     );
   }
 
+  // ─── Tính toán cho nút chuyển tháng ───
+  const now = new Date();
+  const currentMonthStr = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+  const nextMonth = now.getMonth() + 1 >= 12
+    ? `01/${now.getFullYear() + 1}`
+    : `${String(now.getMonth() + 2).padStart(2, '0')}/${now.getFullYear()}`;
+
+  // Đếm số máy và đơn chưa hoàn thành từ tháng hiện tại sẽ được chuyển
+  const OPEN_LAPTOP_STATUS = ['available', 'deposited', 'repairing', 'not_imported', 'returned_cn', 'skipped'];
+  const OPEN_ORDER_STATUS = ['new', 'deposited', 'prepared'];
+
+  const willMoveLaptops = laptops.filter(l => {
+    if (l.isActive === false) return false;
+    const m = l.monthKey || parseMonthYear(l.importDate, l.created_at || l.createdAt);
+    if (monthYearToKey(m) >= monthYearToKey(nextMonth)) return false;
+    // Chỉ đếm máy trong trạng thái "chưa xong"
+    const statusKey = labelToKey('laptopStatus', l.status, appOptions) || String(l.status).toLowerCase();
+    return OPEN_LAPTOP_STATUS.includes(statusKey);
+  }).length;
+
+  const willMoveOrders = orders.filter(o => {
+    if (o.isActive === false) return false;
+    const m = o.monthKey || parseMonthYear(o.createdDate, o.created_at || o.createdAt);
+    if (monthYearToKey(m) >= monthYearToKey(nextMonth)) return false;
+    const statusKey = labelToKey('orderStatus', o.orderStatus, appOptions) || String(o.orderStatus).toLowerCase();
+    return OPEN_ORDER_STATUS.includes(statusKey);
+  }).length;
+
+  const isAlreadyCurrentMonth = selectedMonth === nextMonth;
+
   return (
     <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', paddingBottom: '60px' }}>
       <div style={{
@@ -377,6 +408,111 @@ export default function Settings() {
           <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
             Thêm, sửa, xoá các danh mục thuộc tính hiển thị (Được lưu trực tiếp trong cơ sở dữ liệu)
           </p>
+        </div>
+      </div>
+
+      {/* ─── Quản lý theo tháng ─── */}
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          background: '#fff',
+          overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '14px 16px',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+            borderBottom: '1px solid #e2e8f0',
+          }}>
+            <Calendar size={18} color="#3b82f6" />
+            <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>
+              📅 Quản lý theo tháng
+            </span>
+          </div>
+
+          <div style={{ padding: '16px' }}>
+            {/* Hiển thị tháng hiện tại đang lọc */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              marginBottom: '12px', fontSize: '0.9rem', color: '#475569',
+            }}>
+              <span>Tháng đang xem:</span>
+              <span style={{
+                fontWeight: 700, color: '#1e293b',
+                background: '#f1f5f9', padding: '4px 12px', borderRadius: '6px',
+                fontFamily: 'monospace', fontSize: '0.92rem',
+              }}>
+                {selectedMonth}
+              </span>
+            </div>
+
+            {/* Preview: bao nhiêu sẽ được chuyển */}
+            {willMoveLaptops > 0 || willMoveOrders > 0 ? (
+              <div style={{
+                background: '#fffbeb', border: '1px solid #fde68a',
+                borderRadius: '8px', padding: '12px 14px',
+                marginBottom: '14px', fontSize: '0.85rem', color: '#92400e',
+              }}>
+                Sẽ chuyển <b>{willMoveLaptops}</b> máy và <b>{willMoveOrders}</b> đơn chưa hoàn thành sang <b>{nextMonth}</b>.
+              </div>
+            ) : (
+              <div style={{
+                background: '#f0fdf4', border: '1px solid #bbf7d0',
+                borderRadius: '8px', padding: '12px 14px',
+                marginBottom: '14px', fontSize: '0.85rem', color: '#166534',
+              }}>
+                Không có máy hoặc đơn nào cần chuyển sang {nextMonth}.
+              </div>
+            )}
+
+            {/* Nút Cập nhật sang tháng mới */}
+            <button
+              onClick={async () => {
+                if (isAlreadyCurrentMonth) {
+                  toast.error('Đã ở tháng mới nhất.');
+                  return;
+                }
+                const confirmMsg = willMoveLaptops > 0 || willMoveOrders > 0
+                  ? `Chuyển ${willMoveLaptops} máy, ${willMoveOrders} đơn chưa hoàn thành sang ${nextMonth}?\n\nCác mục đã hoàn thành/giữ nguyên tháng cũ để tra cứu.`
+                  : `Xác nhận chuyển sang tháng ${nextMonth}?`;
+                if (!window.confirm(confirmMsg)) return;
+
+                const toastId = toast.loading('Đang chuyển tháng...');
+                const result = await rollToNewMonth(nextMonth);
+                toast.dismiss(toastId);
+                if (result.ok) {
+                  toast.success(`Đã chuyển ${result.laptopsMoved} máy, ${result.ordersMoved} đơn sang ${result.monthKey}`);
+                } else {
+                  toast.error(result.message || 'Chuyển tháng thất bại.');
+                }
+              }}
+              disabled={isAlreadyCurrentMonth}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                width: '100%', padding: '12px 20px',
+                background: isAlreadyCurrentMonth ? '#e2e8f0' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: isAlreadyCurrentMonth ? '#94a3b8' : '#fff',
+                border: 'none', borderRadius: '10px',
+                fontSize: '0.92rem', fontWeight: 600,
+                cursor: isAlreadyCurrentMonth ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <ArrowRight size={16} />
+              {isAlreadyCurrentMonth
+                ? `Đã cập nhật đến ${nextMonth}`
+                : `Cập nhật sang tháng ${nextMonth}`}
+            </button>
+
+            <p style={{
+              marginTop: '10px', fontSize: '0.78rem', color: '#94a3b8',
+              lineHeight: '1.5', textAlign: 'center',
+            }}>
+              Chỉ chuyển các máy/đơn chưa hoàn thành. Dữ liệu đã hoàn thành giữ nguyên tháng cũ để tra lịch sử.
+            </p>
+          </div>
         </div>
       </div>
 
