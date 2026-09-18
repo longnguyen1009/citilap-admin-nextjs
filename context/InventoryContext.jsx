@@ -124,7 +124,8 @@ export const isOrderCommitted = (order, appOptions = []) => {
 };
 
 export const isReservationActive = (order, appOptions = [], now = new Date()) => {
-  if (!order?.laptopId || order.isActive === false || isOrderCancelled(order, appOptions) || isOrderCommitted(order, appOptions)) return false;
+  const reservationTarget = order?.laptopId || order?.requestedLaptopId;
+  if (!reservationTarget || order.isActive === false || isOrderCancelled(order, appOptions) || isOrderCommitted(order, appOptions)) return false;
   const statusKey  = labelToKey('orderStatus', order?.orderStatus, appOptions);
   const paymentKey = labelToKey('paymentStatus', order?.paymentStatus, appOptions);
   const hasDeposit = DEPOSIT_PAYMENT_STATUS_KEYS.includes(paymentKey)
@@ -267,11 +268,13 @@ const TECHNICAL_STATUSES = new Set(
 const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
   const relatedOrders = new Map();
   orders.forEach((order) => {
-    if (!order.laptopId) return;
-    const key = String(order.laptopId);
-    const related = relatedOrders.get(key) || [];
-    related.push(order);
-    relatedOrders.set(key, related);
+    const references = [order.laptopId, order.requestedLaptopId].filter(Boolean);
+    references.forEach(referenceId => {
+      const key = String(referenceId);
+      const related = relatedOrders.get(key) || [];
+      if (!related.some(item => String(item.id) === String(order.id))) related.push(order);
+      relatedOrders.set(key, related);
+    });
   });
 
   return laptops.map((laptop) => {
@@ -288,11 +291,17 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
     if (TECHNICAL_LAPTOP_STATUS_KEYS.includes(statusKey)) return { ...laptop, status: statusKey };
 
     const opts = _cfg();
-    if (linkedOrders.some(o => isOrderCommitted(o, opts))) {
+    if (linkedOrders.some(o => String(o.laptopId) === String(laptop.id) && isOrderCommitted(o, opts))) {
       return { ...laptop, status: 'sold', isLocked: true };
     }
-    if (linkedOrders.some(o => isReservationActive(o, opts))) {
-      return { ...laptop, status: 'deposited', isLocked: true };
+    const hasPhysicalReservation = linkedOrders.some(o => (
+      String(o.laptopId) === String(laptop.id) && isReservationActive(o, opts)
+    ));
+    const hasDepositReference = linkedOrders.some(o => (
+      String(o.requestedLaptopId) === String(laptop.id) && isReservationActive(o, opts)
+    ));
+    if (hasPhysicalReservation || hasDepositReference) {
+      return { ...laptop, status: 'deposited', isLocked: hasPhysicalReservation };
     }
 
     // Dữ liệu orders thường chỉ chứa tháng đang xem. Không tìm thấy order
@@ -783,7 +792,9 @@ export const InventoryProvider = ({ children }) => {
       : null;
     const belongsToCurrentOrder = currentOrder && String(currentOrder.laptopId) === String(laptopId);
     if (statusKey === 'sold' && !belongsToCurrentOrder) return `Máy ${laptopId} đã được bán.`;
-    if (statusKey === 'deposited' && !belongsToCurrentOrder) return `Máy ${laptopId} đang được giữ chỗ.`;
+    // A stale laptop status can remain "deposited" after legacy deposit rows
+    // were moved to requestedLaptopId. With no active order physically using
+    // laptopId, allow allocation and let reconciliation refresh the status.
     return '';
   };
 
@@ -791,6 +802,13 @@ export const InventoryProvider = ({ children }) => {
     laptop.id == orders.find(order => String(order.id) === String(currentOrderId))?.laptopId ||
     !getLaptopAssignmentError(laptop.id, currentOrderId)
   ));
+
+  // A deposit can reference a machine already referenced by another deposit.
+  // It becomes an exclusive allocation only after laptopId is assigned.
+  const getDepositReferenceLaptops = (currentRequestedId = null) => filterLaptopsByMonth(laptops, selectedMonth)
+    .filter(laptop => laptop.isActive !== false
+      && (labelToKey('laptopStatus', laptop.status, _cfg()) !== 'sold'
+        || String(laptop.id) === String(currentRequestedId)));
 
   // Bất biến tiền tệ: amountPaid >= depositAmount; debtAmount = salePrice - amountPaid.
   // Chỉ tính lại khi các trường tiền tệ thay đổi, tránh ghi đè giá trị thủ công hợp lệ.
@@ -815,7 +833,8 @@ export const InventoryProvider = ({ children }) => {
     const normalized = { ...order };
     const pKey = labelToKey('paymentStatus', normalized.paymentStatus, _cfg());
     const oKey = labelToKey('orderStatus', normalized.orderStatus, _cfg());
-    const shouldReserve = normalized.laptopId && (
+    const reservationTarget = normalized.laptopId || normalized.requestedLaptopId;
+    const shouldReserve = reservationTarget && (
       pKey === 'deposited' || oKey === 'deposited'
     );
     if (shouldReserve && !normalized.reservationExpiresAt) {
@@ -865,6 +884,9 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const customerSummary = selectedCustomer
       ? [selectedCustomer.name, selectedCustomer.phone].filter(Boolean).join(' - ')
       : '';
+    const depositIntent = DEPOSIT_ORDER_STATUS_KEYS.includes(labelToKey('orderStatus', orderData.orderStatus, _cfg()))
+      || DEPOSIT_PAYMENT_STATUS_KEYS.includes(labelToKey('paymentStatus', orderData.paymentStatus, _cfg()));
+    const requestedLaptopId = orderData.requestedLaptopId || (depositIntent ? orderData.laptopId : '');
     const newOrder = normalizeReservation({
       monthKey: orderData.monthKey || (selectedMonth === 'ALL' ? parseMonthYear(orderData.createdDate || todayVi()) : selectedMonth),
       id: orderData.id,
@@ -876,7 +898,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       orderStatus: orderData.orderStatus || 'new',
       paymentStatus: orderData.paymentStatus || 'unpaid',
       deliveryStatus: orderData.deliveryStatus || 'preparing',
-      laptopId: orderData.laptopId || '',
+      laptopId: depositIntent && !orderData.requestedLaptopId ? '' : (orderData.laptopId || ''),
+      requestedLaptopId,
       salePrice: normalizedInput.salePrice || 0,
       depositAmount,
       depositNote: orderData.depositNote || '',
@@ -901,6 +924,9 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updatedAt: new Date().toISOString()
     });
 
+    if (isOrderCommitted(newOrder, appOptions) && !newOrder.laptopId && newOrder.requestedLaptopId) {
+      newOrder.laptopId = newOrder.requestedLaptopId;
+    }
     const assignmentError = getLaptopAssignmentError(newOrder.laptopId);
     if (assignmentError) return { ok: false, message: assignmentError };
     if (isOrderCommitted(newOrder, appOptions) && !newOrder.laptopId) {
@@ -961,8 +987,27 @@ const mapLabelsToKeys = (fields, appOpts) => {
     let merged = normalizeReservation({ ...currentOrder, ...normalizedFields, updatedAt: new Date().toISOString() });
     if (moneyChanged) merged = normalizeMoney(merged);
 
+    // Moving a committed order back to a deposit releases the physical unit.
+    // Preserve the requested product so the order still records what was
+    // deposited, while laptopId becomes available for another order.
+    const physicalLaptopToRelease = merged.laptopId || currentOrder.laptopId;
+    const releasingPhysicalLaptop = isOrderCommitted(currentOrder, appOptions)
+      && !isOrderCommitted(merged, appOptions)
+      && physicalLaptopToRelease;
+    if (releasingPhysicalLaptop) {
+      merged.requestedLaptopId = merged.requestedLaptopId || physicalLaptopToRelease;
+      merged.laptopId = '';
+      merged.laptopLocked = false;
+    }
+
+    // Converting a deposit into a committed order allocates the requested
+    // machine. The normal laptop conflict check below then makes this atomic.
+    if (isOrderCommitted(merged, appOptions) && !merged.laptopId && merged.requestedLaptopId) {
+      merged.laptopId = merged.requestedLaptopId;
+    }
+
     const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
-    if (isLocked && merged.laptopId !== currentOrder.laptopId) {
+    if (isLocked && !releasingPhysicalLaptop && merged.laptopId !== currentOrder.laptopId) {
       return { ok: false, message: 'Đơn hàng đang ở trạng thái không cho phép thay đổi sản phẩm.' };
     }
     if (merged.laptopId !== currentOrder.laptopId) {
@@ -994,6 +1039,11 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const nextOrders = orders.map(order => String(order.id) === String(id) ? merged : order);
     setOrders(nextOrders);
     applyAndSaveLaptopStatuses(nextOrders, false);
+    if (releasingPhysicalLaptop) {
+      setLaptops(prev => prev.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
+        ? { ...laptop, status: merged.requestedLaptopId ? 'deposited' : 'available', isLocked: false }
+        : laptop));
+    }
 
     const persistence = saveOrderToCloud(merged).then(savedData => {
       if (!isLatestMutation()) return; // Có mutation mới hơn, bỏ qua response cũ
@@ -1006,6 +1056,11 @@ const mapLabelsToKeys = (fields, appOpts) => {
         }
         if (savedData?.laptop) {
           next = next.map(laptop => String(laptop.id) === String(savedData.laptop.id) ? savedData.laptop : laptop);
+        }
+        if (releasingPhysicalLaptop) {
+          next = next.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
+            ? { ...laptop, status: merged.requestedLaptopId ? 'deposited' : 'available', isLocked: false }
+            : laptop);
         }
         return next;
       });
@@ -1076,6 +1131,12 @@ const mapLabelsToKeys = (fields, appOpts) => {
     if (!currentLaptop) return { ok: false, message: 'Không tìm thấy máy.' };
     const lockedProtectedFields = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
     const currentStatusKey = labelToKey('laptopStatus', currentLaptop.status);
+    if (currentStatusKey === 'sold' && ['name', 'serial'].some(field => (
+      updatedFields[field] !== undefined
+      && String(updatedFields[field] ?? '').trim() !== String(currentLaptop[field] ?? '').trim()
+    ))) {
+      return { ok: false, message: 'Laptop đã bán không thể thay đổi tên máy hoặc số serial.' };
+    }
     if ((currentLaptop.isLocked || currentStatusKey === 'sold') && lockedProtectedFields.some(field => (
       updatedFields[field] !== undefined && Number(updatedFields[field]) !== Number(currentLaptop[field])
     ))) {
@@ -1495,6 +1556,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       resetAllFieldOptions,
       // ────────────────────────────────────────────────────────────────────
       getSelectableLaptops,
+      getDepositReferenceLaptops,
       getLaptopAssignmentError,
       updateLaptop,
       updateLaptopStatus,

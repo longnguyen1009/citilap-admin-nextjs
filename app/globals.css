@@ -1206,28 +1206,69 @@ textarea:focus-visible {
 .charger-chuacheck { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.3); }
 
 
-/* Opaque row backgrounds preserve sticky cells and badge contrast. */
-tr.row-chua-nhap { --row-bg: #f8fafc; --row-accent: #64748b; }
-tr.row-san-hang { --row-bg: #bbf7d0; --row-accent: #15803d; }
-tr.row-da-coc { --row-bg: #fde68a; --row-accent: #b45309; }
-tr.row-dang-sua { --row-bg: #fca5a5; --row-accent: #b91c1c; }
-tr.row-da-ban { --row-bg: #cbd5e1; --row-accent: #334155; }
-tr.row-tra-hang { --row-bg: #c4b5fd; --row-accent: #6d28d9; }
-tr.row-tra-tien { --row-bg: #c4b5fd; --row-accent: #6d28d9; }
-tr.row-bo-qua { --row-bg: #e2e8f0; --row-accent: #475569; }
-tr.row-other { --row-bg: #e2e8f0; --row-accent: #475569; }
-tr.order-row-preparing { --row-bg: #fde68a; --row-accent: #b45309; }
-tr.order-row-shipping { --row-bg: #93c5fd; --row-accent: #1d4ed8; }
-tr.order-row-completed { --row-bg: #cbd5e1; --row-accent: #334155; }
-tr.order-row-cancelled { --row-bg: #cbd5e1; --row-accent: #334155; }
-tr.order-row-returned { --row-bg: #cbd5e1; --row-accent: #334155; }
-tr.order-row-new { --row-bg: #f8fafc; --row-accent: #64748b; }
-tr.order-row-deposited { --row-bg: #fde68a; --row-accent: #b45309; }
-tr.order-row-other { --row-bg: #e2e8f0; --row-accent: #475569; }
+/* Google Sheet-style status rows: muted closed rows, warm active stock, and clear workflow colors. */
+tr.row-chua-nhap { --row-bg: #ffffff; --row-accent: #64748b; }
+tr.row-san-hang { --row-bg: #f2c94c; --row-accent: #9a6700; }
+tr.row-da-coc { --row-bg: #5b9bd5; --row-accent: #1d4ed8; }
+tr.row-dang-sua { --row-bg: #ef9a9a; --row-accent: #b42318; }
+tr.row-da-ban { --row-bg: #87909c; --row-accent: #27313d; }
+tr.row-tra-hang { --row-bg: #5b6470; --row-accent: #17202b; }
+tr.row-tra-tien { --row-bg: #5b6470; --row-accent: #17202b; }
+tr.row-bo-qua { --row-bg: #5b6470; --row-accent: #17202b; }
+tr.row-other { --row-bg: #ffffff; --row-accent: #64748b; }
+tr.order-row-preparing { --row-bg: #f2c94c; --row-accent: #9a6700; }
+tr.order-row-shipping { --row-bg: #f2c94c; --row-accent: #9a6700; }
+tr.order-row-completed { --row-bg: #9ca3af; --row-accent: #374151; }
+tr.order-row-cancelled { --row-bg: #6b7280; --row-accent: #1f2937; }
+tr.order-row-returned { --row-bg: #6b7280; --row-accent: #1f2937; }
+tr.order-row-new { --row-bg: #ffffff; --row-accent: #64748b; }
+tr.order-row-deposited { --row-bg: #5b9bd5; --row-accent: #1d4ed8; }
+tr.order-row-other { --row-bg: #ffffff; --row-accent: #64748b; }
 .list-table-scroll .data-table tbody tr td { background: var(--row-bg, #ffffff); color: var(--text-main); }
 .list-table-scroll .data-table tbody tr td:first-child { box-shadow: inset 3px 0 var(--row-accent, transparent); }
 .list-table-scroll .data-table tbody tr:hover { filter: none; }
 .list-table-scroll .data-table tbody tr:hover td { background: color-mix(in srgb, var(--row-bg, #ffffff), #0f172a 4%); }
+
+/* Dense list typography: compact Google Sheet-like tables remain readable at a glance. */
+.list-table-scroll .inventory-list-table tbody td,
+.list-table-scroll .orders-list-table tbody td {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #111827;
+}
+.list-table-scroll .inventory-list-table tbody td:first-child,
+.list-table-scroll .orders-list-table tbody td:first-child {
+    color: #111827;
+    text-align: center;
+}
+.list-table-scroll .inventory-list-table .inventory-note-cell {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.list-table-scroll .inventory-list-table .inventory-note-cell span[style*="#10b981"] {
+    color: #047857 !important;
+}
+.list-table-scroll .inventory-list-table .inventory-note-cell span[style*="#94a3b8"] {
+    color: #64748b !important;
+}
+.list-table-scroll .inventory-list-table tbody td:nth-child(4) {
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+}
+.list-table-scroll .orders-list-table .order-sale-price-cell,
+.list-table-scroll .orders-list-table .order-sale-price-cell input {
+    text-align: center;
+}
+
+/* Strong grid lines keep dense inventory/order lists easy to scan. */
+.list-table-scroll .data-table-wide th,
+.list-table-scroll .data-table-wide td {
+    border-right: 1px solid rgba(51, 65, 85, 0.58) !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.58) !important;
+}
+.list-table-scroll .data-table-wide tbody tr + tr td {
+    border-top: 1px solid rgba(51, 65, 85, 0.28) !important;
+}
 
 /* Sheet-cell hover — subtle lift */
 tr td .sheet-cell-input:hover,
@@ -1437,6 +1478,12 @@ tr td .sheet-cell-textarea:focus {
     background: #ffffff !important;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18) !important;
     z-index: 10 !important;
+}
+
+/* A focused native select should retain the row color until its status class updates. */
+.list-table-scroll .data-table tbody .sheet-cell-select:focus {
+    background: var(--row-bg, #ffffff) !important;
+    color: #111827 !important;
 }
 
 /* Textarea 2 dòng cho Note 1, Note 2, Khách Hàng, Địa Chỉ */
@@ -1678,7 +1725,7 @@ tr td .sheet-cell-textarea:focus {
     border-color: rgba(100, 116, 139, 0.4) !important;
 }
 .pill-gray {
-    background: #94a3b8 !important;
+    background: #7f8996 !important;
     color: #ffffff !important;
     border-color: #475569 !important;
 }
@@ -1689,14 +1736,25 @@ tr td .sheet-cell-textarea:focus {
 }
 
 /* Status selects use the same palette as their read-only pills. */
-.sheet-cell-select.pill-success { background-color: #dcfce7 !important; }
-.sheet-cell-select.pill-warning { background-color: #fef3c7 !important; }
-.sheet-cell-select.pill-danger { background-color: #fee2e2 !important; }
-.sheet-cell-select.pill-info { background-color: #dbeafe !important; }
-.sheet-cell-select.pill-purple { background-color: #f5f3ff !important; }
-.sheet-cell-select.pill-neutral { background-color: #f8fafc !important; }
-.sheet-cell-select.pill-gray { background-color: #e2e8f0 !important; }
+.sheet-cell-select.pill-success { background-color: #16a34a !important; color: #ffffff !important; border-color: #166534 !important; }
+.sheet-cell-select.pill-warning { background-color: #f2c94c !important; color: #422006 !important; border-color: #9a6700 !important; }
+.sheet-cell-select.pill-danger { background-color: #dc2626 !important; color: #ffffff !important; border-color: #991b1b !important; }
+.sheet-cell-select.pill-info { background-color: #2563eb !important; color: #ffffff !important; border-color: #1e40af !important; }
+.sheet-cell-select.pill-purple { background-color: #7c3aed !important; color: #ffffff !important; border-color: #5b21b6 !important; }
+.sheet-cell-select.pill-neutral { background-color: #e5e7eb !important; color: #111827 !important; border-color: #4b5563 !important; }
+.sheet-cell-select.pill-gray { background-color: #4b5563 !important; color: #ffffff !important; border-color: #1f2937 !important; }
 .sheet-cell-select.pill-white { background-color: #ffffff !important; }
+
+/* Native dropdown menus must stay readable when the closed select uses a status color. */
+select option {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-weight: 600;
+}
+select option:checked {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
 
 .sheet-cell-select.pill-success:focus { border-color: #10b981 !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16) !important; }
 .sheet-cell-select.pill-warning:focus { border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16) !important; }

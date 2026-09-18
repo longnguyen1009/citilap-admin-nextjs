@@ -267,8 +267,8 @@ export default function Inventory() {
       case 'available': return 'pill-badge pill-success';
       case 'repairing': return 'pill-badge pill-danger';
       case 'sold': return 'pill-badge pill-gray';
-      case 'returned_cn': return 'pill-badge pill-purple';
-      case 'back_money': return 'pill-badge pill-purple';
+      case 'returned_cn': return 'pill-badge pill-gray';
+      case 'back_money': return 'pill-badge pill-gray';
       case 'skipped': return 'pill-badge pill-gray';
       case 'deposited': return 'pill-badge pill-warning';
       default: return 'pill-badge pill-white';
@@ -971,8 +971,8 @@ export default function Inventory() {
                       Tỷ giá
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá" />
                     </th>
-                    <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#60a5fa', position: 'relative', textAlign: 'center' }}>
-                      Giá Nhập (tr)
+                    <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#111827', position: 'relative', textAlign: 'center' }}>
+                      Giá Nhập
                       <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá Nhập" />
                     </th>
                   </>
@@ -997,7 +997,7 @@ export default function Inventory() {
               ) : (
                 filteredLaptops.map((l, index) => (
                   <tr key={l.id || index} data-testid={`inventory-row-${l.id}`} className={getRowStatusClass(l.status)}>
-                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)', textAlign: 'center' }}>{l.id}</td>
+                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}>{l.id}</td>
                     <td className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', left: `${colWidths.id}px` }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                       <button
@@ -1050,7 +1050,7 @@ export default function Inventory() {
                         {getLabel('category', l.category)}
                       </span>
                     </td>
-                    <td style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <td className="inventory-note-cell" style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.82rem', fontWeight: 700, color: '#111827' }}>
                       <div style={{display: 'flex', gap: '3px', marginBottom: '2px', flexWrap: 'wrap', alignItems: 'center'}}>
                         <span style={{fontWeight: 700, color: l.batteryHealth < 80 ? '#ef4444' : '#10b981'}}>Pin:{l.batteryHealth || 100}%</span>
                         {l.screenStatus && (
@@ -1064,7 +1064,7 @@ export default function Inventory() {
                         )}
                         {l.isLocked && <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: '#ef4444'}}>KHOA</span></>}
                       </div>
-                      <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '0.72rem', opacity: 0.8 }} title={l.conditionNote}>{l.conditionNote || '-'}</div>
+                      <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '0.8rem', fontWeight: 700, color: '#111827', opacity: 0.9 }} title={l.conditionNote}>{l.conditionNote || '-'}</div>
                     </td>
                     <td style={{ width: `${colWidths.serial}px`, minWidth: `${colWidths.serial}px`, fontFamily: 'monospace', fontSize: '0.78rem', color: '#475569', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.serial}>
                       {l.serial || '-'}
@@ -1094,7 +1094,7 @@ export default function Inventory() {
                         <td style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, fontWeight: 600, textAlign: 'center' }}>{Number(l.priceRmb || 0).toFixed(2)}</td>
                         <td style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, textAlign: 'center' }}>{Number(l.shippingRmb || 0).toFixed(2)}</td>
                         <td style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, color: 'var(--text-muted)', textAlign: 'center' }}>{l.exchangeRate}</td>
-                        <td style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, fontWeight: 800, color: '#2563eb', textAlign: 'center' }}>
+                        <td style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}>
                           {l.importPriceVnd !== undefined && l.importPriceVnd !== '' ? Number(l.importPriceVnd).toFixed(2) : '-'}
                         </td>
                       </>
@@ -1217,6 +1217,7 @@ export default function Inventory() {
                       type="text"
                       data-testid="product-serial-input"
                       value={formData.serial}
+                      disabled={Boolean(editingLaptop && labelToKey('laptopStatus', editingLaptop.status, fieldOptionsConfig) === 'sold')}
                       onChange={e => setFormData({ ...formData, serial: e.target.value })}
                       placeholder="SN12345678"
                     />
@@ -1241,6 +1242,7 @@ export default function Inventory() {
                       data-testid="product-name-input"
                       required
                       value={formData.name}
+                      disabled={Boolean(editingLaptop && labelToKey('laptopStatus', editingLaptop.status, fieldOptionsConfig) === 'sold')}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
                       onFocus={() => setShowPresets(true)}
                       onBlur={() => setTimeout(() => setShowPresets(false), 200)}

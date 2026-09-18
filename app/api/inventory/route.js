@@ -77,6 +77,14 @@ export async function POST(request) {
 
         // FIX: Chống sửa đổi trường tài chính trên laptop đã bị khóa/bán
         const isSoldOrLocked = oldData.is_locked || oldData.status === 'sold';
+        if (oldData.status === 'sold') {
+          const changedIdentity = ['name', 'serial'].filter(k => (
+            body[k] !== undefined && String(body[k] ?? '').trim() !== String(oldData[k] ?? '').trim()
+          ));
+          if (changedIdentity.length > 0) {
+            return NextResponse.json({ error: 'Laptop đã bán không thể thay đổi tên máy hoặc số serial.' }, { status: 400 });
+          }
+        }
         if (isSoldOrLocked && isAdmin) {
           const LOCKED_PROTECTED_FIELDS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
           const changedProtected = LOCKED_PROTECTED_FIELDS.filter(k => {

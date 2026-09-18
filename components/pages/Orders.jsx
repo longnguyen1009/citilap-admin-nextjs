@@ -145,6 +145,7 @@ export default function Orders() {
     addLaptop,
     createCustomer,
     getSelectableLaptops,
+    getDepositReferenceLaptops,
     getLaptopAssignmentError,
     getOptions,
     getLabel,
@@ -240,6 +241,7 @@ export default function Orders() {
     tradeInPrice: '',
     creditCardFee: ''
   });
+  const [laptopPickerSearch, setLaptopPickerSearch] = useState('');
 
   // State quản lý độ rộng của từng cột (Trạng Thái Đơn, Thanh Toán, Gửi Hàng trước Giá Bán)
   const [colWidths, setColWidths] = useState({
@@ -340,7 +342,13 @@ export default function Orders() {
       return;
     }
     const selected = laptops.find(l => String(l.id) === String(newLaptopId));
-    let updates = { laptopId: newLaptopId };
+    const isDepositReference = !currentOrder.laptopId && (
+      labelToKey('orderStatus', currentOrder.orderStatus, appOptions) === 'deposited'
+      || labelToKey('paymentStatus', currentOrder.paymentStatus, appOptions) === 'deposited'
+    );
+    let updates = isDepositReference
+      ? { requestedLaptopId: newLaptopId }
+      : { laptopId: newLaptopId };
     if (selected) {
       const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
       if (autoPrice) {
@@ -356,6 +364,7 @@ export default function Orders() {
   // Mở modal tạo đơn mới
   const handleOpenAdd = () => {
     setSaveError('');
+    setLaptopPickerSearch('');
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setFormData({
@@ -367,6 +376,7 @@ export default function Orders() {
       paymentStatus: PAYMENT_STATUS_OPTIONS[0],
       deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
       laptopId: '',
+      requestedLaptopId: '',
       salePrice: '',
       depositAmount: '',
       depositNote: '',
@@ -391,6 +401,7 @@ export default function Orders() {
 
   const handleOpenEdit = (order) => {
     setSaveError('');
+    setLaptopPickerSearch('');
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setShowTimeline(false);
@@ -405,6 +416,7 @@ export default function Orders() {
       paymentStatus: getFormOptionLabel('paymentStatus', order.paymentStatus, PAYMENT_STATUS_OPTIONS[0]),
       deliveryStatus: getFormOptionLabel('deliveryStatus', order.deliveryStatus, DELIVERY_STATUS_OPTIONS[0]),
       laptopId: order.laptopId || '',
+      requestedLaptopId: order.requestedLaptopId || '',
       salePrice: order.salePrice ?? '',
       depositAmount: order.depositAmount ?? '',
       depositNote: order.depositNote || '',
@@ -453,12 +465,43 @@ export default function Orders() {
     if (selected) {
       autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd || formData.salePrice;
     }
+    const isDepositReference = labelToKey('orderStatus', formData.orderStatus, appOptions) === 'deposited'
+      || labelToKey('paymentStatus', formData.paymentStatus, appOptions) === 'deposited';
     setFormData(prev => ({
       ...prev,
-      laptopId,
+      laptopId: isDepositReference ? '' : laptopId,
+      requestedLaptopId: isDepositReference ? laptopId : (prev.requestedLaptopId || ''),
       salePrice: autoPrice,
       // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
     }));
+  };
+
+  const handleDraftDepositFieldChange = (field, value) => {
+    const next = { ...formData, [field]: value };
+    const isDeposit = labelToKey('orderStatus', next.orderStatus, appOptions) === 'deposited'
+      || labelToKey('paymentStatus', next.paymentStatus, appOptions) === 'deposited';
+    if (isDeposit && !next.requestedLaptopId && next.laptopId) {
+      next.requestedLaptopId = next.laptopId;
+      next.laptopId = '';
+    }
+    setFormData(next);
+  };
+
+  const getLaptopPickerOptions = () => {
+    const isDepositReference = labelToKey('orderStatus', formData.orderStatus, appOptions) === 'deposited'
+      || labelToKey('paymentStatus', formData.paymentStatus, appOptions) === 'deposited';
+    const selectedId = formData.laptopId || formData.requestedLaptopId || '';
+    const source = isDepositReference
+      ? getDepositReferenceLaptops(formData.requestedLaptopId)
+      : getSelectableLaptops(formData.id).filter(laptop => (
+        String(laptop.id) === String(formData.laptopId)
+        || labelToKey('laptopStatus', laptop.status) === 'available'
+      ));
+    const term = laptopPickerSearch.trim().toLocaleLowerCase('vi-VN');
+    if (!term) return source;
+    return source.filter(laptop => [laptop.id, laptop.name, laptop.serial]
+      .some(value => String(value ?? '').toLocaleLowerCase('vi-VN').includes(term))
+      || String(laptop.id) === String(selectedId));
   };
 
   // Submit Modal Form
@@ -535,13 +578,24 @@ export default function Orders() {
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        const matchId = String(o.id).toLowerCase().includes(term);
-        const matchCustomer = String(o.customerId || '').toLowerCase().includes(term);
-        const matchLaptop = String(o.laptopId || '').toLowerCase().includes(term);
-        const matchTracking = String(o.trackingCode || '').toLowerCase().includes(term);
-        const matchAddress = String(o.customerAddress || '').toLowerCase().includes(term);
-        const matchNote = String(o.note || o.note1 || o.note2 || '').toLowerCase().includes(term);
+        // Search consistently across identifiers and customer details. Customer
+        // names/phones may live on the order snapshot (`customerInfo`) or in the
+        // linked customer record, so include both sources.
+        const normalizeSearch = (value) => String(value ?? '').trim().toLocaleLowerCase('vi-VN');
+        const term = normalizeSearch(searchTerm);
+        const customer = customers.find(item => String(item.id) === String(o.customerId));
+        const matchId = normalizeSearch(o.id).includes(term);
+        const matchCustomer = [
+          o.customerId,
+          o.customerInfo,
+          customer?.name,
+          customer?.phone,
+          customer?.phoneNumber,
+        ].some(value => normalizeSearch(value).includes(term));
+        const matchLaptop = normalizeSearch(o.laptopId).includes(term);
+        const matchTracking = normalizeSearch(o.trackingCode).includes(term);
+        const matchAddress = normalizeSearch(o.customerAddress).includes(term);
+        const matchNote = normalizeSearch(o.note || o.note1 || o.note2).includes(term);
         if (!matchId && !matchCustomer && !matchLaptop && !matchTracking && !matchAddress && !matchNote) return false;
       }
 
@@ -561,7 +615,7 @@ export default function Orders() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [orders, laptops, searchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
+  }, [orders, laptops, customers, searchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
 
   // Xuất file CSV Đơn Hàng
   const handleExportCSV = () => {
@@ -579,14 +633,14 @@ export default function Orders() {
     ];
 
     const rows = filteredOrders.map(o => {
-      const laptopObj = laptops.find(l => l.id === o.laptopId);
+      const laptopObj = laptops.find(l => String(l.id) === String(o.laptopId || o.requestedLaptopId));
       const noteText = o.note || [o.note1, o.note2].filter(Boolean).join(' - ') || '';
       const base = [
         o.id,
         `"${o.createdDate || ''}"`,
         `"${o.saleOnline || ''}"`,
         `"${noteText}"`,
-        `"${o.laptopId || ''}"`,
+        `"${o.laptopId || o.requestedLaptopId || ''}"`,
         `"${laptopObj?.name || ''}"`,
         `"${o.orderStatus || ''}"`,
         `"${o.paymentStatus || ''}"`,
@@ -628,10 +682,10 @@ export default function Orders() {
     const key = labelToKey('orderStatus', status, appOptions);
     switch (key) {
       case 'done': return 'pill-gray';
-      case 'shipping': return 'pill-info';
+      case 'shipping': return 'pill-warning';
       case 'prepared': return 'pill-warning';
       case 'new': return 'pill-white';
-      case 'deposited': return 'pill-warning';
+      case 'deposited': return 'pill-info';
       case 'cancelled':
       case 'returned': return 'pill-gray';
       default: return 'pill-white';
@@ -960,13 +1014,13 @@ export default function Orders() {
                 </tr>
               ) : (
                 filteredOrders.map((ord) => {
-                  const laptopObj = laptops.find(l => String(l.id) === String(ord.laptopId));
+                  const laptopObj = laptops.find(l => String(l.id) === String(ord.laptopId || ord.requestedLaptopId));
                   const noteValue = ord.note !== undefined ? ord.note : [ord.note1, ord.note2].filter(Boolean).join(' - ');
 
                   return (
                     <tr key={ord.id} data-testid={`order-row-${ord.id}`} className={getOrderRowStatusClass(ord)}>
                       {/* ID Đơn */}
-                      <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: 'var(--primary)' }}>
+                      <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}>
                         #{ord.id}
                       </td>
 
@@ -1002,7 +1056,7 @@ export default function Orders() {
                           type="textarea"
                           className="sheet-cell-textarea"
                           rows={3}
-                          style={{ color: 'var(--text-muted)' }}
+                          style={{ color: '#111827', fontWeight: 700, fontSize: '0.84rem' }}
                           value={noteValue || ''} 
                           onChange={(val) => updateOrder(ord.id, { note: val })} 
                           placeholder="Ghi chú đơn hàng..."
@@ -1045,13 +1099,18 @@ export default function Orders() {
                                     opacity: isLocked ? 0.75 : 1,
                                     background: isLocked ? 'rgba(100,116,139,0.08)' : undefined
                                   }}
-                                  value={ord.laptopId || ''} 
+                                  value={ord.laptopId || ord.requestedLaptopId || ''}
                                   onChange={(e) => handleDirectChangeLaptop(ord.id, e.target.value)}
                                   disabled={isLocked}
                                   title={isLocked ? `🔒 Không được đổi máy — ${lockReason}` : 'Chọn máy cho đơn hàng'}
                                 >
                                   <option value="">- Chưa gán máy -</option>
-                                  {getSelectableLaptops(ord.id).map(l => (
+                                  {(ord.laptopId ? getSelectableLaptops(ord.id) : (
+                                    labelToKey('orderStatus', ord.orderStatus, appOptions) === 'deposited'
+                                    || labelToKey('paymentStatus', ord.paymentStatus, appOptions) === 'deposited'
+                                      ? getDepositReferenceLaptops(ord.requestedLaptopId)
+                                      : getSelectableLaptops(ord.id)
+                                  )).map(l => (
                                     <option key={l.id} value={l.id}>
                                       {l.id} - {l.name} ({l.status})
                                     </option>
@@ -1187,12 +1246,12 @@ export default function Orders() {
                       </td>
 
                       {/* 10. GIÁ BÁN (TR) */}
-                      <td style={{ width: `${colWidths.salePrice}px`, minWidth: `${colWidths.salePrice}px` }}>
+                      <td className="order-sale-price-cell" style={{ width: `${colWidths.salePrice}px`, minWidth: `${colWidths.salePrice}px`, textAlign: 'center' }}>
                         <EditableCell 
                           type="number" 
                           step="any" 
                           className="sheet-cell-input"
-                          style={{ fontWeight: 800, color: '#2563eb' }}
+                          style={{ fontWeight: 800, color: '#2563eb', textAlign: 'center' }}
                           value={ord.salePrice !== undefined ? ord.salePrice : ''} 
                           onChange={(val) => updateOrder(ord.id, { salePrice: val })} 
                         />
@@ -1200,7 +1259,7 @@ export default function Orders() {
 
                       {/* 10b. LỢI NHUẬN (TR) — chỉ ADMIN: giá bán - giá nhập của máy */}
                       {user?.role === 'ADMIN' && (
-                        <td style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, fontWeight: 800, color: '#059669' }}>
+                        <td style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, fontWeight: 800, color: '#059669', textAlign: 'center' }}>
                           {laptopObj && ord.salePrice
                             ? Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2))
                             : '-'}
@@ -1435,19 +1494,27 @@ export default function Orders() {
 
                 {/* 10. Chọn Máy trong kho */}
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label htmlFor="order-field-13" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
-                    10. Máy Trong Kho (ID & Cấu hình)
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
+                    <label htmlFor="order-field-13" className="form-label" style={{ flex: 1, marginBottom: 0, fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
+                      10. Máy Trong Kho (ID & Cấu hình)
+                    </label>
+                    <Input
+                      data-testid="order-laptop-search"
+                      value={laptopPickerSearch}
+                      onChange={e => setLaptopPickerSearch(e.target.value)}
+                      placeholder="Tìm ID, cấu hình hoặc serial..."
+                      aria-label="Tìm máy theo ID, cấu hình hoặc serial"
+                      style={{ width: 'min(360px, 48%)', height: '34px' }}
+                    />
+                  </div>
                   <select id="order-field-13"
                     data-testid="order-laptop-select"
                     className="form-control" 
-                    value={formData.laptopId} 
+                    value={formData.laptopId || formData.requestedLaptopId || ''}
                     onChange={e => handleSelectLaptopChange(e.target.value)}
                   >
                     <option value="">-- Chưa chọn / chưa gán máy --</option>
-                    {getSelectableLaptops(formData.id)
-                      .filter(l => l.id === formData.laptopId || labelToKey('laptopStatus', l.status) === 'available')
-                      .map(l => (
+                    {getLaptopPickerOptions().map(l => (
                       <option key={l.id} value={l.id}>
                         {l.id} - {l.name} ({l.location}) - NY: {l.retailPriceVnd || l.wholesalePriceVnd || 0}tr
                       </option>
@@ -1462,7 +1529,7 @@ export default function Orders() {
                     data-testid="order-status-select"
                     className="form-control" 
                     value={formData.orderStatus} 
-                    onChange={e => setFormData({ ...formData, orderStatus: e.target.value })}
+                    onChange={e => handleDraftDepositFieldChange('orderStatus', e.target.value)}
                   >
                     {ORDER_STATUS_OPTIONS.map(st => (
                       <option key={st} value={st}>{st}</option>
@@ -1477,7 +1544,7 @@ export default function Orders() {
                     data-testid="order-payment-status-select"
                     className="form-control" 
                     value={formData.paymentStatus} 
-                    onChange={e => setFormData({ ...formData, paymentStatus: e.target.value })}
+                    onChange={e => handleDraftDepositFieldChange('paymentStatus', e.target.value)}
                   >
                     {PAYMENT_STATUS_OPTIONS.map(p => (
                       <option key={p} value={p}>{p}</option>

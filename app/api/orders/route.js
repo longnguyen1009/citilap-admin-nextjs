@@ -6,7 +6,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 const ORDER_AUDIT_FIELDS = [
   'createdDate', 'saleOnline', 'saleOffline', 'note', 'orderType', 'orderStatus',
-  'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId',
+  'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId', 'requestedLaptopId',
   'salePrice', 'depositAmount', 'depositNote', 'codAmount', 'creditCardFee',
   'tradeInLaptopId', 'customerId', 'customerInfo', 'customerNote', 'customerAddress', 'trackingCode',
   'shipDate', 'setupNote', 'warranty', 'gifts', 'reservationExpiresAt'
@@ -83,6 +83,14 @@ export async function POST(request) {
 
     // FIX: Kiểm tra laptop có đang bị đơn hàng khác giữ/bán không
     // Ngay cả khi đơn mới chỉ là "pending", laptop đã bị dùng bởi đơn active khác thì không được gán
+    const requestedTarget = body.requestedLaptopId !== undefined
+      ? body.requestedLaptopId
+      : oldData?.requested_laptop_id;
+    const requestedStatus = body.orderStatus ?? oldData?.order_status;
+    if (!body.laptopId && requestedTarget && ['prepared', 'shipping', 'done'].includes(requestedStatus)) {
+      body.laptopId = requestedTarget;
+    }
+
     if (body.laptopId && /^\d+$/.test(String(body.laptopId))) {
       const adminClient = getSupabaseAdminClient();
       const laptopId = Number(body.laptopId);

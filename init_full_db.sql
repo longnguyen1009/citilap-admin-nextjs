@@ -152,6 +152,7 @@ CREATE TABLE orders (
   delivery_status VARCHAR(100),
   shipping_method VARCHAR(100),
   laptop_id BIGINT REFERENCES laptops(id) ON DELETE SET NULL,
+  requested_laptop_id BIGINT REFERENCES laptops(id) ON DELETE SET NULL,
   sale_price NUMERIC DEFAULT 0,
 
   deposit_amount NUMERIC DEFAULT 0,
@@ -614,6 +615,7 @@ DECLARE
   v_laptop laptops%ROWTYPE;
   v_has_committed BOOLEAN;
   v_has_locked BOOLEAN;
+  v_has_requested BOOLEAN;
 BEGIN
   IF p_laptop_id IS NULL THEN
     RETURN NULL;
@@ -673,6 +675,18 @@ BEGIN
       )
   ) INTO v_has_locked;
 
+  SELECT EXISTS (
+    SELECT 1
+    FROM orders
+    WHERE requested_laptop_id = p_laptop_id
+      AND laptop_id IS NULL
+      AND is_active IS TRUE
+      AND COALESCE(payment_status, '') <> 'refunded'
+      AND COALESCE(order_status, '') NOT IN ('cancelled', 'returned')
+      AND (order_status = 'deposited' OR payment_status = 'deposited')
+      AND (reservation_expires_at IS NULL OR reservation_expires_at > CURRENT_TIMESTAMP)
+  ) INTO v_has_requested;
+
   IF COALESCE(v_laptop.status, '') IN ('not_imported', 'repairing', 'returned_cn', 'skipped') THEN
     UPDATE laptops
     SET is_locked = v_has_locked,
@@ -683,7 +697,7 @@ BEGIN
     SET is_locked = v_has_locked,
         status = CASE
           WHEN v_has_committed THEN 'sold'
-          WHEN v_has_locked THEN 'deposited'
+          WHEN v_has_locked OR v_has_requested THEN 'deposited'
           WHEN status IN ('sold', 'deposited') THEN 'available'
           ELSE status
         END,
@@ -1158,6 +1172,7 @@ REVOKE ALL ON FUNCTION public.normalize_order_financials(orders)
   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.refresh_laptop_inventory(BIGINT)
   FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_laptop_inventory(BIGINT) TO service_role;
 REVOKE ALL ON FUNCTION public.record_order_payment(BIGINT, NUMERIC, TEXT, TEXT, DATE, TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.create_order_with_inventory(JSONB, TEXT)
