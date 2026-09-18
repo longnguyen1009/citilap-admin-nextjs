@@ -1,6 +1,6 @@
 -- DEV ONLY: XÓA TRẮNG TOÀN BỘ CƠ SỞ DỮ LIỆU. KHÔNG CHẠY TRÊN DATABASE ĐANG CÓ DỮ LIỆU.
 -- Includes month_key columns/indexes and order RPC support. Run reseed_data.sql
--- afterward for 50 laptops and 30 orders across 07/2026, 08/2026, 09/2026.
+-- afterward for 34 laptops and 20 orders across 07/2026 and 08/2026.
 BEGIN;
 
 DROP SCHEMA public CASCADE;

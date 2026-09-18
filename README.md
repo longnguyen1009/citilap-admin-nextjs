@@ -68,8 +68,7 @@ Các cột tiền trong `laptops`, `orders`, `payments` và `financial_records` 
 | --- | ---: | ---: |
 | 07/2026 | 17 | 10 |
 | 08/2026 | 17 | 10 |
-| 09/2026 | 16 | 10 |
 
-50 laptop không chia hết cho 3 nên chia gần đều 17/17/16. Mỗi tháng có 6 đơn hoàn thành, 1 đơn đã chuẩn bị, 1 đơn đang giao/COD, 1 đơn mới và 1 đơn hủy. Script tạo khách hàng, lịch sử nhập/xuất kho, thanh toán và sổ thu tương ứng; tự kiểm tra số lượng và công nợ trước khi commit.
+Seed tạo 34 laptop và 20 đơn hàng, chia đều cho hai tháng lịch sử 07/2026 và 08/2026; tháng hiện tại 09/2026 để trống nhằm kiểm tra chuyển tháng. Mỗi tháng có 5 đơn hoàn thành, 1 đơn đã cọc, 1 đơn đã chuẩn bị, 1 đơn đang giao/COD, 1 đơn mới và 1 đơn hủy. Script tạo khách hàng, lịch sử nhập/xuất kho, thanh toán và sổ thu tương ứng; tự kiểm tra số lượng và công nợ trước khi commit.
 
 Nếu database đã có schema mới nhất, chỉ cần chạy `reseed_data.sql`; file này xóa dữ liệu nghiệp vụ và cấu hình mẫu, giữ tài khoản đăng nhập, `user_profiles` và danh mục `app_options`. Với schema cũ, áp dụng đủ migration, bao gồm `20260915_month_key.sql` và `20260915_rpc_month_key.sql`, trước khi reseed. Không cần chạy lại migration sau khi khởi tạo bằng `init_full_db.sql` mới nhất.

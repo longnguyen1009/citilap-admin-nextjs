@@ -30,11 +30,13 @@
     --transition: all 0.2s ease-in-out;
 }
 
+@layer base {
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 }
 
 body {
@@ -1204,118 +1206,28 @@ textarea:focus-visible {
 .charger-chuacheck { background: rgba(156, 163, 175, 0.15); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.3); }
 
 
-/* ============================================
-   Table Row Color Coding — Soft Pastel System
-   Each row has: left accent border + subtle gradient background
-   ============================================ */
-
-/* 1. Chưa nhập kho — default white, no accent */
-tr.row-chua-nhap td,
-tr.row-chua-nhap td.sticky-col-1,
-tr.row-chua-nhap td.sticky-col-2 {
-    background-color: #ffffff !important;
-    color: #1e293b !important;
-}
-
-/* 2. Sẵn hàng — soft green accent */
-tr.row-san-hang td,
-tr.row-san-hang td.sticky-col-1,
-tr.row-san-hang td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 60%) !important;
-    border-left: 3px solid rgba(16, 185, 129, 0.45) !important;
-    color: #1e293b !important;
-}
-
-/* 3. Đã cọc — soft blue accent */
-tr.row-da-coc td,
-tr.row-da-coc td.sticky-col-1,
-tr.row-da-coc td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.07) 0%, rgba(59, 130, 246, 0.02) 60%) !important;
-    border-left: 3px solid rgba(59, 130, 246, 0.4) !important;
-    color: #1e293b !important;
-}
-
-/* 4. Đang sửa chữa — soft amber accent */
-tr.row-dang-sua td,
-tr.row-dang-sua td.sticky-col-1,
-tr.row-dang-sua td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 60%) !important;
-    border-left: 3px solid rgba(251, 191, 36, 0.45) !important;
-    color: #1e293b !important;
-}
-
-/* 5. Completed/Cancelled/Other — muted, reduced opacity */
-tr.row-other td,
-tr.row-other td.sticky-col-1,
-tr.row-other td.sticky-col-2,
-tr.order-row-completed td,
-tr.order-row-completed td.sticky-col-1,
-tr.order-row-completed td.sticky-col-2,
-tr.order-row-cancelled td,
-tr.order-row-cancelled td.sticky-col-1,
-tr.order-row-cancelled td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.02) 60%) !important;
-    border-left: 3px solid rgba(148, 163, 184, 0.25) !important;
-    color: #64748b !important;
-    opacity: 0.78;
-}
-
-tr.row-other td .subtitle,
-tr.row-other td span,
-tr.order-row-completed td input, tr.order-row-completed td textarea, tr.order-row-completed td select, tr.order-row-completed td span,
-tr.order-row-cancelled td input, tr.order-row-cancelled td textarea, tr.order-row-cancelled td select, tr.order-row-cancelled td span {
-    color: #94a3b8 !important;
-}
-
-/* = Order Row Colors = */
-
-/* 1. Đang chuẩn bị / Cọc — soft blue */
-tr.order-row-preparing td,
-tr.order-row-preparing td.sticky-col-1,
-tr.order-row-preparing td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.07) 0%, rgba(59, 130, 246, 0.02) 60%) !important;
-    border-left: 3px solid rgba(59, 130, 246, 0.4) !important;
-    color: #1e293b !important;
-}
-tr.order-row-preparing td input, tr.order-row-preparing td textarea, tr.order-row-preparing td select, tr.order-row-preparing td span { color: #1e293b !important; }
-
-/* 2. Đang giao — soft amber */
-tr.order-row-shipping td,
-tr.order-row-shipping td.sticky-col-1,
-tr.order-row-shipping td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(251, 191, 36, 0.07) 0%, rgba(251, 191, 36, 0.02) 60%) !important;
-    border-left: 3px solid rgba(251, 191, 36, 0.4) !important;
-    color: #1e293b !important;
-}
-tr.order-row-shipping td input, tr.order-row-shipping td textarea, tr.order-row-shipping td select, tr.order-row-shipping td span { color: #1e293b !important; }
-
-/* 3. Hoàn thành — muted */
-tr.order-row-completed td,
-tr.order-row-completed td.sticky-col-1,
-tr.order-row-completed td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.02) 60%) !important;
-    border-left: 3px solid rgba(148, 163, 184, 0.25) !important;
-}
-tr.order-row-completed td input, tr.order-row-completed td textarea, tr.order-row-completed td select, tr.order-row-completed td span { color: #64748b !important; }
-
-/* 4. Hủy / Back — soft red-muted */
-tr.order-row-cancelled td,
-tr.order-row-cancelled td.sticky-col-1,
-tr.order-row-cancelled td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.01) 60%) !important;
-    border-left: 3px solid rgba(239, 68, 68, 0.3) !important;
-}
-tr.order-row-cancelled td input, tr.order-row-cancelled td textarea, tr.order-row-cancelled td select, tr.order-row-cancelled td span { color: #64748b !important; }
-
-/* 5. Cọc / Reservation — soft teal */
-tr.order-row-deposited td,
-tr.order-row-deposited td.sticky-col-1,
-tr.order-row-deposited td.sticky-col-2 {
-    background: linear-gradient(90deg, rgba(20, 184, 166, 0.06) 0%, rgba(20, 184, 166, 0.02) 60%) !important;
-    border-left: 3px solid rgba(20, 184, 166, 0.35) !important;
-    color: #1e293b !important;
-}
-tr.order-row-deposited td input, tr.order-row-deposited td textarea, tr.order-row-deposited td select, tr.order-row-deposited td span { color: #1e293b !important; }
+/* Opaque row backgrounds preserve sticky cells and badge contrast. */
+tr.row-chua-nhap { --row-bg: #f8fafc; --row-accent: #64748b; }
+tr.row-san-hang { --row-bg: #bbf7d0; --row-accent: #15803d; }
+tr.row-da-coc { --row-bg: #fde68a; --row-accent: #b45309; }
+tr.row-dang-sua { --row-bg: #fca5a5; --row-accent: #b91c1c; }
+tr.row-da-ban { --row-bg: #cbd5e1; --row-accent: #334155; }
+tr.row-tra-hang { --row-bg: #c4b5fd; --row-accent: #6d28d9; }
+tr.row-tra-tien { --row-bg: #c4b5fd; --row-accent: #6d28d9; }
+tr.row-bo-qua { --row-bg: #e2e8f0; --row-accent: #475569; }
+tr.row-other { --row-bg: #e2e8f0; --row-accent: #475569; }
+tr.order-row-preparing { --row-bg: #fde68a; --row-accent: #b45309; }
+tr.order-row-shipping { --row-bg: #93c5fd; --row-accent: #1d4ed8; }
+tr.order-row-completed { --row-bg: #cbd5e1; --row-accent: #334155; }
+tr.order-row-cancelled { --row-bg: #cbd5e1; --row-accent: #334155; }
+tr.order-row-returned { --row-bg: #cbd5e1; --row-accent: #334155; }
+tr.order-row-new { --row-bg: #f8fafc; --row-accent: #64748b; }
+tr.order-row-deposited { --row-bg: #fde68a; --row-accent: #b45309; }
+tr.order-row-other { --row-bg: #e2e8f0; --row-accent: #475569; }
+.list-table-scroll .data-table tbody tr td { background: var(--row-bg, #ffffff); color: var(--text-main); }
+.list-table-scroll .data-table tbody tr td:first-child { box-shadow: inset 3px 0 var(--row-accent, transparent); }
+.list-table-scroll .data-table tbody tr:hover { filter: none; }
+.list-table-scroll .data-table tbody tr:hover td { background: color-mix(in srgb, var(--row-bg, #ffffff), #0f172a 4%); }
 
 /* Sheet-cell hover — subtle lift */
 tr td .sheet-cell-input:hover,
@@ -1336,8 +1248,8 @@ tr td .sheet-cell-textarea:focus {
 
 /* Table enhancements for 20 columns with Custom Horizontal Scrollbar */
 .inventory-table-container {
-    max-height: calc(100vh - 155px) !important;
-    min-height: 420px;
+    max-height: clamp(280px, calc(100dvh - 320px), 720px);
+    min-height: 0;
     overflow-x: auto !important;
     overflow-y: auto !important;
     border-radius: var(--radius-md);
@@ -1734,48 +1646,63 @@ tr td .sheet-cell-textarea:focus {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-/* Pill color variants — soft translucent backgrounds with dark text */
+/* Pill color variants — high-contrast backgrounds with bold dark text */
 .pill-success {
-    background: rgba(16, 185, 129, 0.12) !important;
-    color: #047857 !important;
-    border-color: rgba(16, 185, 129, 0.3) !important;
+    background: #22c55e !important;
+    color: #ffffff !important;
+    border-color: #15803d !important;
 }
 .pill-warning {
-    background: rgba(245, 158, 11, 0.12) !important;
-    color: #b45309 !important;
-    border-color: rgba(245, 158, 11, 0.3) !important;
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border-color: #b45309 !important;
 }
 .pill-danger {
-    background: rgba(239, 68, 68, 0.12) !important;
-    color: #dc2626 !important;
-    border-color: rgba(239, 68, 68, 0.3) !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #b91c1c !important;
 }
 .pill-info {
-    background: rgba(59, 130, 246, 0.12) !important;
-    color: #2563eb !important;
-    border-color: rgba(59, 130, 246, 0.3) !important;
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #1d4ed8 !important;
 }
 .pill-purple {
-    background: rgba(139, 92, 246, 0.12) !important;
-    color: #7c3aed !important;
-    border-color: rgba(139, 92, 246, 0.3) !important;
+    background: #8b5cf6 !important;
+    color: #ffffff !important;
+    border-color: #6d28d9 !important;
 }
 .pill-neutral {
-    background: rgba(100, 116, 139, 0.1) !important;
-    color: #475569 !important;
-    border-color: rgba(100, 116, 139, 0.25) !important;
+    background: rgba(100, 116, 139, 0.15) !important;
+    color: #334155 !important;
+    border-color: rgba(100, 116, 139, 0.4) !important;
 }
-.data-table-wide tbody tr:hover td,
-.data-table-wide tbody tr:hover td.sticky-col-1,
-.data-table-wide tbody tr:hover td.sticky-col-2 {
-    background-color: rgba(59, 130, 246, 0.04) !important;
-    filter: none !important;
+.pill-gray {
+    background: #94a3b8 !important;
+    color: #ffffff !important;
+    border-color: #475569 !important;
 }
-/* Override for colored rows on hover — keep the accent but lift slightly */
-tr.row-san-hang:hover td { background: linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04)) !important; }
-tr.row-da-coc:hover td { background: linear-gradient(90deg, rgba(59, 130, 246, 0.10), rgba(59, 130, 246, 0.03)) !important; }
-tr.row-dang-sua:hover td { background: linear-gradient(90deg, rgba(251, 191, 36, 0.10), rgba(251, 191, 36, 0.03)) !important; }
+.pill-white {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #475569 !important;
+}
 
+/* Status selects use the same palette as their read-only pills. */
+.sheet-cell-select.pill-success { background-color: #dcfce7 !important; }
+.sheet-cell-select.pill-warning { background-color: #fef3c7 !important; }
+.sheet-cell-select.pill-danger { background-color: #fee2e2 !important; }
+.sheet-cell-select.pill-info { background-color: #dbeafe !important; }
+.sheet-cell-select.pill-purple { background-color: #f5f3ff !important; }
+.sheet-cell-select.pill-neutral { background-color: #f8fafc !important; }
+.sheet-cell-select.pill-gray { background-color: #e2e8f0 !important; }
+.sheet-cell-select.pill-white { background-color: #ffffff !important; }
+
+.sheet-cell-select.pill-success:focus { border-color: #10b981 !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16) !important; }
+.sheet-cell-select.pill-warning:focus { border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16) !important; }
+.sheet-cell-select.pill-danger:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.16) !important; }
+.sheet-cell-select.pill-info:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16) !important; }
+.sheet-cell-select.pill-purple:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.16) !important; }
 .list-table-card {
     min-width: 0;
     overflow: hidden;
@@ -1785,7 +1712,9 @@ tr.row-dang-sua:hover td { background: linear-gradient(90deg, rgba(251, 191, 36,
     width: 100%;
     min-width: 0;
     overscroll-behavior: contain;
-    scrollbar-width: none;
+    scrollbar-width: auto;
+    scrollbar-gutter: stable;
+    scrollbar-color: #64748b #e2e8f0;
 }
 
 .data-table-wide th {
@@ -1929,7 +1858,8 @@ tr.row-dang-sua:hover td { background: linear-gradient(90deg, rgba(251, 191, 36,
 .nav-item[aria-current="page"] { background: #eff6ff; color: #1d4ed8; font-weight: 700; }
 .mobile-navigation { display: none; }
 .data-table-wide td button { white-space: nowrap; overflow-wrap: normal; flex-shrink: 0; }
-.app-dialog { width: calc(100vw - 32px); overscroll-behavior: contain; }
+.app-dialog { width: calc(100vw - 32px); overscroll-behavior: contain; scrollbar-gutter: stable; }
+.app-dialog .order-modal-scroll { max-height: none; overflow: visible; }
 .app-dialog h2 { padding-right: 24px; }
 .app-dialog .modal-footer { position: sticky; bottom: 0; background: white; z-index: 2; flex-wrap: wrap; }
 .form-save-error { flex: 1 0 100%; padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: 0.85rem; }
@@ -1958,4 +1888,160 @@ tr.row-dang-sua:hover td { background: linear-gradient(90deg, rgba(251, 191, 36,
 }
 @media (max-width: 640px) {
   .app-dialog .modal-footer button[type="submit"] { flex: 1; min-width: 0; white-space: normal; height: auto; padding: 10px 12px; }
+}
+
+/* The dialog shell stays put; only its body scrolls below the title and close button. */
+.app-dialog.modal-shell {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+    gap: 16px;
+    scrollbar-gutter: auto;
+}
+.modal-shell > :not(.modal-content-scroll) { flex-shrink: 0; }
+.modal-content-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+.modal-shell .modal-body,
+.modal-shell .order-modal-form { padding: 0; }
+.modal-shell .modal-footer {
+    position: static;
+    padding: 12px 0 0 !important;
+    margin-top: 16px;
+    gap: 8px;
+}
+.modal-shell .modal-footer > div { flex-wrap: wrap; gap: 8px; }
+.modal-shell .inventory-editor,
+.modal-shell .inventory-editor > form { overflow: visible !important; }
+.modal-shell > button:last-child {
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    z-index: 2;
+}
+.orders-list-table .order-row-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+.orders-list-table .order-row-actions .btn {
+    justify-content: center;
+    min-width: 0;
+    padding: 4px 6px;
+    white-space: nowrap;
+}
+
+/* Compact controls leave more room for the working tables. */
+.main-content.list-workspace { padding: 8px; }
+.list-workspace-page { padding: 0; }
+.list-workspace-page .list-page-header { margin-bottom: 8px; gap: 8px; }
+.list-workspace-page .filter-card {
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+    border-radius: 10px;
+}
+.list-workspace-page .list-summary-strip { margin: 0; gap: 6px; }
+.list-workspace-page .list-summary-item { padding: 5px 8px; min-height: 30px; gap: 5px; }
+.list-workspace-page .summary-text { flex-direction: row; align-items: center; gap: 5px; }
+.list-workspace-page .summary-label { color: #64748b; white-space: nowrap; }
+.list-workspace-page .summary-value { font-size: 0.8rem; white-space: nowrap; }
+.list-workspace-page .summary-icon { width: 20px; height: 20px; }
+.list-workspace-page .list-summary-item-value { margin-left: 0; }
+.orders-filter-card .list-summary-strip { margin-top: 8px; }
+
+@media (min-width: 1024px) {
+    .list-workspace-page .list-page-header,
+    .list-workspace-page .list-page-header > div:first-child {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: nowrap;
+    }
+    .list-workspace-page .list-page-title { font-size: 1rem !important; white-space: nowrap; }
+    .list-workspace-page .list-period { margin-top: 0 !important; flex-wrap: nowrap; white-space: nowrap; }
+    .list-workspace-page .section-actions { flex-wrap: nowrap !important; margin-left: auto; }
+    .list-workspace-page .list-page-header .list-summary-strip { flex-wrap: nowrap; }
+    .list-workspace-page .list-page-header .summary-icon { display: none; }
+    .list-workspace-page .orders-filter-grid {
+        grid-template-columns: minmax(180px, 1.6fr) repeat(5, minmax(0, 1fr));
+        gap: 8px !important;
+    }
+    .list-workspace-page .orders-filter-grid .filter-item { grid-column: auto !important; min-width: 0; }
+    .list-workspace-page .filter-item input,
+    .list-workspace-page .filter-item select { min-height: 32px; height: 32px; padding: 4px 8px; font-size: 0.78rem; }
+}
+
+/* Allow toolbars to wrap before controls overlap on smaller desktops. */
+@media (min-width: 769px) and (max-width: 1399px) {
+    .list-workspace-page .list-page-header { flex-wrap: wrap; }
+    .list-workspace-page .list-page-header > div:first-child { flex-wrap: wrap; }
+}
+
+/* Desktop lists fill the viewport; only the table scrolls. On compact screens,
+   retain page scrolling so the stacked filters remain accessible. */
+@media (min-width: 769px) and (min-height: 600px) {
+    .main-content.list-workspace {
+        height: 100dvh;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .list-workspace-page {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        min-width: 0;
+        padding-bottom: 0;
+    }
+
+    .list-workspace-page > * {
+        flex-shrink: 0;
+    }
+
+    .list-workspace-page > .list-table-card {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        margin-bottom: 0;
+    }
+
+    .list-workspace-page .list-table-scroll {
+        flex: 1;
+        min-height: 0;
+        max-height: none;
+        overflow: auto;
+    }
+
+    .app-container:has(.list-workspace) .sidebar {
+        overflow-y: auto;
+    }
+}
+
+/* Keep horizontal navigation inside the lists, without a viewport overlay. */
+.list-table-scroll::-webkit-scrollbar:horizontal {
+    display: block !important;
+    height: 10px !important;
+}
+.list-table-scroll::-webkit-scrollbar {
+    height: 10px !important;
+}
+.list-table-scroll::-webkit-scrollbar-thumb {
+    background: #64748b !important;
+    box-shadow: none;
 }

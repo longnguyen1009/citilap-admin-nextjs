@@ -70,6 +70,32 @@ export async function POST(request) {
       if (data) {
         oldData = data;
         action = 'UPDATE';
+        // FIX-03: SALES chỉ được sửa order trong tháng hiện tại
+        if (!isAdmin && oldData) {
+          const now = new Date();
+          const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+          if (oldData.month_key && oldData.month_key !== currentMonth) {
+            return NextResponse.json({ error: 'Bạn chỉ được sửa đơn hàng trong tháng hiện tại.' }, { status: 403 });
+          }
+        }
+      }
+    }
+
+    // FIX: Kiểm tra laptop có đang bị đơn hàng khác giữ/bán không
+    // Ngay cả khi đơn mới chỉ là "pending", laptop đã bị dùng bởi đơn active khác thì không được gán
+    if (body.laptopId && /^\d+$/.test(String(body.laptopId))) {
+      const adminClient = getSupabaseAdminClient();
+      const laptopId = Number(body.laptopId);
+      const { data: conflictOrder } = await adminClient
+        .from('orders')
+        .select('id, order_status, payment_status')
+        .eq('laptop_id', laptopId)
+        .eq('is_active', true)
+        .not('order_status', 'in', '(cancelled,returned)')
+        .not('payment_status', 'eq', 'refunded')
+        .maybeSingle();
+      if (conflictOrder && (!persistedId || conflictOrder.id !== body.id)) {
+        return NextResponse.json({ error: `Laptop đang được giữ/bán bởi đơn hàng #${conflictOrder.id}. Vui lòng chọn laptop khác.` }, { status: 409 });
       }
     }
 

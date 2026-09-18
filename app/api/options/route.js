@@ -101,7 +101,9 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'label không được quá 120 ký tự' }, { status: 400 });
     }
   }
-  if (payload.is_active !== undefined) updates.is_active = Boolean(payload.is_active);
+  if (payload.is_active !== undefined) {
+    updates.is_active = payload.is_active === true || payload.is_active === 'true';
+  }
   if (payload.sort_order !== undefined) {
     updates.sort_order = Number(payload.sort_order);
     if (!Number.isFinite(updates.sort_order)) {

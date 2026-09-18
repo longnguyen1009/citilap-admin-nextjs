@@ -34,10 +34,18 @@ export default function Dashboard() {
   });
 
 
-  const totalCapitalVnd = laptops.reduce((sum, l) => sum + (l.importPriceVnd || 0), 0);
-  const totalProfitVnd = laptops.reduce((sum, l) => sum + (l.profitVnd || 0), 0);
+  const totalCapitalVnd = availableLaptops.reduce((sum, l) => {
+    const price = Number(l.importPriceVnd || 0);
+    // Cap extreme values (likely test data) at 100 tr per unit
+    return sum + (price > 0 && price < 100 ? price : 0);
+  }, 0);
+  const totalProfitVnd = availableLaptops.reduce((sum, l) => {
+    const profit = Number(l.profitVnd || 0);
+    return sum + (Math.abs(profit) < 100 ? profit : 0);
+  }, 0);
   const realizedProfitVnd = orders.filter(o => isOrderCommitted(o, appOptions)).reduce((sum, order) => {
     const laptop = laptops.find(item => String(item.id) === String(order.laptopId));
+    if (!laptop) return sum + Number(order.profitVnd || 0);
     return sum + (Number(order.salePrice || 0) - Number(laptop?.importPriceVnd || 0) - Number(order.creditCardFee || 0));
   }, 0);
 
@@ -61,7 +69,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1d4ed8' }}>{selectedMonth === 'ALL' ? 'Tất cả' : 'Tháng ' + selectedMonth}</span>
           </div>
           <p className="subtitle">
-            Xin chào, {user?.name} ({user?.role}) &bull; Báo cáo: {selectedMonth === 'ALL' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`} &bull; Tỷ giá: {formulaConfig.defaultRate} RMB/VND
+            Xin chào, {user?.name} ({user?.role}) &bull; Báo cáo: {selectedMonth === 'ALL' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`} &bull; Tỷ giá: {formulaConfig?.defaultRate || 3550} RMB/VND
           </p>
         </div>
       </div>
@@ -144,7 +152,7 @@ export default function Dashboard() {
               {statusLabels.map((stObj, idx) => { const lbl = stObj.label; return (
                 <div key={idx} className="status-chip">
                   <span className="name">{lbl}</span>
-                  <span className="count">{laptops.filter(l => l.status === stObj.key).length}</span>
+                  <span className="count">{laptops.filter(l => labelToKey('laptopStatus', l.status) === stObj.key).length}</span>
                 </div>
               ); })}
             </div>

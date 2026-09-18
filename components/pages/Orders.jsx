@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Package
 } from 'lucide-react';
-import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,7 +148,8 @@ export default function Orders() {
     getLaptopAssignmentError,
     getOptions,
     getLabel,
-    cloudStatus
+    cloudStatus,
+    appOptions
   } = useInventory();
 
   const { user } = useAuth();
@@ -159,19 +159,38 @@ export default function Orders() {
     const option = getOptions(groupKey).find(item => item.key === String(value) || item.label === value);
     return option?.key || value;
   };
+  const getFormOptionLabel = (groupKey, value, fallback = '') => {
+    if (value == null || value === '') return fallback;
+    const option = getOptions(groupKey).find(
+      item => item.key === String(value) || item.label === String(value)
+    );
+    return option?.label || String(value);
+  };
+  const toKey = (groupKey, label) => getFormOptionKey(groupKey, label);
+  const selectValue = (value) => value == null ? '' : String(value);
 
   const handleOrderStatusChange = (orderId, value) => {
     const statusKey = getFormOptionKey('orderStatus', value);
-    const updates = { orderStatus: value };
-    if (statusKey === 'cancelled' || statusKey === 'returned') {
-      updates.deliveryStatus = 'returned';
-    }
+    // Xác nhận trước khi thay đổi trạng thái hủy/trả
     if (statusKey === 'cancelled') {
+      if (!window.confirm(`Bạn có chắc chắn muốn HỦY đơn hàng #${orderId}?`)) return;
+    }
+    if (statusKey === 'returned') {
+      if (!window.confirm(`Bạn có chắc chắn muốn ĐỔI TRẢ (BẢO HÀNH) đơn hàng #${orderId}?`)) return;
+    }
+    const updates = { orderStatus: statusKey };
+    if (statusKey === 'cancelled') {
+      updates.deliveryStatus = 'cancelled';
       updates.cancelledAt = new Date().toISOString();
       updates.cancelReason = 'Hủy từ danh sách đơn hàng';
     }
+    if (statusKey === 'returned') {
+      updates.deliveryStatus = 'returned';
+      updates.returnedAt = new Date().toISOString();
+      updates.returnReason = 'Đổi trả từ danh sách đơn hàng';
+    }
     const result = updateOrder(orderId, updates);
-    if (!result.ok) alert(`⛔ ${result.message}`);
+    if (!result.ok) toast.error(result.message);
   };
 
   // Filter States
@@ -315,9 +334,9 @@ export default function Orders() {
     // Check the current status of the order to see if it allows changing the laptop
     const currentOrder = allOrders.find(o => String(o.id) === String(ordId));
     if (!currentOrder) return;
-    const isLocked = isOrderCommitted(currentOrder) || isOrderCancelled(currentOrder);
+    const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
     if (isLocked) {
-      alert('⛔ Đơn hàng đang ở trạng thái KHÔNG ĐƯỢC PHÉP thay đổi sản phẩm.\nVui lòng chuyển trạng thái đơn hàng về "MỚI TẠO" hoặc "ĐÃ CỌC" trước khi đổi máy.');
+      toast.error('Đơn hàng đang ở trạng thái KHÔNG ĐƯỢC PHÉP thay đổi sản phẩm. Vui lòng chuyển trạng thái đơn hàng về "MỚI TẠO" hoặc "ĐÃ CỌC" trước khi đổi máy.');
       return;
     }
     const selected = laptops.find(l => String(l.id) === String(newLaptopId));
@@ -326,11 +345,12 @@ export default function Orders() {
       const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
       if (autoPrice) {
         updates.salePrice = autoPrice;
-        updates.codAmount = autoPrice;
+        // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
+        // normalizeMoney sẽ tự clamp codAmount <= debtAmount
       }
     }
     const result = updateOrder(ordId, updates);
-    if (!result.ok) alert(`⛔ ${result.message}`);
+    if (!result.ok) toast.error(result.message);
   };
 
   // Mở modal tạo đơn mới
@@ -378,12 +398,12 @@ export default function Orders() {
       ...order,
       id: order.id,
       createdDate: order.createdDate || '',
-      saleOnline: order.saleOnline || SALE_ONLINE_OPTIONS[0],
+      saleOnline: getFormOptionLabel('saleOnline', order.saleOnline, SALE_ONLINE_OPTIONS[0]),
       note: order.note || '',
-      shippingMethod: order.shippingMethod || SHIPPING_METHOD_OPTIONS[0],
-      orderStatus: order.orderStatus || ORDER_STATUS_OPTIONS[0],
-      paymentStatus: order.paymentStatus || PAYMENT_STATUS_OPTIONS[0],
-      deliveryStatus: order.deliveryStatus || DELIVERY_STATUS_OPTIONS[0],
+      shippingMethod: getFormOptionLabel('shippingMethod', order.shippingMethod, SHIPPING_METHOD_OPTIONS[0]),
+      orderStatus: getFormOptionLabel('orderStatus', order.orderStatus, ORDER_STATUS_OPTIONS[0]),
+      paymentStatus: getFormOptionLabel('paymentStatus', order.paymentStatus, PAYMENT_STATUS_OPTIONS[0]),
+      deliveryStatus: getFormOptionLabel('deliveryStatus', order.deliveryStatus, DELIVERY_STATUS_OPTIONS[0]),
       laptopId: order.laptopId || '',
       salePrice: order.salePrice ?? '',
       depositAmount: order.depositAmount ?? '',
@@ -392,13 +412,13 @@ export default function Orders() {
       codAmount: order.codAmount ?? '',
       setupNote: order.setupNote || '',
       warranty: order.warranty || '',
-      gifts: order.gifts || GIFT_OPTIONS[0],
+      gifts: getFormOptionLabel('giftOptions', order.gifts, GIFT_OPTIONS[0]),
       customerId: order.customerId || '',
       customerNote: order.customerNote || '',
       trackingCode: order.trackingCode || '',
       shipDate: order.shipDate || '',
-      orderType: order.orderType || ORDER_TYPES[0],
-      paymentMethod: order.paymentMethod || PAYMENT_METHODS[0],
+      orderType: getFormOptionLabel('orderType', order.orderType, ORDER_TYPES[0]),
+      paymentMethod: getFormOptionLabel('paymentMethod', order.paymentMethod, PAYMENT_METHODS[0]),
       tradeInLaptopName: '',
       tradeInPrice: '',
       creditCardFee: order.creditCardFee ?? ''
@@ -413,12 +433,12 @@ export default function Orders() {
       address: newCustomer.address.trim()
     };
     if (!payload.name) {
-      alert('Vui lòng nhập tên khách hàng.');
+      toast.error('Vui lòng nhập tên khách hàng.');
       return;
     }
     const result = await createCustomer(payload);
     if (!result?.ok) {
-      alert(`Không tạo được khách hàng: ${result?.message || 'Lỗi không xác định.'}`);
+      toast.error(`Không tạo được khách hàng: ${result?.message || 'Lỗi không xác định.'}`);
       return;
     }
     setFormData(prev => ({ ...prev, customerId: String(result.customer.id) }));
@@ -437,7 +457,7 @@ export default function Orders() {
       ...prev,
       laptopId,
       salePrice: autoPrice,
-      codAmount: autoPrice
+      // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
     }));
   };
 
@@ -456,7 +476,9 @@ export default function Orders() {
     setIsSaving(true);
     try {
     const finalSalePrice = parseFlexibleFloat(formData.salePrice);
-    const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalSalePrice);
+    const finalAmountPaid = parseFlexibleFloat(formData.depositAmount);
+    const finalDebtAmount = Math.max(0, finalSalePrice - finalAmountPaid);
+    const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalDebtAmount);
     
     // Xử lý Thu cũ đổi mới
     let tradeInLaptopId = '';
@@ -505,7 +527,7 @@ export default function Orders() {
   const handleDeleteOrder = (ordId) => {
     if (window.confirm(`Bạn có chắc chắn muốn hủy Đơn hàng #${ordId}? Lịch sử đơn vẫn được giữ để đối soát.`)) {
       const result = cancelOrder(ordId);
-      if (!result.ok) alert(`⛔ ${result.message}`);
+      if (!result.ok) toast.error(result.message);
     }
   };
 
@@ -544,7 +566,7 @@ export default function Orders() {
   // Xuất file CSV Đơn Hàng
   const handleExportCSV = () => {
     if (orders.length === 0) {
-      alert('Không có dữ liệu đơn hàng để xuất!');
+      toast.error('Không có dữ liệu đơn hàng để xuất!');
       return;
     }
     const isAdmin = user?.role === 'ADMIN';
@@ -603,19 +625,21 @@ export default function Orders() {
 
   // Badge Style Utilities
   const getOrderStatusBadgeClass = (status) => {
-    const key = labelToKey('orderStatus', status);
+    const key = labelToKey('orderStatus', status, appOptions);
     switch (key) {
-      case 'done': return 'pill-success';
+      case 'done': return 'pill-gray';
       case 'shipping': return 'pill-info';
       case 'prepared': return 'pill-warning';
+      case 'new': return 'pill-white';
+      case 'deposited': return 'pill-warning';
       case 'cancelled':
-      case 'returned': return 'pill-danger';
-      default: return 'pill-neutral';
+      case 'returned': return 'pill-gray';
+      default: return 'pill-white';
     }
   };
 
   const getPaymentStatusBadgeClass = (status) => {
-    const key = labelToKey('paymentStatus', status);
+    const key = labelToKey('paymentStatus', status, appOptions);
     switch (key) {
       case 'paid': return 'pill-success';
       case 'deposited': return 'pill-warning';
@@ -626,7 +650,7 @@ export default function Orders() {
   };
 
   const getPaymentMethodBadgeClass = (method) => {
-    const key = labelToKey('paymentMethod', method);
+    const key = labelToKey('paymentMethod', method, appOptions);
     switch (key) {
       case 'transfer_cash': return 'pill-info';
       case 'card': return 'pill-purple';
@@ -636,23 +660,33 @@ export default function Orders() {
     }
   };
 
-  const getOrderRowStatusClass = (ord) => {
-    const statusKey = labelToKey('orderStatus', ord.orderStatus);
+  const getDeliveryStatusBadgeClass = (status) => {
+    const key = labelToKey('deliveryStatus', status, appOptions);
+    switch (key) {
+      case 'delivered': return 'pill-success';
+      case 'shipped': return 'pill-purple';
+      case 'preparing': return 'pill-warning';
+      case 'returned': return 'pill-danger';
+      default: return 'pill-neutral';
+    }
+  };
 
-    // 1. Hoàn thành / BACK MÁY / HỦY ĐƠN → Màu xám (chỉ phụ thuộc trạng thái đơn)
-    if (statusKey === 'done' || statusKey === 'cancelled' || statusKey === 'returned') {
-      return 'order-row-completed';
+  const getOrderRowStatusClass = (ord) => {
+    const statusKey = labelToKey('orderStatus', ord.orderStatus, appOptions);
+    switch (statusKey) {
+      case 'done': return 'order-row-completed';
+      case 'cancelled': return 'order-row-cancelled';
+      case 'returned': return 'order-row-returned';
+      case 'shipping': return 'order-row-shipping';
+      case 'prepared': return 'order-row-preparing';
+      case 'new': return 'order-row-new';
+      case 'deposited': return 'order-row-deposited';
+      default: return 'order-row-other';
     }
-    // 2. Đã xác nhận, đang chờ/giao hàng → Màu vàng
-    if (isOrderCommitted(ord)) {
-      return 'order-row-shipping';
-    }
-    // 3. Còn lại (chuẩn bị, mới, đặt cọc...) → Màu hồng
-    return 'order-row-preparing';
   };
 
   return (
-    <section className="page-section">
+    <section className="page-section list-workspace-page">
       {/* SECTION HEADER */}
       <div className="section-title section-header list-page-header">
         <div>
@@ -781,8 +815,6 @@ export default function Orders() {
             </select>
           </div>
         </div>
-      </div>
-
       <div className="list-summary-strip" aria-label="Tóm tắt đơn hàng">
         <div className="list-summary-item">
           <div className="summary-icon"><Package size={15} /></div>
@@ -806,6 +838,8 @@ export default function Orders() {
           </div>
         </div>
       </div>
+      </div>
+
 
       {/* ORDERS DATA TABLE (CỘT TRẠNG THÁI & THÀNH TOÁN LÊN TRƯỚC GIÁ BÁN, GỘP GHI CHÚ) */}
       <div className="card glass p-0 list-table-card orders-list-card">
@@ -952,7 +986,7 @@ export default function Orders() {
                           <select 
                             className="sheet-cell-select"
                             style={{ fontWeight: 700, color: '#0369a1' }}
-                            value={ord.saleOnline} 
+                            value={selectValue(ord.saleOnline)}
                             onChange={(e) => updateOrder(ord.id, { saleOnline: e.target.value })}
                           >
                             {getOptions('saleOnline').map(s => (
@@ -983,7 +1017,7 @@ export default function Orders() {
                           {(() => {
                             const lockedByDelivery = ['shipped', 'delivered'].includes(labelToKey('deliveryStatus', ord.deliveryStatus));
                             const lockedByPayment = labelToKey('paymentStatus', ord.paymentStatus) === 'paid';
-                            const lockedByOrder = isOrderCommitted(ord) || isOrderCancelled(ord);
+                            const lockedByOrder = isOrderCommitted(ord, appOptions) || isOrderCancelled(ord, appOptions);
 
                             const isLocked = lockedByDelivery || lockedByPayment || lockedByOrder;
 
@@ -1037,7 +1071,7 @@ export default function Orders() {
                           >
                             {laptopObj ? laptopObj.name : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>}
                           </div>
-                          {isReservationActive(ord) && ord.reservationExpiresAt && (
+                          {isReservationActive(ord, appOptions) && ord.reservationExpiresAt && (
                             <div style={{ fontSize: '0.7rem', color: '#d97706', paddingLeft: '4px' }}>
                               Giữ tới: {new Date(ord.reservationExpiresAt).toLocaleString('vi-VN')}
                             </div>
@@ -1047,8 +1081,8 @@ export default function Orders() {
                             const oKey = labelToKey('orderStatus', ord.orderStatus);
                             const pKey = labelToKey('paymentStatus', ord.paymentStatus);
                             const isDepositOrder = oKey === 'deposited' || pKey === 'deposited';
-                            if (!ord.laptopId || !isDepositOrder || isOrderCommitted(ord) || isOrderCancelled(ord)) return null;
-                            if (isReservationActive(ord)) return null;
+                            if (!ord.laptopId || !isDepositOrder || isOrderCommitted(ord, appOptions) || isOrderCancelled(ord, appOptions)) return null;
+                            if (isReservationActive(ord, appOptions)) return null;
                             return (
                               <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, paddingLeft: '4px' }}
                                 title='Đơn giữ chỗ đã hết hạn — máy đã được nhả về kho. Hãy gia hạn giữ máy hoặc hủy đơn.'>
@@ -1066,7 +1100,7 @@ export default function Orders() {
                           data-testid={`order-status-cell-${ord.id}`}
                           className={`sheet-cell-select ${getOrderStatusBadgeClass(ord.orderStatus)}`}
                           style={{ fontWeight: 700, borderRadius: '4px' }}
-                          value={getLabel('orderStatus', ord.orderStatus)}
+                          value={selectValue(getLabel('orderStatus', ord.orderStatus))}
                           onChange={(e) => handleOrderStatusChange(ord.id, e.target.value)}
                         >
                           {ORDER_STATUS_OPTIONS.map(st => (
@@ -1081,8 +1115,8 @@ export default function Orders() {
                           data-testid={`order-payment-cell-${ord.id}`}
                           className={`sheet-cell-select ${getPaymentStatusBadgeClass(ord.paymentStatus)}`}
                           style={{ fontWeight: 700, borderRadius: '4px' }}
-                          value={getLabel('paymentStatus', ord.paymentStatus)}
-                          onChange={(e) => updateOrder(ord.id, { paymentStatus: e.target.value })}
+                          value={selectValue(getLabel('paymentStatus', ord.paymentStatus))}
+                          onChange={(e) => updateOrder(ord.id, { paymentStatus: toKey('paymentStatus', e.target.value) })}
                         >
                           {PAYMENT_STATUS_OPTIONS.map(p => (
                             <option key={p} value={p}>{p}</option>
@@ -1095,8 +1129,8 @@ export default function Orders() {
                         <select
                           className={`sheet-cell-select ${getPaymentMethodBadgeClass(ord.paymentMethod)}`}
                           style={{ fontWeight: 600, borderRadius: '4px' }}
-                          value={getLabel('paymentMethod', ord.paymentMethod)}
-                          onChange={(e) => updateOrder(ord.id, { paymentMethod: e.target.value })}
+                          value={selectValue(getLabel('paymentMethod', ord.paymentMethod))}
+                          onChange={(e) => updateOrder(ord.id, { paymentMethod: toKey('paymentMethod', e.target.value) })}
                         >
                           {PAYMENT_METHODS.map(pm => (
                             <option key={pm} value={pm}>{pm}</option>
@@ -1108,9 +1142,10 @@ export default function Orders() {
                       <td style={{ width: `${colWidths.deliveryStatus}px`, minWidth: `${colWidths.deliveryStatus}px` }}>
                         <select
                           data-testid={`order-delivery-cell-${ord.id}`}
-                          className="sheet-cell-select"
-                          value={getLabel('deliveryStatus', ord.deliveryStatus)}
-                          onChange={(e) => updateOrder(ord.id, { deliveryStatus: e.target.value })}
+                          className={`sheet-cell-select ${getDeliveryStatusBadgeClass(ord.deliveryStatus)}`}
+                          style={{ fontWeight: 700, borderRadius: '4px' }}
+                          value={selectValue(getLabel('deliveryStatus', ord.deliveryStatus))}
+                          onChange={(e) => updateOrder(ord.id, { deliveryStatus: toKey('deliveryStatus', e.target.value) })}
                         >
                           {DELIVERY_STATUS_OPTIONS.map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -1124,8 +1159,8 @@ export default function Orders() {
                           <select
                             className="sheet-cell-select"
                             style={{ fontWeight: 600 }}
-                            value={getLabel('shippingMethod', ord.shippingMethod)}
-                            onChange={(e) => updateOrder(ord.id, { shippingMethod: e.target.value })}
+                            value={selectValue(getLabel('shippingMethod', ord.shippingMethod))}
+                            onChange={(e) => updateOrder(ord.id, { shippingMethod: toKey('shippingMethod', e.target.value) })}
                           >
                             {SHIPPING_METHOD_OPTIONS.map(sm => (
                               <option key={sm} value={sm}>{sm}</option>
@@ -1251,7 +1286,7 @@ export default function Orders() {
                       <td style={{ width: `${colWidths.gifts}px`, minWidth: `${colWidths.gifts}px` }}>
                         <select
                           className="sheet-cell-select"
-                          value={getLabel('giftOptions', ord.gifts)}
+                          value={selectValue(getLabel('giftOptions', ord.gifts))}
                           onChange={(e) => updateOrder(ord.id, { gifts: e.target.value })}
                         >
                           {GIFT_OPTIONS.map(g => (
@@ -1260,7 +1295,8 @@ export default function Orders() {
                         </select>
                       </td>
                       {/* Mở form sửa chi tiết */}
-                      <td style={{ width: '64px', minWidth: '64px', textAlign: 'center' }}>
+                      <td className="order-actions-cell" style={{ width: '64px', minWidth: '64px', textAlign: 'center' }}>
+                        <div className="order-row-actions">
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
@@ -1270,6 +1306,17 @@ export default function Orders() {
                         >
                           Sửa
                         </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                          data-testid={`order-cancel-button-${ord.id}`}
+                          onClick={() => handleDeleteOrder(ord.id)}
+                          title="Hủy đơn hàng"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1281,7 +1328,7 @@ export default function Orders() {
       </div>
 
       {/* THANH SCROLL NGANG CỐ ĐỊNH Ở ĐÁY MÀN HÌNH */}
-      <FixedHorizontalScrollbar containerRef={tableContainerRef} totalWidth={totalTableWidth} />
+
 
       {/* MODAL TẠO ĐƠN HÀNG MỚI */}
       {isModalOpen && (
@@ -1697,14 +1744,23 @@ export default function Orders() {
 
               </div>
 
-              <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                {saveError && <p role="alert" className="form-save-error">{saveError}</p>}
-                <Button type="button" variant="outline" disabled={isSaving} onClick={() => setIsModalOpen(false)}>
-                  Hủy Bỏ
-                </Button>
-                <Button type="submit" disabled={isSaving} data-testid="order-save-button">
-                  <Check size={16} /> {isSaving ? 'Đang lưu...' : formData.id ? 'Lưu thay đổi' : 'Lưu Tạo Đơn Hàng'}
-                </Button>
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {formData.id && (
+                    <Button type="button" variant="outline" onClick={() => setShowTimeline(!showTimeline)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <History size={14} /> {showTimeline ? 'Ẩn lịch sử' : 'Lịch sử'}
+                    </Button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {saveError && <p role="alert" className="form-save-error">{saveError}</p>}
+                  <Button type="button" variant="outline" disabled={isSaving} onClick={() => setIsModalOpen(false)}>
+                    Hủy Bỏ
+                  </Button>
+                  <Button type="submit" disabled={isSaving} data-testid="order-save-button">
+                    <Check size={16} /> {isSaving ? 'Đang lưu...' : formData.id ? 'Lưu thay đổi' : 'Lưu Tạo Đơn Hàng'}
+                  </Button>
+                </div>
               </div>
             </form>
 

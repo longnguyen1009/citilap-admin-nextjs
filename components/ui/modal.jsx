@@ -27,14 +27,14 @@ export function Modal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent {...(!description ? { 'aria-describedby': undefined } : {})} className={cn(maxWidth, "max-h-[90dvh] overflow-y-auto", className)}>
+      <DialogContent {...(!description ? { 'aria-describedby': undefined } : {})} className={cn(maxWidth, "modal-shell max-h-[90dvh]", className)}>
         {(title || description) && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
             {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
         )}
-        {children}
+        <div className="modal-content-scroll">{children}</div>
         {footer && <DialogFooter>{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>

@@ -365,9 +365,7 @@ export default function Settings() {
   // ─── Tính toán cho nút chuyển tháng ───
   const now = new Date();
   const currentMonthStr = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-  const nextMonth = now.getMonth() + 1 >= 12
-    ? `01/${now.getFullYear() + 1}`
-    : `${String(now.getMonth() + 2).padStart(2, '0')}/${now.getFullYear()}`;
+  const targetMonth = currentMonthStr;
 
   // Đếm số máy và đơn chưa hoàn thành từ tháng hiện tại sẽ được chuyển
   const OPEN_LAPTOP_STATUS = ['available', 'deposited', 'repairing', 'not_imported', 'returned_cn', 'skipped'];
@@ -376,7 +374,7 @@ export default function Settings() {
   const willMoveLaptops = laptops.filter(l => {
     if (l.isActive === false) return false;
     const m = l.monthKey || parseMonthYear(l.importDate, l.created_at || l.createdAt);
-    if (monthYearToKey(m) >= monthYearToKey(nextMonth)) return false;
+    if (monthYearToKey(m) >= monthYearToKey(targetMonth)) return false;
     // Chỉ đếm máy trong trạng thái "chưa xong"
     const statusKey = labelToKey('laptopStatus', l.status, appOptions) || String(l.status).toLowerCase();
     return OPEN_LAPTOP_STATUS.includes(statusKey);
@@ -385,12 +383,10 @@ export default function Settings() {
   const willMoveOrders = orders.filter(o => {
     if (o.isActive === false) return false;
     const m = o.monthKey || parseMonthYear(o.createdDate, o.created_at || o.createdAt);
-    if (monthYearToKey(m) >= monthYearToKey(nextMonth)) return false;
+    if (monthYearToKey(m) >= monthYearToKey(targetMonth)) return false;
     const statusKey = labelToKey('orderStatus', o.orderStatus, appOptions) || String(o.orderStatus).toLowerCase();
     return OPEN_ORDER_STATUS.includes(statusKey);
   }).length;
-
-  const isAlreadyCurrentMonth = selectedMonth === nextMonth;
 
   return (
     <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', paddingBottom: '60px' }}>
@@ -455,7 +451,7 @@ export default function Settings() {
                 borderRadius: '8px', padding: '12px 14px',
                 marginBottom: '14px', fontSize: '0.85rem', color: '#92400e',
               }}>
-                Sẽ chuyển <b>{willMoveLaptops}</b> máy và <b>{willMoveOrders}</b> đơn chưa hoàn thành sang <b>{nextMonth}</b>.
+                Sẽ chuyển <b>{willMoveLaptops}</b> máy và <b>{willMoveOrders}</b> đơn đủ điều kiện sang tháng hiện tại <b>{targetMonth}</b>.
               </div>
             ) : (
               <div style={{
@@ -463,24 +459,20 @@ export default function Settings() {
                 borderRadius: '8px', padding: '12px 14px',
                 marginBottom: '14px', fontSize: '0.85rem', color: '#166534',
               }}>
-                Không có máy hoặc đơn nào cần chuyển sang {nextMonth}.
+                Không thấy máy hoặc đơn nào cần chuyển từ dữ liệu đang xem sang {targetMonth}. Bạn vẫn có thể chạy để hệ thống kiểm tra toàn bộ các tháng trước.
               </div>
             )}
 
-            {/* Nút Cập nhật sang tháng mới */}
+            {/* Nút kiểm tra và cập nhật về tháng hiện tại */}
             <button
               onClick={async () => {
-                if (isAlreadyCurrentMonth) {
-                  toast.error('Đã ở tháng mới nhất.');
-                  return;
-                }
                 const confirmMsg = willMoveLaptops > 0 || willMoveOrders > 0
-                  ? `Chuyển ${willMoveLaptops} máy, ${willMoveOrders} đơn chưa hoàn thành sang ${nextMonth}?\n\nCác mục đã hoàn thành/giữ nguyên tháng cũ để tra cứu.`
-                  : `Xác nhận chuyển sang tháng ${nextMonth}?`;
+                  ? `Chuyển ${willMoveLaptops} máy, ${willMoveOrders} đơn đủ điều kiện sang tháng hiện tại ${targetMonth}?\n\nĐơn đang giao, hoàn thành, hủy hoặc trả hàng sẽ giữ nguyên tháng cũ.`
+                  : `Kiểm tra toàn bộ các tháng trước và chuyển dữ liệu đủ điều kiện sang tháng hiện tại ${targetMonth}?`;
                 if (!window.confirm(confirmMsg)) return;
 
                 const toastId = toast.loading('Đang chuyển tháng...');
-                const result = await rollToNewMonth(nextMonth);
+                const result = await rollToNewMonth(targetMonth);
                 toast.dismiss(toastId);
                 if (result.ok) {
                   toast.success(`Đã chuyển ${result.laptopsMoved} máy, ${result.ordersMoved} đơn sang ${result.monthKey}`);
@@ -488,29 +480,26 @@ export default function Settings() {
                   toast.error(result.message || 'Chuyển tháng thất bại.');
                 }
               }}
-              disabled={isAlreadyCurrentMonth}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 width: '100%', padding: '12px 20px',
-                background: isAlreadyCurrentMonth ? '#e2e8f0' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                color: isAlreadyCurrentMonth ? '#94a3b8' : '#fff',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: '#fff',
                 border: 'none', borderRadius: '10px',
                 fontSize: '0.92rem', fontWeight: 600,
-                cursor: isAlreadyCurrentMonth ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
             >
               <ArrowRight size={16} />
-              {isAlreadyCurrentMonth
-                ? `Đã cập nhật đến ${nextMonth}`
-                : `Cập nhật sang tháng ${nextMonth}`}
+              {`Kiểm tra và cập nhật sang tháng hiện tại ${targetMonth}`}
             </button>
 
             <p style={{
               marginTop: '10px', fontSize: '0.78rem', color: '#94a3b8',
               lineHeight: '1.5', textAlign: 'center',
             }}>
-              Chỉ chuyển các máy/đơn chưa hoàn thành. Dữ liệu đã hoàn thành giữ nguyên tháng cũ để tra lịch sử.
+              Chỉ chuyển máy tồn và đơn mới tạo/đã cọc/đã chuẩn bị. Đơn đang giao hoặc đã hoàn thành giữ nguyên tháng cũ.
             </p>
           </div>
         </div>

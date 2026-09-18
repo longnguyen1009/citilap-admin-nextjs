@@ -294,6 +294,16 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
     if (linkedOrders.some(o => isReservationActive(o, opts))) {
       return { ...laptop, status: 'deposited', isLocked: true };
     }
+
+    // Dữ liệu orders thường chỉ chứa tháng đang xem. Không tìm thấy order
+    // trong tập dữ liệu này không chứng minh laptop không còn được sử dụng:
+    // order liên kết có thể nằm ở tháng khác. Vì vậy phải giữ trạng thái API.
+    if (linkedOrders.length === 0) {
+      return { ...laptop, status: statusKey || laptop.status };
+    }
+
+    // Chỉ trả máy về sẵn hàng khi thực sự có order liên kết trong tập dữ liệu
+    // và tất cả các order đó đã hủy/trả/hết giữ chỗ.
     if (['deposited', 'sold'].includes(statusKey)) {
       return { ...laptop, status: 'available', isLocked: false };
     }
@@ -488,15 +498,16 @@ export const InventoryProvider = ({ children }) => {
         if (!session || cancelled) return;
       }
 
+      const safeFetch = (fn) => fn().catch(() => null);
       const [cloudLaptops, cloudOrders, cloudWarranty, cloudStock, cloudCustomers, cloudSettings, cloudOptions, cloudPayments] = await Promise.all([
-        fetchLaptopsFromCloud(monthQuery),
-        fetchOrdersFromCloud(monthQuery),
-        fetchWarrantyCasesFromCloud(),
-        fetchStockMovementsFromCloud(),
-        fetchCustomersFromCloud(),
-        fetchAllSettings(),
-        fetchAppOptionsFromCloud(),
-        fetchPaymentsFromCloud()
+        safeFetch(() => fetchLaptopsFromCloud(monthQuery)),
+        safeFetch(() => fetchOrdersFromCloud(monthQuery)),
+        safeFetch(() => fetchWarrantyCasesFromCloud()),
+        safeFetch(() => fetchStockMovementsFromCloud()),
+        safeFetch(() => fetchCustomersFromCloud()),
+        safeFetch(() => fetchAllSettings()),
+        safeFetch(() => fetchAppOptionsFromCloud()),
+        safeFetch(() => fetchPaymentsFromCloud())
       ]);
 
       if (cancelled) return;
@@ -539,7 +550,7 @@ export const InventoryProvider = ({ children }) => {
         if (cloudOrders !== null) {
           const committedByLaptop = new Map();
           cloudOrders.forEach(order => {
-            if (!order.laptopId || !isOrderCommitted(order)) return;
+            if (!order.laptopId || !isOrderCommitted(order, appOptions)) return;
             const list = committedByLaptop.get(order.laptopId) || [];
             list.push(order.id);
             committedByLaptop.set(order.laptopId, list);
@@ -698,9 +709,16 @@ export const InventoryProvider = ({ children }) => {
       if (persist) {
         nextLaptops.forEach((nextLaptop, idx) => {
           const prevLaptop = prev[idx];
-          if (prevLaptop && prevLaptop.id === nextLaptop.id
+          if (prevLaptop && prevLaptop.id === nextLaptop.id && !nextLaptop.isLocked
             && (prevLaptop.status !== nextLaptop.status || prevLaptop.isLocked !== nextLaptop.isLocked)) {
-            void saveLaptopToCloud(nextLaptop).catch(error => console.error('Không thể đồng bộ trạng thái máy:', error));
+            // Chỉ gửi các trường trạng thái. Gửi toàn bộ laptop ở đây có thể
+            // vô tình kèm giá đã làm tròn trên client và bị API chặn đối với
+            // máy đã bán/khóa, dù mục đích chỉ là đồng bộ trạng thái.
+            void saveLaptopToCloud({
+              id: nextLaptop.id,
+              status: nextLaptop.status,
+              isLocked: nextLaptop.isLocked,
+            }).catch(error => console.error('Không thể đồng bộ trạng thái máy:', error));
           }
         });
       }
@@ -708,11 +726,16 @@ export const InventoryProvider = ({ children }) => {
     });
   }, [selectedMonth]);
 
-  // Khi mở lại ứng dụng hoặc hết hạn giữ máy, trạng thái kho luôn được suy ra từ đơn hàng.
+  // Khi mở lại ứng dụng, chỉ đối soát trạng thái trên client. Laptops và orders
+  // được tải song song nên không được ghi ngược lên server trong lượt đầu: nếu
+  // orders chưa về, máy đã bán có thể tạm bị hiểu nhầm là không còn đơn liên kết.
+  // Tác vụ định kỳ sau đó mới lưu thay đổi thực sự (ví dụ hết hạn giữ máy).
   useEffect(() => {
-    const reconcile = () => applyAndSaveLaptopStatuses(orders);
-    reconcile();
-    const intervalId = window.setInterval(reconcile, 60 * 60 * 1000);
+    applyAndSaveLaptopStatuses(orders, false);
+    const intervalId = window.setInterval(
+      () => applyAndSaveLaptopStatuses(orders, true),
+      60 * 60 * 1000
+    );
     return () => window.clearInterval(intervalId);
   }, [orders, applyAndSaveLaptopStatuses]);
 
@@ -752,7 +775,7 @@ export const InventoryProvider = ({ children }) => {
     const blockingOrder = orders.find(order => (
       String(order.id) !== String(currentOrderId) &&
       String(order.laptopId) === String(laptopId) &&
-      (isOrderCommitted(order) || isReservationActive(order))
+      (isOrderCommitted(order, appOptions) || isReservationActive(order, appOptions))
     ));
     if (blockingOrder) return `Máy ${laptopId} đang thuộc đơn #${blockingOrder.id}.`;
     const currentOrder = currentOrderId
@@ -880,7 +903,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
     const assignmentError = getLaptopAssignmentError(newOrder.laptopId);
     if (assignmentError) return { ok: false, message: assignmentError };
-    if (isOrderCommitted(newOrder) && !newOrder.laptopId) {
+    if (isOrderCommitted(newOrder, appOptions) && !newOrder.laptopId) {
       return { ok: false, message: 'Phải gán máy trước khi chuyển sang giao hàng/hoàn thành.' };
     }
 
@@ -923,7 +946,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     }
 
     if (newOrder.laptopId && !savedData.inventoryApplied) {
-      addStockMovement({ laptopId: newOrder.laptopId, orderId: newOrder.id, type: isReservationActive(newOrder) ? 'GIỮ MÁY' : 'GÁN VÀO ĐƠN', note: `Đơn #${newOrder.id}` });
+      addStockMovement({ laptopId: newOrder.laptopId, orderId: newOrder.id, type: isReservationActive(newOrder, appOptions) ? 'GIỮ MÁY' : 'GÁN VÀO ĐƠN', note: `Đơn #${newOrder.id}` });
     }
     return { ok: true, order: newOrder };
   };
@@ -938,7 +961,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     let merged = normalizeReservation({ ...currentOrder, ...normalizedFields, updatedAt: new Date().toISOString() });
     if (moneyChanged) merged = normalizeMoney(merged);
 
-    const isLocked = isOrderCommitted(currentOrder) || isOrderCancelled(currentOrder);
+    const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
     if (isLocked && merged.laptopId !== currentOrder.laptopId) {
       return { ok: false, message: 'Đơn hàng đang ở trạng thái không cho phép thay đổi sản phẩm.' };
     }
@@ -946,7 +969,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       const assignmentError = getLaptopAssignmentError(merged.laptopId, id);
       if (assignmentError) return { ok: false, message: assignmentError };
     }
-    if (isOrderCommitted(merged) && !merged.laptopId) {
+    if (isOrderCommitted(merged, appOptions) && !merged.laptopId) {
       return { ok: false, message: 'Phải gán máy trước khi chuyển sang giao hàng/hoàn thành.' };
     }
 
@@ -992,7 +1015,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
       setOrders(prev => prev.map(order => String(order.id) === String(id) ? currentOrder : order));
       applyAndSaveLaptopStatuses(orders, false);
       const message = error?.message || 'Không thể cập nhật đơn hàng.';
-      if (!awaitPersistence && typeof window !== 'undefined') window.alert(message);
+      if (!awaitPersistence) {
+        // Lazy import to avoid circular dependency
+        import('react-hot-toast').then(mod => mod.default.error(message));
+      }
       return { ok: false, message };
     });
     return awaitPersistence ? persistence : { ok: true, order: merged };
@@ -1021,19 +1047,25 @@ const mapLabelsToKeys = (fields, appOpts) => {
     }
     setFormulaConfig(newConfig);
     if (recalculateAll) {
+      let recalculated;
       setLaptops(prev => {
-        const recalculated = prev.map(laptop => {
+        recalculated = prev.map(laptop => {
           const imp = computeImportPrice(laptop.priceRmb, laptop.shippingRmb, laptop.exchangeRate, newConfig);
           const prof = computeProfit(laptop.retailPriceVnd, laptop.wholesalePriceVnd, imp, laptop.customProfit);
           return { ...laptop, importPriceVnd: imp, profitVnd: prof };
         });
-        void Promise.all(recalculated.map(laptop => saveLaptopToCloud(laptop)))
+        return recalculated;
+      });
+      // Persist to cloud outside setState updater to avoid fire-and-forget inside reducer
+      if (recalculated) {
+        void Promise.all(recalculated
+          .filter(laptop => !laptop.isLocked)
+          .map(laptop => saveLaptopToCloud(laptop)))
           .catch(error => {
             setFormulaConfig(previousConfig);
             console.error('Không thể lưu lại giá nhập sau khi đổi công thức:', error);
           });
-        return recalculated;
-      });
+      }
     }
     return { ok: true, config: newConfig };
   };
@@ -1042,6 +1074,13 @@ const mapLabelsToKeys = (fields, appOpts) => {
   const updateLaptop = (id, updatedFields) => {
     const currentLaptop = laptops.find(laptop => laptop.id == id);
     if (!currentLaptop) return { ok: false, message: 'Không tìm thấy máy.' };
+    const lockedProtectedFields = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
+    const currentStatusKey = labelToKey('laptopStatus', currentLaptop.status);
+    if ((currentLaptop.isLocked || currentStatusKey === 'sold') && lockedProtectedFields.some(field => (
+      updatedFields[field] !== undefined && Number(updatedFields[field]) !== Number(currentLaptop[field])
+    ))) {
+      return { ok: false, message: `Không thể thay đổi giá trên laptop đã khóa (${currentLaptop.status}). Chỉ có thể sửa số serial và tên.` };
+    }
     const serial = String(updatedFields.serial ?? currentLaptop.serial ?? '').trim();
     const duplicatedSerial = serial && laptops.some(laptop => laptop.id !== id && String(laptop.serial || '').trim().toLowerCase() === serial.toLowerCase());
     if (duplicatedSerial) return { ok: false, message: `Serial ${serial} đã tồn tại ở một máy khác.` };
@@ -1404,20 +1443,22 @@ const mapLabelsToKeys = (fields, appOpts) => {
       if (!res.ok || !data.ok) {
         return { ok: false, message: data.error || 'Chuyển tháng thất bại.' };
       }
+      const targetMonthKey = data.monthKey || newMonthKey;
       // Refresh dữ liệu từ server với tháng mới
-      const monthQuery = { monthKey: newMonthKey };
+      const monthQuery = { monthKey: targetMonthKey };
+      const safeFetch = (fn) => fn().catch(() => null);
       const [newLaptops, newOrders] = await Promise.all([
-        fetchLaptopsFromCloud(monthQuery),
-        fetchOrdersFromCloud(monthQuery),
+        safeFetch(() => fetchLaptopsFromCloud(monthQuery)),
+        safeFetch(() => fetchOrdersFromCloud(monthQuery)),
       ]);
       if (newLaptops !== null) setLaptops(newLaptops);
       if (newOrders !== null) setOrders(newOrders);
-      setSelectedMonth(newMonthKey);
+      setSelectedMonth(targetMonthKey);
       return {
         ok: true,
         laptopsMoved: data.laptopsMoved,
         ordersMoved: data.ordersMoved,
-        monthKey: newMonthKey,
+        monthKey: targetMonthKey,
       };
     } catch (err) {
       return { ok: false, message: err?.message || 'Lỗi khi chuyển tháng.' };

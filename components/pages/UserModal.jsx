@@ -112,7 +112,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                   borderRadius: '8px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                onBlur={(e) => e.target.style.borderColor = ''}
                 placeholder="VD: Nguyễn Văn A"
               />
             </div>
@@ -132,7 +132,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                   borderRadius: '8px', outline: 'none', background: 'rgba(255, 255, 255, 0.05)', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                onBlur={(e) => e.target.style.borderColor = ''}
                 placeholder="VD: nhanvien@citilap.vn"
               />
             </div>
@@ -142,7 +142,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                 Mật khẩu {isEdit ? '(Để trống nếu không đổi)' : <span style={{ color: '#ef4444' }}>*</span>}
               </label>
               <input 
-                type="text"
+                type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
@@ -153,7 +153,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                   borderRadius: '8px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                onBlur={(e) => e.target.style.borderColor = ''}
                 placeholder={isEdit ? "Nhập mật khẩu mới..." : "Ít nhất 8 ký tự"}
               />
             </div>
@@ -168,11 +168,11 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
                 onChange={handleChange}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid var(--glass-border)',
-                  borderRadius: '8px', outline: 'none', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)',
+                  borderRadius: '8px', outline: 'none', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                   fontWeight: 500, boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                onBlur={(e) => e.target.style.borderColor = ''}
               >
                 <option value="SALES">Sales (Bán hàng)</option>
                 <option value="TECHNICAL">Technical (Kỹ thuật)</option>
@@ -200,7 +200,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
 
         {/* Footer */}
         <div style={{
-          padding: '16px 24px', borderTop: '1px solid #f1f5f9',
+          padding: '16px 24px', borderTop: '1px solid var(--glass-border)',
           background: 'rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'flex-end', gap: '12px',
           borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px'
         }}>
@@ -210,7 +210,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
             disabled={saving}
             style={{
               padding: '8px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#475569',
-              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer'
+              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer'
             }}
           >
             Hủy

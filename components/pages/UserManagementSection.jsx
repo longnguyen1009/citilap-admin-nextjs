@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Lock, Trash2, Check, X, UserX, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 import UserModal from './UserModal';
 import { fetchUsersFromCloud, saveUserToCloud } from '../../lib/apiFetchers';
 
@@ -45,7 +46,7 @@ export default function UserManagementSection() {
       await saveUserToCloud({ id: user.id, is_active: !user.is_active, role: user.role, name: user.name }, true);
       fetchUsers();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

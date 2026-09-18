@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useMemo, useState } from 'react';
-import { BadgeDollarSign, CircleDollarSign, CreditCard, FileText, RefreshCw } from 'lucide-react';
+import { BadgeDollarSign, CircleDollarSign, CreditCard, FileText, RefreshCw, Search, TrendingUp } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
 import { fetchFinancialRecordsFromCloud, saveFinancialRecordToCloud } from '../../lib/apiFetchers';
 import { getOptions } from '../../lib/useFieldOptions';
+import { Modal } from '../ui/modal';
+import { Button } from '@/components/ui/button';
 
 const paymentTypes = [
   { key: 'deposit', label: 'Thu tiền cọc' },
@@ -13,8 +15,34 @@ const paymentTypes = [
   { key: 'other', label: 'Khoản khác' }
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const paymentTypeBadgeClass = {
+  deposit: 'pill-badge pill-warning',
+  balance: 'pill-badge pill-success',
+  cod: 'pill-badge pill-info',
+  refund: 'pill-badge pill-danger',
+  other: 'pill-badge pill-neutral'
+};
 
+const paymentMethodBadgeClass = {
+  transfer_cash: 'pill-badge pill-info',
+  card: 'pill-badge pill-purple',
+  installment: 'pill-badge pill-info',
+  debt: 'pill-badge pill-danger'
+};
+
+const recordTypeLabels = {
+  expense: 'Chi phí',
+  income: 'Thu khác',
+  adjustment: 'Điều chỉnh'
+};
+
+const recordTypeBadgeClass = {
+  expense: 'pill-badge pill-danger',
+  income: 'pill-badge pill-success',
+  adjustment: 'pill-badge pill-info'
+};
+
+const today = () => new Date().toISOString().slice(0, 10);
 const formatAmount = value => `${Number(value || 0).toFixed(2)} tr`;
 
 export default function Payments() {
@@ -32,11 +60,23 @@ export default function Payments() {
   const [saving, setSaving] = useState(false);
   const [savingFinancial, setSavingFinancial] = useState(false);
 
+  // Search & filter state
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('ALL');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('ALL');
+  const [financialSearch, setFinancialSearch] = useState('');
+  const [financialTypeFilter, setFinancialTypeFilter] = useState('ALL');
+
+  // Modal state
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isFinancialModalOpen, setIsFinancialModalOpen] = useState(false);
+
   const activeOrders = useMemo(() => orders.filter(order => order.isActive !== false && Number(order.salePrice || 0) > 0), [orders]);
   const selectedOrder = activeOrders.find(order => String(order.id) === String(paymentForm.orderId));
   const remaining = selectedOrder ? Math.max(0, Number(selectedOrder.salePrice || 0) - Number(selectedOrder.amountPaid || 0)) : 0;
   const incomeTotal = payments.reduce((sum, item) => sum + (item.paymentType === 'refund' ? 0 : Number(item.amount || 0)), 0);
   const refundTotal = payments.reduce((sum, item) => sum + (item.paymentType === 'refund' ? Number(item.amount || 0) : 0), 0);
+  const ordersWithDebt = activeOrders.filter(o => Number(o.debtAmount || 0) > 0).length;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -44,6 +84,33 @@ export default function Payments() {
       if (data) setFinancialRecords(data);
     });
   }, [isAdmin]);
+
+  // Filtered payments
+  const filteredPayments = useMemo(() => {
+    return payments.filter(p => {
+      const matchSearch = !paymentSearch ||
+        String(p.orderId || '').includes(paymentSearch) ||
+        (paymentTypes.find(t => t.key === p.paymentType)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
+        (paymentMethods.find(m => m.key === p.paymentMethod)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
+        (p.referenceCode || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
+        (p.recordedBy || '').toLowerCase().includes(paymentSearch.toLowerCase());
+      const matchType = paymentTypeFilter === 'ALL' || p.paymentType === paymentTypeFilter;
+      const matchMethod = paymentMethodFilter === 'ALL' || p.paymentMethod === paymentMethodFilter;
+      return matchSearch && matchType && matchMethod;
+    });
+  }, [payments, paymentSearch, paymentTypeFilter, paymentMethodFilter, paymentMethods]);
+
+  // Filtered financial records
+  const filteredFinancials = useMemo(() => {
+    return financialRecords.filter(r => {
+      const matchSearch = !financialSearch ||
+        (r.category || '').toLowerCase().includes(financialSearch.toLowerCase()) ||
+        (r.note || '').toLowerCase().includes(financialSearch.toLowerCase()) ||
+        (r.recordedBy || '').toLowerCase().includes(financialSearch.toLowerCase());
+      const matchType = financialTypeFilter === 'ALL' || r.recordType === financialTypeFilter;
+      return matchSearch && matchType;
+    });
+  }, [financialRecords, financialSearch, financialTypeFilter]);
 
   const handlePaymentSubmit = async event => {
     event.preventDefault();
@@ -57,6 +124,7 @@ export default function Payments() {
     }
     setMessage({ type: 'success', text: 'Đã ghi nhận thanh toán và cập nhật công nợ.' });
     setPaymentForm(prev => ({ ...prev, amount: '', referenceCode: '', note: '' }));
+    setTimeout(() => setIsPaymentModalOpen(false), 600);
   };
 
   const handleFinancialSubmit = async event => {
@@ -71,6 +139,7 @@ export default function Payments() {
       setFinancialRecords(prev => [saved, ...prev]);
       setFinancialForm(prev => ({ ...prev, category: '', amount: '', note: '' }));
       setMessage({ type: 'success', text: 'Đã lưu khoản thu/chi.' });
+      setTimeout(() => setIsFinancialModalOpen(false), 600);
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
     } finally {
@@ -79,82 +148,328 @@ export default function Payments() {
   };
 
   return (
-    <section className="page-container">
-      <div className="page-header" style={{ marginBottom: '24px' }}>
-        <div className="header-title">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <BadgeDollarSign size={28} className="text-primary" /> Thanh toán & Tài chính
+    <section className="page-section list-workspace-page">
+      {/* HEADER */}
+      <div className="section-title section-header list-page-header">
+        <div>
+          <h1 className="list-page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+            <BadgeDollarSign size={24} className="text-primary" /> Thanh toán & Tài chính
           </h1>
-          <span className="subtitle" style={{ marginLeft: '38px' }}>Theo dõi tiền cọc, COD, hoàn tiền và các khoản thu chi</span>
+          <span style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
+            Theo dõi tiền cọc, COD, hoàn tiền và các khoản thu chi
+          </span>
+        </div>
+        <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button variant="default" size="sm" onClick={() => setIsPaymentModalOpen(true)}>
+            <CreditCard size={14} /> Ghi nhận thanh toán
+          </Button>
+          {isAdmin && (
+            <Button variant="secondary" size="sm" onClick={() => setIsFinancialModalOpen(true)}>
+              <FileText size={14} /> Khoản thu/chi
+            </Button>
+          )}
         </div>
       </div>
 
-      {message && <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '8px', background: message.type === 'error' ? '#fef2f2' : '#ecfdf5', color: message.type === 'error' ? '#b91c1c' : '#047857' }}>{message.text}</div>}
+      {/* MESSAGE */}
+      {message && (
+        <div style={{ marginBottom: '12px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 500, background: message.type === 'error' ? '#fef2f2' : '#ecfdf5', color: message.type === 'error' ? '#b91c1c' : '#047857' }}>
+          {message.text}
+        </div>
+      )}
 
-      <div className="metrics-grid" style={{ marginBottom: '24px' }}>
-        <div className="metric-card glass"><div className="metric-icon green"><CircleDollarSign size={24} /></div><div className="metric-info"><span className="metric-label">Đã thu</span><span className="metric-value">{formatAmount(incomeTotal)}</span><span className="metric-sub">Tổng payment không gồm hoàn tiền</span></div></div>
-        <div className="metric-card glass"><div className="metric-icon orange"><RefreshCw size={24} /></div><div className="metric-info"><span className="metric-label">Đã hoàn</span><span className="metric-value">{formatAmount(refundTotal)}</span><span className="metric-sub">Tổng các giao dịch hoàn tiền</span></div></div>
-        <div className="metric-card glass"><div className="metric-icon blue"><CreditCard size={24} /></div><div className="metric-info"><span className="metric-label">Đơn còn công nợ</span><span className="metric-value">{activeOrders.filter(order => Number(order.debtAmount || 0) > 0).length}</span><span className="metric-sub">Đơn đang còn số dư phải thu</span></div></div>
+      {/* SUMMARY STRIP */}
+      <div className="list-summary-strip" aria-label="Tóm tắt tài chính">
+        <div className="list-summary-item list-summary-item-success">
+          <div className="summary-icon"><CircleDollarSign size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đã thu</span>
+            <strong className="summary-value">{formatAmount(incomeTotal)}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-warning">
+          <div className="summary-icon"><RefreshCw size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đã hoàn</span>
+            <strong className="summary-value">{formatAmount(refundTotal)}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-value">
+          <div className="summary-icon"><TrendingUp size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Thực thu</span>
+            <strong className="summary-value">{formatAmount(incomeTotal - refundTotal)}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item">
+          <div className="summary-icon"><CreditCard size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đơn còn nợ</span>
+            <strong className="summary-value">{ordersWithDebt}</strong>
+          </div>
+        </div>
       </div>
 
-      <div className="dashboard-grid" style={{ alignItems: 'start' }}>
-        <form className="card glass" onSubmit={handlePaymentSubmit}>
-          <div className="card-header"><h3><CreditCard size={18} /> Ghi nhận thanh toán</h3></div>
-          <div className="card-body" style={{ display: 'grid', gap: '12px' }}>
-            <label>Đơn hàng
-              <select className="form-control" required value={paymentForm.orderId} onChange={event => setPaymentForm(prev => ({ ...prev, orderId: event.target.value }))}>
-                <option value="">Chọn đơn hàng</option>
-                {activeOrders.map(order => <option key={order.id} value={order.id}>#{order.id} - {formatAmount(order.salePrice)} - còn {formatAmount(order.debtAmount)}</option>)}
+      {/* PAYMENT HISTORY TABLE */}
+      <div className="card glass p-0 list-table-card" style={{ marginBottom: '12px' }}>
+        {/* Filter bar */}
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', margin: 0 }}>
+            <CreditCard size={16} /> Lịch sử thanh toán
+          </h3>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginLeft: 'auto' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder="Tìm mã đơn, loại, phương thức..."
+                value={paymentSearch}
+                onChange={e => setPaymentSearch(e.target.value)}
+                style={{ padding: '5px 8px 5px 28px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', width: '200px', background: '#fff' }}
+              />
+            </div>
+            <select
+              value={paymentTypeFilter}
+              onChange={e => setPaymentTypeFilter(e.target.value)}
+              style={{ padding: '5px 8px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff' }}
+            >
+              <option value="ALL">Tất cả loại</option>
+              {paymentTypes.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+            <select
+              value={paymentMethodFilter}
+              onChange={e => setPaymentMethodFilter(e.target.value)}
+              style={{ padding: '5px 8px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff' }}
+            >
+              <option value="ALL">Tất cả phương thức</option>
+              {paymentMethods.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="list-table-scroll">
+          <table className="data-table data-table-wide">
+            <thead>
+              <tr>
+                <th style={{ width: '100px' }}>Ngày</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Đơn</th>
+                <th style={{ width: '140px' }}>Loại</th>
+                <th style={{ width: '110px', textAlign: 'right' }}>Số tiền</th>
+                <th style={{ width: '130px' }}>Phương thức</th>
+                <th>Tham chiếu</th>
+                <th style={{ width: '120px' }}>Người ghi nhận</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPayments.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
+                    <CreditCard size={40} style={{ opacity: 0.15, marginBottom: '12px' }} />
+                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>Chưa có giao dịch thanh toán</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.7 }}>Bấm &quot;Ghi nhận thanh toán&quot; để bắt đầu</p>
+                  </td>
+                </tr>
+              ) : filteredPayments.map(payment => (
+                <tr key={payment.id}>
+                  <td style={{ whiteSpace: 'nowrap' }}>{payment.paymentDate}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700, color: '#2563eb' }}>#{payment.orderId}</td>
+                  <td>
+                    <span className={paymentTypeBadgeClass[payment.paymentType] || 'pill-badge pill-neutral'}>
+                      {paymentTypes.find(item => item.key === payment.paymentType)?.label || payment.paymentType}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: payment.paymentType === 'refund' ? '#dc2626' : '#059669' }}>
+                    {payment.paymentType === 'refund' ? '-' : '+'}{formatAmount(payment.amount)}
+                  </td>
+                  <td>
+                    <span className={paymentMethodBadgeClass[payment.paymentMethod] || 'pill-badge pill-neutral'}>
+                      {paymentMethods.find(item => item.key === payment.paymentMethod)?.label || payment.paymentMethod}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.referenceCode || '-'}</td>
+                  <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.recordedBy || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* FINANCIAL RECORDS TABLE (Admin only) */}
+      {isAdmin && (
+        <div className="card glass p-0 list-table-card">
+          <div className="card-header" style={{ flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', margin: 0 }}>
+              <FileText size={16} /> Sổ tài chính khác
+            </h3>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginLeft: 'auto' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Tìm danh mục, ghi chú..."
+                  value={financialSearch}
+                  onChange={e => setFinancialSearch(e.target.value)}
+                  style={{ padding: '5px 8px 5px 28px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', width: '200px', background: '#fff' }}
+                />
+              </div>
+              <select
+                value={financialTypeFilter}
+                onChange={e => setFinancialTypeFilter(e.target.value)}
+                style={{ padding: '5px 8px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff' }}
+              >
+                <option value="ALL">Tất cả loại</option>
+                <option value="expense">Chi phí</option>
+                <option value="income">Thu khác</option>
+                <option value="adjustment">Điều chỉnh</option>
               </select>
-            </label>
-            <label>Loại giao dịch
-              <select className="form-control" value={paymentForm.paymentType} onChange={event => setPaymentForm(prev => ({ ...prev, paymentType: event.target.value }))}>
-                {paymentTypes.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
-              </select>
-            </label>
-            <label>Số tiền (triệu VNĐ)
-              <input className="form-control" type="number" min="0.01" step="0.01" max={paymentForm.paymentType === 'refund' ? Number(selectedOrder?.amountPaid || 0) : remaining || undefined} required value={paymentForm.amount} onChange={event => setPaymentForm(prev => ({ ...prev, amount: event.target.value }))} />
-            </label>
-            <label>Phương thức
-              <select className="form-control" value={paymentForm.paymentMethod} onChange={event => setPaymentForm(prev => ({ ...prev, paymentMethod: event.target.value }))}>
+            </div>
+          </div>
+          <div className="list-table-scroll">
+            <table className="data-table data-table-wide">
+              <thead>
+                <tr>
+                  <th style={{ width: '100px' }}>Ngày</th>
+                  <th style={{ width: '120px' }}>Loại</th>
+                  <th style={{ minWidth: '150px' }}>Danh mục</th>
+                  <th style={{ width: '110px', textAlign: 'right' }}>Số tiền</th>
+                  <th>Ghi chú</th>
+                  <th style={{ width: '120px' }}>Người ghi nhận</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFinancials.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
+                      <FileText size={40} style={{ opacity: 0.15, marginBottom: '12px' }} />
+                      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>Chưa có khoản thu chi khác</p>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.7 }}>Bấm &quot;Khoản thu/chi&quot; để thêm mới</p>
+                    </td>
+                  </tr>
+                ) : filteredFinancials.map(record => (
+                  <tr key={record.id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{record.occurredOn}</td>
+                    <td>
+                      <span className={recordTypeBadgeClass[record.recordType] || 'pill-badge pill-neutral'}>
+                        {recordTypeLabels[record.recordType] || record.recordType}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{record.category}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: record.recordType === 'expense' ? '#dc2626' : '#059669' }}>
+                      {formatAmount(record.amount)}
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{record.note || '-'}</td>
+                    <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{record.recordedBy || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT MODAL */}
+      <Modal open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen} title="Ghi nhận thanh toán" maxWidth="max-w-xl">
+        <form onSubmit={handlePaymentSubmit} style={{ display: 'grid', gap: '14px' }}>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Đơn hàng <span style={{color:'#ef4444'}}>*</span></label>
+            <select className="form-control" required value={paymentForm.orderId} onChange={e => setPaymentForm(prev => ({ ...prev, orderId: e.target.value }))}>
+              <option value="">Chọn đơn hàng</option>
+              {activeOrders.map(order => <option key={order.id} value={order.id}>#{order.id} - {formatAmount(order.salePrice)} - còn {formatAmount(order.debtAmount)}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Loại giao dịch</label>
+            <select className="form-control" value={paymentForm.paymentType} onChange={e => setPaymentForm(prev => ({ ...prev, paymentType: e.target.value }))}>
+              {paymentTypes.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Số tiền (triệu VNĐ) <span style={{color:'#ef4444'}}>*</span></label>
+            <input
+              className="form-control"
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={paymentForm.paymentType === 'refund' ? Number(selectedOrder?.amountPaid || 0) : remaining}
+              placeholder={!selectedOrder ? 'Chọn đơn hàng trước' : ''}
+              disabled={!selectedOrder}
+              required
+              value={paymentForm.amount}
+              onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+            />
+            {!selectedOrder && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>Vui lòng chọn đơn hàng để nhập số tiền</span>}
+            {selectedOrder && paymentForm.paymentType !== 'refund' && remaining > 0 && (
+              <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'block' }}>Còn nợ: {formatAmount(remaining)} tr</span>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Phương thức</label>
+              <select className="form-control" value={paymentForm.paymentMethod} onChange={e => setPaymentForm(prev => ({ ...prev, paymentMethod: e.target.value }))}>
                 {paymentMethods.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
               </select>
-            </label>
-            <label>Ngày thanh toán<input className="form-control" type="date" required value={paymentForm.paymentDate} onChange={event => setPaymentForm(prev => ({ ...prev, paymentDate: event.target.value }))} /></label>
-            <label>Mã tham chiếu<input className="form-control" value={paymentForm.referenceCode} onChange={event => setPaymentForm(prev => ({ ...prev, referenceCode: event.target.value }))} placeholder="Mã giao dịch ngân hàng / vận đơn" /></label>
-            <label>Ghi chú<textarea className="form-control" rows="2" value={paymentForm.note} onChange={event => setPaymentForm(prev => ({ ...prev, note: event.target.value }))} /></label>
-            <button className="btn btn-primary" disabled={saving} type="submit">{saving ? 'Đang lưu...' : 'Lưu giao dịch'}</button>
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ngày thanh toán</label>
+              <input className="form-control" type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Mã tham chiếu</label>
+            <input className="form-control" value={paymentForm.referenceCode} onChange={e => setPaymentForm(prev => ({ ...prev, referenceCode: e.target.value }))} placeholder="Mã giao dịch ngân hàng / vận đơn" />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ghi chú</label>
+            <textarea className="form-control" rows="2" value={paymentForm.note} onChange={e => setPaymentForm(prev => ({ ...prev, note: e.target.value }))} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsPaymentModalOpen(false)}>Hủy</Button>
+            <Button type="submit" variant="default" size="sm" disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Lưu giao dịch'}
+            </Button>
           </div>
         </form>
+      </Modal>
 
-        {isAdmin && <form className="card glass" onSubmit={handleFinancialSubmit}>
-          <div className="card-header"><h3><FileText size={18} /> Khoản thu / chi khác</h3></div>
-          <div className="card-body" style={{ display: 'grid', gap: '12px' }}>
-            <label>Loại sổ
-              <select className="form-control" value={financialForm.recordType} onChange={event => setFinancialForm(prev => ({ ...prev, recordType: event.target.value }))}><option value="expense">Chi phí</option><option value="income">Thu khác</option><option value="adjustment">Điều chỉnh</option></select>
-            </label>
-            <label>Danh mục<input className="form-control" required value={financialForm.category} onChange={event => setFinancialForm(prev => ({ ...prev, category: event.target.value }))} placeholder="Ví dụ: phí ship, sửa chữa, quảng cáo" /></label>
-            <label>Số tiền (triệu VNĐ)<input className="form-control" required type="number" min="0.01" step="0.01" value={financialForm.amount} onChange={event => setFinancialForm(prev => ({ ...prev, amount: event.target.value }))} /></label>
-            <label>Ngày phát sinh<input className="form-control" required type="date" value={financialForm.occurredOn} onChange={event => setFinancialForm(prev => ({ ...prev, occurredOn: event.target.value }))} /></label>
-            <label>Ghi chú<textarea className="form-control" rows="2" value={financialForm.note} onChange={event => setFinancialForm(prev => ({ ...prev, note: event.target.value }))} /></label>
-            <button className="btn btn-outline" disabled={savingFinancial} type="submit">{savingFinancial ? 'Đang lưu...' : 'Lưu khoản thu / chi'}</button>
-          </div>
-        </form>}
-      </div>
-
-      <div className="glass-box" style={{ marginTop: '24px', padding: 0, overflow: 'hidden' }}>
-        <div className="card-header"><h3><CreditCard size={18} /> Lịch sử thanh toán</h3></div>
-        <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>Ngày</th><th>Đơn</th><th>Loại</th><th>Số tiền</th><th>Phương thức</th><th>Tham chiếu</th><th>Người ghi nhận</th></tr></thead><tbody>
-          {payments.length === 0 ? <tr><td colSpan="7" className="empty-state">Chưa có giao dịch thanh toán</td></tr> : payments.map(payment => <tr key={payment.id}><td>{payment.paymentDate}</td><td>#{payment.orderId}</td><td>{paymentTypes.find(item => item.key === payment.paymentType)?.label || payment.paymentType}</td><td>{formatAmount(payment.amount)}</td><td>{payment.paymentMethod}</td><td>{payment.referenceCode || '-'}</td><td>{payment.recordedBy || '-'}</td></tr>)}
-        </tbody></table></div>
-      </div>
-
-      {isAdmin && <div className="glass-box" style={{ marginTop: '24px', padding: 0, overflow: 'hidden' }}>
-        <div className="card-header"><h3><FileText size={18} /> Sổ tài chính khác</h3></div>
-        <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>Ngày</th><th>Loại</th><th>Danh mục</th><th>Số tiền</th><th>Ghi chú</th><th>Người ghi nhận</th></tr></thead><tbody>
-          {financialRecords.length === 0 ? <tr><td colSpan="6" className="empty-state">Chưa có khoản thu chi khác</td></tr> : financialRecords.map(record => <tr key={record.id}><td>{record.occurredOn}</td><td>{record.recordType}</td><td>{record.category}</td><td>{formatAmount(record.amount)}</td><td>{record.note || '-'}</td><td>{record.recordedBy || '-'}</td></tr>)}
-        </tbody></table></div>
-      </div>}
+      {/* FINANCIAL RECORD MODAL (Admin only) */}
+      {isAdmin && (
+        <Modal open={isFinancialModalOpen} onOpenChange={setIsFinancialModalOpen} title="Khoản thu / chi khác" maxWidth="max-w-xl">
+          <form onSubmit={handleFinancialSubmit} style={{ display: 'grid', gap: '14px' }}>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Loại sổ</label>
+              <select className="form-control" value={financialForm.recordType} onChange={e => setFinancialForm(prev => ({ ...prev, recordType: e.target.value }))}>
+                <option value="expense">Chi phí</option>
+                <option value="income">Thu khác</option>
+                <option value="adjustment">Điều chỉnh</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Danh mục <span style={{color:'#ef4444'}}>*</span></label>
+              <input className="form-control" required value={financialForm.category} onChange={e => setFinancialForm(prev => ({ ...prev, category: e.target.value }))} placeholder="Ví dụ: phí ship, sửa chữa, quảng cáo" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Số tiền (triệu VNĐ)</label>
+                <input className="form-control" required type="number" min="0.01" step="0.01" value={financialForm.amount} onChange={e => setFinancialForm(prev => ({ ...prev, amount: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ngày phát sinh</label>
+                <input className="form-control" required type="date" value={financialForm.occurredOn} onChange={e => setFinancialForm(prev => ({ ...prev, occurredOn: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ghi chú</label>
+              <textarea className="form-control" rows="2" value={financialForm.note} onChange={e => setFinancialForm(prev => ({ ...prev, note: e.target.value }))} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsFinancialModalOpen(false)}>Hủy</Button>
+              <Button type="submit" variant="secondary" size="sm" disabled={savingFinancial}>
+                {savingFinancial ? 'Đang lưu...' : 'Lưu khoản thu/chi'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </section>
   );
 }

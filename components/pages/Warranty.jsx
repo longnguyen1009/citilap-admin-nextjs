@@ -2,8 +2,9 @@
 import React, { useMemo, useState } from 'react';
 import { useInventory, isOrderCommitted } from '../../context/InventoryContext';
 import { RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
-import { labelToKey } from '../../lib/useFieldOptions';
+import { labelToKey, getLabel } from '../../lib/useFieldOptions';
 import { Wrench, Search, Plus, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const emptyCase = () => ({
   laptopId: '', orderId: '', customerInfo: '', receivedDate: new Date().toLocaleDateString('vi-VN'),
@@ -11,7 +12,7 @@ const emptyCase = () => ({
 });
 
 export default function Warranty() {
-  const { laptops, orders, customers, warrantyCases, WARRANTY_CASE_STATUS_OPTIONS, createWarrantyCase, updateWarrantyCase } = useInventory();
+  const { laptops, orders, customers, warrantyCases, WARRANTY_CASE_STATUS_OPTIONS, createWarrantyCase, updateWarrantyCase, appOptions } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
@@ -31,13 +32,13 @@ export default function Warranty() {
   const openEdit = (item) => { setEditingCase(item); setFormData({ ...item, repairCost: item.repairCost ?? '' }); setIsModalOpen(true); };
   const handleLaptopChange = (laptopId) => {
     const laptop = laptops.find(item => String(item.id) === String(laptopId));
-    const linkedOrder = orders.find(order => String(order.laptopId) === String(laptopId) && isOrderCommitted(order));
+    const linkedOrder = orders.find(order => String(order.laptopId) === String(laptopId) && isOrderCommitted(order, appOptions));
     setFormData(prev => ({ ...prev, laptopId, orderId: linkedOrder?.id || '', customerInfo: linkedOrder?.customerId ? (customers.find(c => c.id === linkedOrder.customerId)?.name || '') : prev.customerInfo, notes: laptop?.conditionNote || prev.notes }));
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
     const result = editingCase ? await updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
-    if (!result.ok) return alert(`⛔ ${result.message}`);
+    if (!result.ok) return toast.error(result.message);
     setIsModalOpen(false);
   };
 
@@ -54,7 +55,7 @@ export default function Warranty() {
         <table className="data-table data-table-wide" style={{ width: '100%' }}><thead><tr><th>Phiếu</th><th>Máy / Serial</th><th>Khách & Đơn</th><th>Lỗi khách báo</th><th>Tiếp nhận</th><th>Trạng thái</th><th>Chi phí (tr)</th><th /></tr></thead>
           <tbody>{rows.length === 0 ? <tr><td colSpan={8} className="empty-cell">Chưa có phiếu bảo hành nào.</td></tr> : rows.map(item => {
             const laptop = laptops.find(machine => machine.id === item.laptopId);
-            return <tr key={item.id}><td style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.id}</td><td><strong>{laptop?.id || item.laptopId}</strong><br /><span style={{ fontSize: '0.8rem' }}>{laptop?.name || 'Máy đã bị xóa'}</span><br /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{laptop?.serial || '-'}</span></td><td>{item.customerInfo || '-'}<br /><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{item.orderId ? `Đơn #${item.orderId}` : 'Chưa liên kết đơn'}</span></td><td>{item.reportedIssue}</td><td>{item.receivedDate}</td><td><span className="status-badge status-back-tq">{item.status}</span></td><td>{Number(item.repairCost || 0).toFixed(2)}</td><td><button className="btn btn-sm btn-primary" onClick={() => openEdit(item)}>Cập nhật</button></td></tr>;
+            return <tr key={item.id}><td style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.id}</td><td><strong>{laptop?.id || item.laptopId}</strong><br /><span style={{ fontSize: '0.8rem' }}>{laptop?.name || 'Máy đã bị xóa'}</span><br /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{laptop?.serial || '-'}</span></td><td>{item.customerInfo || '-'}<br /><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{item.orderId ? `Đơn #${item.orderId}` : 'Chưa liên kết đơn'}</span></td><td>{item.reportedIssue}</td><td>{item.receivedDate}</td><td><span className={`status-badge ${labelToKey('warrantyCaseStatus', item.status) === 'resolved' || labelToKey('warrantyCaseStatus', item.status) === 'completed' ? 'status-available' : labelToKey('warrantyCaseStatus', item.status) === 'in_progress' ? 'status-repairing' : 'status-back-tq'}`}>{getLabel('warrantyCaseStatus', item.status, appOptions) || item.status}</span></td><td>{Number(item.repairCost || 0).toFixed(2)}</td><td><button className="btn btn-sm btn-primary" onClick={() => openEdit(item)}>Cập nhật</button></td></tr>;
           })}</tbody>
         </table>
       </div>

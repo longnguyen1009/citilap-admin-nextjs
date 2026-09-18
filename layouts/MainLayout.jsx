@@ -237,7 +237,7 @@ export default function MainLayout({ children }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
+      <main className={`main-content ${isCollapsed ? 'collapsed' : ''} ${pathname === '/inventory' || pathname === '/orders' ? 'list-workspace' : ''}`}>
         <nav className="mobile-navigation" aria-label="Điều hướng trên điện thoại">
           <Link href="/inventory" aria-current={pathname === '/inventory' ? 'page' : undefined}><Package size={18} /> Kho laptop</Link>
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && <Link href="/orders" aria-current={pathname === '/orders' ? 'page' : undefined}><ShoppingCart size={18} /> Đơn hàng</Link>}

@@ -13,8 +13,8 @@ import {
   Plus, Edit3, Trash2, Settings, RefreshCw, Download, Upload, 
   Search, Filter, ExternalLink, Calculator, Layers, Tag, Box, CheckCircle2, AlertTriangle, ArrowUpRight, Zap, ChevronDown, X, Activity, Calendar, History
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import TechCheckModal from '../TechCheckModal';
-import FixedHorizontalScrollbar from '../FixedHorizontalScrollbar';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -231,13 +231,16 @@ export default function Inventory() {
     
   // Trợ lý chọn Class màu cho HÀNG sản phẩm theo Trạng Thái
   const getRowStatusClass = (status) => {
-    const key = labelToKey('laptopStatus', status);
+    const key = labelToKey('laptopStatus', status, fieldOptionsConfig);
     switch (key) {
       case 'not_imported': return 'row-chua-nhap';
       case 'available': return 'row-san-hang';
       case 'repairing': return 'row-dang-sua';
       case 'deposited': return 'row-da-coc';
-      case 'sold': return 'row-other';
+      case 'sold': return 'row-da-ban';
+      case 'returned_cn': return 'row-tra-hang';
+      case 'back_money': return 'row-tra-tien';
+      case 'skipped': return 'row-bo-qua';
       default: return 'row-other';
     }
   };
@@ -258,15 +261,17 @@ export default function Inventory() {
 
   // Trợ lý chọn Class màu cho Status Badge
   const getStatusBadgeClass = (status) => {
-    const key = labelToKey('laptopStatus', status);
+    const key = labelToKey('laptopStatus', status, fieldOptionsConfig);
     switch (key) {
-      case 'not_imported': return 'pill-badge pill-warning';
+      case 'not_imported': return 'pill-badge pill-white';
       case 'available': return 'pill-badge pill-success';
-      case 'repairing': return 'pill-badge pill-warning';
-      case 'sold': return 'pill-badge pill-neutral';
-      case 'returned_cn': return 'pill-badge pill-neutral';
-      case 'deposited': return 'pill-badge pill-info';
-      default: return 'pill-badge pill-warning';
+      case 'repairing': return 'pill-badge pill-danger';
+      case 'sold': return 'pill-badge pill-gray';
+      case 'returned_cn': return 'pill-badge pill-purple';
+      case 'back_money': return 'pill-badge pill-purple';
+      case 'skipped': return 'pill-badge pill-gray';
+      case 'deposited': return 'pill-badge pill-warning';
+      default: return 'pill-badge pill-white';
     }
   };
 
@@ -428,7 +433,7 @@ export default function Inventory() {
     if (savingRef.current) return;
     setSaveError('');
     if (!formData.name.trim()) {
-      alert('Vui lòng nhập Tên Máy!');
+      toast.error('Vui lòng nhập Tên Máy!');
       return;
     }
 
@@ -464,7 +469,7 @@ export default function Inventory() {
   const handleDelete = (id) => {
     if (window.confirm(`Bạn có chắc chắn muốn xóa máy ${id} khỏi kho?`)) {
       const result = deleteLaptop(id);
-      if (!result.ok) alert(`⛔ ${result.message}`);
+      if (!result.ok) toast.error(result.message);
     }
   };
 
@@ -477,28 +482,11 @@ export default function Inventory() {
       defaultRate: parseFloat(formulaForm.defaultRate) || 3550
     }, formulaForm.recalculateAll);
     if (!result?.ok) {
-      alert(`⛔ ${result?.message || 'Không thể lưu công thức.'}`);
+      toast.error(result?.message || 'Không thể lưu công thức.');
       return;
     }
     setIsFormulaModalOpen(false);
-    alert('Đã cập nhật công thức tính Giá Nhập thành công!');
-  };
-
-  // Thêm Phân loại danh mục mới
-  const handleAddCategorySubmit = async (e) => {
-    e.preventDefault();
-    if (newCatInput.trim()) {
-      const newLabel = newCatInput.trim();
-      const newKey = String(Date.now());
-      const saved = await updateFieldOptions('category', newKey, newLabel);
-      if (!saved) {
-        alert('Không thể thêm phân loại lên cloud.');
-        return;
-      }
-      setFormData(prev => ({ ...prev, category: newKey }));
-      setNewCatInput('');
-      setShowAddCatInput(false);
-    }
+    toast.success('Đã cập nhật công thức tính Giá Nhập thành công!');
   };
 
   // Live preview của Giá Nhập trong Form
@@ -529,7 +517,11 @@ export default function Inventory() {
         const financial = isAdmin
           ? [l.priceRmb, l.shippingRmb, l.exchangeRate, l.importPriceVnd]
           : [];
-        const selling = [`"${l.trackingCode}"`];
+        const selling = [
+          `"${l.wholesalePriceVnd || ''}"`,
+          `"${l.retailPriceVnd || ''}"`,
+          `"${l.trackingCode || ''}"`,
+        ];
         return [...base, ...financial, ...selling].join(',');
       })
     ];
@@ -563,13 +555,9 @@ export default function Inventory() {
       const text = await res.text();
 
       if (text.includes('<!DOCTYPE html>') || text.includes('login') || text.includes('Google Accounts')) {
-        alert(
-          '⚠️ File Google Sheet hiện đang để chế độ "Hạn chế" (Riêng tư).\\n\\n' +
-          'Để ứng dụng kéo dữ liệu tự động 1-Click:\\n' +
-          '1. Mở file Google Sheet của bạn\\n' +
-          '2. Bấm nút "Chia sẻ" (Share) ở góc trên bên phải\\n' +
-          '3. Đổi từ "Hạn chế" sang "Bất kỳ ai có đường liên kết" (Anyone with the link can view)\\n' +
-          '4. Thử bấm lại nút "Kéo Dữ Liệu Ngay" nhé!'
+        toast.error(
+          'File Google Sheet đang để chế độ "Hạn chế". Vui lòng đổi sang "Bất kỳ ai có đường liên kết" rồi thử lại.',
+          { duration: 8000 }
         );
         setIsSyncing(false);
         return;
@@ -577,7 +565,7 @@ export default function Inventory() {
 
       const lines = text.split('\n').filter(l => l.trim());
       if (lines.length <= 1) {
-        alert('File Google Sheet rỗng hoặc chưa có dữ liệu!');
+        toast.error('File Google Sheet rỗng hoặc chưa có dữ liệu!');
         setIsSyncing(false);
         return;
       }
@@ -610,18 +598,20 @@ export default function Inventory() {
       const result = await importSheetData(parsed);
       setIsSyncing(false);
       setIsSyncModalOpen(false);
-      alert(result.ok
-        ? `🎉 Đã đồng bộ ${result.imported} sản phẩm lên cloud.`
-        : `⚠️ Đã lưu ${result.imported || 0}/${parsed.length} sản phẩm. ${result.message || ''}`);
+      if (result.ok) {
+        toast.success(`Đã đồng bộ ${result.imported} sản phẩm lên cloud.`);
+      } else {
+        toast.error(`Đã lưu ${result.imported || 0}/${parsed.length} sản phẩm. ${result.message || ''}`);
+      }
     } catch (err) {
       console.error(err);
-      alert('Không thể kết nối đến Google Sheet. Vui lòng kiểm tra lại quyền Chia sẻ của Sheet!');
+      toast.error('Không thể kết nối đến Google Sheet. Vui lòng kiểm tra lại quyền Chia sẻ của Sheet!');
       setIsSyncing(false);
     }
   };
 
   return (
-    <section className="page-section">
+    <section className="page-section list-workspace-page">
       {/* COMPACT SECTION HEADER */}
       <div className="section-title section-header list-page-header">
         <div>
@@ -645,6 +635,39 @@ export default function Inventory() {
           </div>
         </div>
         
+      <div className="list-summary-strip" aria-label="Tóm tắt kho">
+        <div className="list-summary-item">
+          <div className="summary-icon"><Layers size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Tổng máy</span>
+            <strong className="summary-value">{stats.totalCount}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-success">
+          <div className="summary-icon"><CheckCircle2 size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Sẵn hàng</span>
+            <strong className="summary-value">{stats.availableCount}</strong>
+          </div>
+        </div>
+        <div className="list-summary-item list-summary-item-muted">
+          <div className="summary-icon"><Box size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đã bán</span>
+            <strong className="summary-value">{stats.soldCount}</strong>
+          </div>
+        </div>
+        {user?.role === 'ADMIN' && (
+          <div className="list-summary-item list-summary-item-value">
+            <div className="summary-icon"><Calculator size={15} /></div>
+            <div className="summary-text">
+              <span className="summary-label">Giá nhập tồn</span>
+              <strong className="summary-value">{stats.totalImportValueVnd.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tr</strong>
+            </div>
+          </div>
+        )}
+      </div>
+
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="secondary" size="sm" onClick={() => setIsSyncModalOpen(true)}>
             <RefreshCw size={14} /> Google Sheet
@@ -682,38 +705,6 @@ export default function Inventory() {
         </div>
       )}
 
-      <div className="list-summary-strip" aria-label="Tóm tắt kho">
-        <div className="list-summary-item">
-          <div className="summary-icon"><Layers size={15} /></div>
-          <div className="summary-text">
-            <span className="summary-label">Tổng máy</span>
-            <strong className="summary-value">{stats.totalCount}</strong>
-          </div>
-        </div>
-        <div className="list-summary-item list-summary-item-success">
-          <div className="summary-icon"><CheckCircle2 size={15} /></div>
-          <div className="summary-text">
-            <span className="summary-label">Sẵn hàng</span>
-            <strong className="summary-value">{stats.availableCount}</strong>
-          </div>
-        </div>
-        <div className="list-summary-item list-summary-item-muted">
-          <div className="summary-icon"><Box size={15} /></div>
-          <div className="summary-text">
-            <span className="summary-label">Đã bán</span>
-            <strong className="summary-value">{stats.soldCount}</strong>
-          </div>
-        </div>
-        {user?.role === 'ADMIN' && (
-          <div className="list-summary-item list-summary-item-value">
-            <div className="summary-icon"><Calculator size={15} /></div>
-            <div className="summary-text">
-              <span className="summary-label">Giá nhập tồn</span>
-              <strong className="summary-value">{stats.totalImportValueVnd.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tr</strong>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* COMPACT FILTER & SEARCH CARD */}
       <div className="card glass filter-card inventory-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
@@ -1051,7 +1042,7 @@ export default function Inventory() {
                     <td style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px`, fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.name}>{l.name}</td>
                     <td style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
                       <span className={`status-badge ${getStatusBadgeClass(l.status)}`}>
-                        {getLabel('laptopStatus', l.status)}
+                        {getLabel('laptopStatus', l.status, fieldOptionsConfig) || 'Chưa có trạng thái'}
                       </span>
                     </td>
                     <td style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
@@ -1125,7 +1116,7 @@ export default function Inventory() {
       </div>
 
       {/* THANH SCROLL NGANG CỐ ĐỊNH Ở ĐÁY MÀN HÌNH */}
-      <FixedHorizontalScrollbar containerRef={tableContainerRef} totalWidth={totalTableWidth} />
+
 
       {/* MODAL THÊM / SỬA CHI TIẾT LAPTOP */}
       {isAddModalOpen && (
@@ -1638,11 +1629,13 @@ export default function Inventory() {
                               });
                               const result = await importSheetData(parsed);
                               setIsSyncModalOpen(false);
-                              alert(result.ok
-                                ? `Đã nhập thành công ${result.imported} dòng máy lên cloud.`
-                                : `⚠️ Đã lưu ${result.imported || 0}/${parsed.length} dòng. ${result.message || ''}`);
+                              if (result.ok) {
+                                toast.success(`Đã nhập thành công ${result.imported} dòng máy lên cloud.`);
+                              } else {
+                                toast.error(`Đã lưu ${result.imported || 0}/${parsed.length} dòng. ${result.message || ''}`);
+                              }
                             } catch (err) {
-                              alert('Lỗi khi đọc file CSV!');
+                              toast.error('Lỗi khi đọc file CSV!');
                             }
                           };
                           reader.readAsText(file);

@@ -45,6 +45,17 @@ export async function POST(request) {
     }
 
     validateLaptopPayload(body);
+
+    // Validate price ranges to prevent extreme values
+    const MAX_PRICE_RMB = 100000;
+    const MAX_SHIPPING_RMB = 50000;
+    if (body.priceRmb !== undefined && Number(body.priceRmb) > MAX_PRICE_RMB) {
+      return NextResponse.json({ error: `Giá tệ không hợp lệ: ${body.priceRmb}. Tối đa ${MAX_PRICE_RMB} RMB.` }, { status: 400 });
+    }
+    if (body.shippingRmb !== undefined && Number(body.shippingRmb) > MAX_SHIPPING_RMB) {
+      return NextResponse.json({ error: `Phí vận chuyển không hợp lệ: ${body.shippingRmb}. Tối đa ${MAX_SHIPPING_RMB} RMB.` }, { status: 400 });
+    }
+
     const { searchParams } = new URL(request.url);
     const isCreateRequest = searchParams.get('mode') === 'create';
 
@@ -63,6 +74,25 @@ export async function POST(request) {
       if (data) {
         oldData = data;
         action = 'UPDATE';
+
+        // FIX: Chống sửa đổi trường tài chính trên laptop đã bị khóa/bán
+        const isSoldOrLocked = oldData.is_locked || oldData.status === 'sold';
+        if (isSoldOrLocked && isAdmin) {
+          const LOCKED_PROTECTED_FIELDS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
+          const changedProtected = LOCKED_PROTECTED_FIELDS.filter(k => {
+            if (body[k] === undefined) return false;
+            const incoming = Number(body[k]);
+            const existing = Number(oldData[k]);
+            return Number.isFinite(incoming) && Number.isFinite(existing)
+              ? incoming !== existing
+              : String(body[k]) !== String(oldData[k]);
+          });
+          if (changedProtected.length > 0) {
+            return NextResponse.json({
+              error: `Không thể thay đổi giá trên laptop đã khóa (${oldData.status}). Chỉ có thể sửa số serial và tên.`
+            }, { status: 400 });
+          }
+        }
       }
     }
 

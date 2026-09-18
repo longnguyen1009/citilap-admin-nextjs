@@ -35,6 +35,7 @@ export default function Login() {
       setError(result.message || 'Sai email hoặc mật khẩu');
       setIsSubmitting(false);
     } else {
+      setIsSubmitting(false);
       router.replace('/');
     }
   };

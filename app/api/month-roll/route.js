@@ -9,11 +9,17 @@ export async function POST(request) {
   const { profile } = auth;
 
   try {
-    const body = await request.json().catch(() => ({}));
-    const newMonthKey = body.monthKey || null;
-    if (!newMonthKey || !/^\d{2}\/\d{4}$/.test(newMonthKey)) {
-      return NextResponse.json({ error: 'Thiếu hoặc sai định dạng tháng (cần MM/YYYY).' }, { status: 400 });
-    }
+    // Chức năng này luôn đưa dữ liệu tồn từ các tháng trước về tháng hiện tại,
+    // không cộng thêm một tháng dựa trên tháng đang xem hoặc giá trị client gửi.
+    await request.json().catch(() => ({}));
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok',
+      month: '2-digit',
+      year: 'numeric',
+    }).formatToParts(new Date());
+    const month = parts.find(part => part.type === 'month')?.value;
+    const year = parts.find(part => part.type === 'year')?.value;
+    const newMonthKey = `${month}/${year}`;
 
     const result = await rollForwardMonth(newMonthKey);
     if (!result.ok) {

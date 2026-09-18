@@ -1,6 +1,7 @@
 -- DEV/TEST ONLY: reset business data; preserve auth.users, user_profiles and app_options.
 -- Run init_full_db.sql first, or apply all db/migrations to an existing database.
--- 50 laptops (17/17/16), 30 orders (10/10/10) for July/August/September 2026.
+-- 34 laptops (17/17), 20 orders (10/10) for July/August 2026.
+-- September 2026 starts empty so month-roll behavior can be tested explicitly.
 -- VND monetary columns use MILLION VND; price_rmb/shipping_rmb use RMB.
 BEGIN;
 SET LOCAL search_path = public, pg_temp;
@@ -44,9 +45,9 @@ DECLARE
     'Phạm Quốc Dũng', 'Hoàng Thu Hà', 'Vũ Gia Huy', 'Đặng Ngọc Lan',
     'Bùi Đức Minh', 'Đỗ Phương Nam', 'Ngô Hải Yến'];
 BEGIN
-  FOR m IN 7..9 LOOP
+  FOR m IN 7..8 LOOP
     month := to_char(make_date(2026, m, 1), 'MM/YYYY');
-    FOR n IN 1..(CASE WHEN m = 9 THEN 16 ELSE 17 END) LOOP
+    FOR n IN 1..17 LOOP
       model := 1 + (n + m - 8) % 10;
       imported := make_date(2026, m, 1 + (n - 1) % 5);
       stamp := (imported + TIME '09:00') AT TIME ZONE 'Asia/Ho_Chi_Minh';
@@ -80,10 +81,10 @@ BEGIN
       RETURNING * INTO customer;
 
       -- No time-dependent reservations: reruns give the same inventory state.
-      status := CASE WHEN n <= 6 THEN 'done' WHEN n = 7 THEN 'prepared'
+      status := CASE WHEN n <= 5 THEN 'done' WHEN n = 6 THEN 'deposited' WHEN n = 7 THEN 'prepared'
         WHEN n = 8 THEN 'shipping' WHEN n = 9 THEN 'new' ELSE 'cancelled' END;
       sale := CASE WHEN n % 3 = 0 THEN laptop.wholesale_price_vnd ELSE laptop.retail_price_vnd END;
-      paid := CASE WHEN n <= 7 THEN sale WHEN n = 8 THEN 2 ELSE 0 END;
+      paid := CASE WHEN n <= 5 THEN sale WHEN n BETWEEN 6 AND 8 THEN 2 ELSE 0 END;
       PERFORM public.create_order_with_inventory(jsonb_build_object(
         'created_date', ordered, 'month_key', month,
         'laptop_id', laptop.id, 'customer_id', customer.id,
@@ -93,16 +94,16 @@ BEGIN
         'note', 'Đơn mẫu tháng ' || month,
         'order_type', CASE WHEN n % 3 = 0 THEN 'wholesale' ELSE 'retail' END,
         'order_status', status,
-        'payment_status', CASE WHEN n <= 7 THEN 'paid' WHEN n = 8 THEN 'cod' ELSE 'unpaid' END,
+        'payment_status', CASE WHEN n <= 5 THEN 'paid' WHEN n IN (6, 7) THEN 'deposited' WHEN n = 8 THEN 'cod' ELSE 'unpaid' END,
         'payment_method', 'transfer_cash',
-        'delivery_status', CASE WHEN n <= 6 THEN 'delivered' WHEN n = 8 THEN 'shipped' ELSE 'at_store' END,
+        'delivery_status', CASE WHEN n <= 5 THEN 'delivered' WHEN n = 8 THEN 'shipped' ELSE 'at_store' END,
         'shipping_method', CASE WHEN n = 8 THEN 'viettelpost' ELSE 'direct_store' END,
         'sale_price', sale, 'amount_paid', paid,
-        'deposit_amount', CASE WHEN n <= 8 THEN 2 ELSE 0 END,
-        'deposit_note', CASE WHEN n <= 8 THEN 'Cọc chuyển khoản' ELSE NULL END,
+        'deposit_amount', CASE WHEN n BETWEEN 6 AND 8 THEN 2 ELSE 0 END,
+        'deposit_note', CASE WHEN n BETWEEN 6 AND 8 THEN 'Cọc chuyển khoản' ELSE NULL END,
         'cod_amount', CASE WHEN n = 8 THEN sale - paid ELSE 0 END,
         'profit_vnd', CASE WHEN n = 10 THEN 0 ELSE sale - cost END,
-        'ship_date', CASE WHEN n <= 6 OR n = 8 THEN ordered ELSE NULL END,
+        'ship_date', CASE WHEN n <= 5 OR n = 8 THEN ordered ELSE NULL END,
         'tracking_code', CASE WHEN n = 8 THEN 'VTP-' || laptop.serial ELSE NULL END,
         'setup_note', 'Cài đặt Windows và kiểm tra máy', 'warranty', '6 tháng', 'gifts', 'basic_gift',
         'cancel_reason', CASE WHEN n = 10 THEN 'Khách đổi nhu cầu' ELSE NULL END,
@@ -122,9 +123,9 @@ UPDATE stock_movements s SET created_at = o.created_at FROM orders o WHERE s.ord
 -- Abort the entire reset if counts, links, or payment history are inconsistent.
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM laptops) <> 50 OR (SELECT count(*) FROM orders) <> 30
+  IF (SELECT count(*) FROM laptops) <> 34 OR (SELECT count(*) FROM orders) <> 20
     OR EXISTS (
-      SELECT 1 FROM (VALUES ('07/2026', 17), ('08/2026', 17), ('09/2026', 16)) expected(month_key, total)
+      SELECT 1 FROM (VALUES ('07/2026', 17), ('08/2026', 17)) expected(month_key, total)
       WHERE (SELECT count(*) FROM laptops l WHERE l.month_key = expected.month_key) <> expected.total
          OR (SELECT count(*) FROM orders o WHERE o.month_key = expected.month_key) <> 10
     ) THEN RAISE EXCEPTION 'Seed counts do not match the requested monthly distribution'; END IF;
