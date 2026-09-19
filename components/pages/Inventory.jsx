@@ -369,6 +369,10 @@ export default function Inventory() {
     });
   }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
 
+  const hasActiveFilters = Boolean(
+    searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || warehouseDateFrom || warehouseDateTo
+  );
+
   // Trợ lý Bật/Tắt Phân loại trong Multi-Select
   const toggleCategorySelect = (cat) => {
     if (selectedCats.includes(cat)) {
@@ -613,11 +617,8 @@ export default function Inventory() {
   return (
     <section className="page-section list-workspace-page">
       {/* COMPACT SECTION HEADER */}
-      <div className="section-title section-header list-page-header">
-        <div>
-          <h1 className="list-page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
-            <Box className="text-primary" size={24} /> Quản Lý Kho Laptop CitiLap
-          </h1>
+      <div className="section-title section-header list-page-header inventory-page-header">
+        <div className="workspace-heading">
           <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
@@ -864,6 +865,28 @@ export default function Inventory() {
             <label htmlFor="inventory-field-5" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Đến ngày</label>
             <input id="inventory-field-5" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateTo} onChange={e => setWarehouseDateTo(e.target.value)} />
           </div>
+        </div>
+
+        <div className="filter-card-heading inventory-filter-meta">
+          <div>
+            <span className="filter-result-count">{filteredLaptops.length} máy phù hợp</span>
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="filter-reset-button"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCats([]);
+                setSelectedLoc('ALL');
+                setSelectedStatus('ALL');
+                setWarehouseDateFrom('');
+                setWarehouseDateTo('');
+              }}
+            >
+              <X size={13} /> Xóa bộ lọc
+            </button>
+          )}
         </div>
 
         {/* THẺ TAG HIỂN THỊ CÁC PHÂN LOẠI ĐANG ĐƯỢC CHỌN LỌC */}

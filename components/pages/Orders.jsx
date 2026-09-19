@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Plus,
   Search,
-  Filter,
   Calendar,
   Download,
   Trash2,
@@ -617,6 +616,10 @@ export default function Orders() {
     });
   }, [orders, laptops, customers, searchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
 
+  const hasActiveFilters = Boolean(
+    searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory
+  );
+
   // Xuất file CSV Đơn Hàng
   const handleExportCSV = () => {
     if (orders.length === 0) {
@@ -742,11 +745,8 @@ export default function Orders() {
   return (
     <section className="page-section list-workspace-page">
       {/* SECTION HEADER */}
-      <div className="section-title section-header list-page-header">
-        <div>
-          <h1 className="list-page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
-            <ShoppingCart className="text-primary" size={24} /> Quản Lý Đơn Hàng & Xuất Bán ({filteredOrders.length} / {orders.length} đơn)
-          </h1>
+      <div className="section-title section-header list-page-header orders-page-header">
+        <div className="workspace-heading">
           <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <Calendar size={14} style={{ color: '#64748b' }} />
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Kỳ:</span>
@@ -891,6 +891,23 @@ export default function Orders() {
             <strong className="summary-value">{orders.filter(order => labelToKey('orderStatus', order.orderStatus) === 'done').length}</strong>
           </div>
         </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="filter-reset-button orders-filter-reset"
+            onClick={() => {
+              setSearchTerm('');
+              setFilterSaleOnline('');
+              setFilterOrderStatus('');
+              setFilterPaymentStatus('');
+              setFilterDeliveryStatus('');
+              setFilterShippingMethod('');
+              setFilterCategory('');
+            }}
+          >
+            <X size={13} /> Xóa bộ lọc
+          </button>
+        )}
       </div>
       </div>
 
