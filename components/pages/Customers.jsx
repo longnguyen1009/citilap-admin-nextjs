@@ -5,6 +5,7 @@ import { Edit2, Search, UserPlus, Users, Phone, MapPin, Hash } from 'lucide-reac
 import toast from 'react-hot-toast';
 import { Modal } from '../ui/modal';
 import { Button } from '@/components/ui/button';
+import InvoiceLink from '../InvoiceLink';
 
 export default function Customers() {
   const { customers, createCustomer, updateCustomer } = useInventory();
@@ -123,7 +124,7 @@ export default function Customers() {
                 <th style={{ minWidth: '200px' }}><Users size={13} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />Tên khách hàng</th>
                 <th style={{ minWidth: '140px' }}><Phone size={13} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />Số điện thoại</th>
                 <th><MapPin size={13} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />Địa chỉ</th>
-                <th style={{ width: '80px', textAlign: 'center' }}>Thao tác</th>
+                <th style={{ width: '180px', textAlign: 'center' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -147,6 +148,7 @@ export default function Customers() {
                     <td style={{ fontWeight: 500, color: c.phone ? '#1e293b' : '#cbd5e1' }}>{c.phone || '-'}</td>
                     <td style={{ fontSize: '0.82rem', color: c.address ? '#475569' : '#cbd5e1' }}>{c.address || '-'}</td>
                     <td style={{ textAlign: 'center' }}>
+                      <div className="customer-row-actions">
                       <button
                         data-testid={`customer-edit-button-${c.id}`}
                         className="btn-icon"
@@ -156,6 +158,8 @@ export default function Customers() {
                       >
                         <Edit2 size={14} />
                       </button>
+                      <InvoiceLink customerId={c.id} />
+                      </div>
                     </td>
                   </tr>
                 ))

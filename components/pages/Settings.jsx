@@ -8,6 +8,7 @@ import UserManagementSection from './UserManagementSection';
 import PresetManagementSection from './PresetManagementSection';
 import { getAuthHeaders } from '../../lib/apiFetchers';
 import { labelToKey } from '../../lib/useFieldOptions';
+import InvoiceCatalog from './InvoiceCatalog';
 
 const GROUP_SECTIONS = [
   {
@@ -529,6 +530,7 @@ export default function Settings() {
       </div>
 
       <PresetManagementSection />
+      <InvoiceCatalog type="branches" />
       <UserManagementSection />
     </div>
   );

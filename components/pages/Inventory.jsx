@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
+import InvoiceLink from '../InvoiceLink';
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -71,6 +72,7 @@ export default function Inventory() {
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
   const [selectedLoc, setSelectedLoc] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [selectedSeller, setSelectedSeller] = useState('ALL');
   const [warehouseDateFrom, setWarehouseDateFrom] = useState('');
   const [warehouseDateTo, setWarehouseDateTo] = useState('');
 
@@ -98,7 +100,7 @@ export default function Inventory() {
     exchangeRate: 70,
     importPriceVnd: 95,
     trackingCode: 160,
-    actions: 92
+    actions: 116
   });
 
   const inventoryColumnKeys = useMemo(() => {
@@ -185,6 +187,7 @@ export default function Inventory() {
     importDate: new Date().toLocaleDateString('en-GB'),
     warehouseDate: '',
     id: '',
+    sku: '',
     serial: '',
     name: '',
     location: LOCATION_OPTIONS[0]?.key || 'wh_vn',
@@ -342,6 +345,8 @@ export default function Inventory() {
       const matchCat = selectedCats.length === 0 || selectedCats.includes(laptopCatKey);
       const matchLoc = selectedLoc === 'ALL' || laptop.location === selectedLoc || labelToKey('laptopLocation', laptop.location, fieldOptionsConfig) === selectedLoc;
       const matchStatus = selectedStatus === 'ALL' || laptop.status === selectedStatus || labelToKey('laptopStatus', laptop.status, fieldOptionsConfig) === selectedStatus;
+      const matchSeller = selectedSeller === 'ALL' || String(laptop.seller || '') === String(selectedSeller)
+        || labelToKey('seller', laptop.seller, fieldOptionsConfig) === selectedSeller;
 
       const matchWarehouseDate = (() => {
         if (!warehouseDateFrom && !warehouseDateTo) return true;
@@ -363,14 +368,14 @@ export default function Inventory() {
         return true;
       })();
 
-      return matchSearch && matchCat && matchLoc && matchStatus && matchWarehouseDate;
+      return matchSearch && matchCat && matchLoc && matchStatus && matchSeller && matchWarehouseDate;
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
+  }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, selectedSeller, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
 
   const hasActiveFilters = Boolean(
-    searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || warehouseDateFrom || warehouseDateTo
+    searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || selectedSeller !== 'ALL' || warehouseDateFrom || warehouseDateTo
   );
 
   // Trợ lý Bật/Tắt Phân loại trong Multi-Select
@@ -408,6 +413,7 @@ export default function Inventory() {
       importDate: laptop.importDate || '',
       warehouseDate: laptop.warehouseDate || '',
       id: laptop.id || '',
+      sku: laptop.sku || '',
       serial: laptop.serial || '',
       name: laptop.name || '',
       location: laptop.location || 'store',
@@ -857,6 +863,14 @@ export default function Inventory() {
             </select>
           </div>
 
+          <div className="filter-item" style={{ flex: '0 1 140px' }}>
+            <label htmlFor="inventory-seller-filter" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Người bán</label>
+            <select id="inventory-seller-filter" className="filter-input" value={selectedSeller} onChange={e => setSelectedSeller(e.target.value)}>
+              <option value="ALL">-- Tất cả Người bán --</option>
+              {getOptions('seller').map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+            </select>
+          </div>
+
           <div className="filter-item" style={{ flex: '0 1 150px' }}>
             <label htmlFor="inventory-field-4" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Từ ngày</label>
             <input id="inventory-field-4" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateFrom} onChange={e => setWarehouseDateFrom(e.target.value)} />
@@ -880,6 +894,7 @@ export default function Inventory() {
                 setSelectedCats([]);
                 setSelectedLoc('ALL');
                 setSelectedStatus('ALL');
+                setSelectedSeller('ALL');
                 setWarehouseDateFrom('');
                 setWarehouseDateTo('');
               }}
@@ -952,7 +967,7 @@ export default function Inventory() {
                   Tên máy
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'name')} title="Kéo để chỉnh rộng hẹp cột Tên máy" />
                 </th>
-                <th style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px`, position: 'relative' }}>
+                <th style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px`, position: 'relative', textAlign: 'center' }}>
                   Trạng thái
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'status')} title="Kéo để chỉnh rộng hẹp cột Trạng thái" />
                 </th>
@@ -1062,32 +1077,34 @@ export default function Inventory() {
                         return <div>{l.importDate}</div>;
                       })()}
                     </td>
-                    <td style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px`, fontWeight: 600, whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.name}>{l.name}</td>
-                    <td style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
+                    <td className="inventory-name-cell" style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px` }} title={l.name}>
+                      <span>{l.name}</span>
+                    </td>
+                    <td className="inventory-status-cell" style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
                       <span className={`status-badge ${getStatusBadgeClass(l.status)}`}>
                         {getLabel('laptopStatus', l.status, fieldOptionsConfig) || 'Chưa có trạng thái'}
                       </span>
+                      {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'sold' && <InvoiceLink laptopId={l.id} label="Xem hóa đơn" />}
                     </td>
-                    <td style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
+                    <td className="inventory-category-cell" style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
                       <span className={`cat-badge ${getCategoryBadgeClass(l.category)}`}>
                         {getLabel('category', l.category)}
                       </span>
                     </td>
                     <td className="inventory-note-cell" style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.82rem', fontWeight: 700, color: '#111827' }}>
-                      <div style={{display: 'flex', gap: '3px', marginBottom: '2px', flexWrap: 'wrap', alignItems: 'center'}}>
-                        <span style={{fontWeight: 700, color: l.batteryHealth < 80 ? '#ef4444' : '#10b981'}}>Pin:{l.batteryHealth || 100}%</span>
+                      <div className="inventory-test-summary">
+                        <span className={Number(l.batteryHealth ?? 100) < 80 ? 'has-error' : ''}>Pin:{l.batteryHealth ?? 100}%</span>
                         {l.screenStatus && (
-                          <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: l.screenStatus === 'ok' || l.screenStatus === 'OK' ? '#10b981' : '#ef4444'}}>M:{getLabel('componentStatus', l.screenStatus)}</span></>
+                          <><span>·</span> <span className={String(l.screenStatus).toLowerCase() === 'ok' ? '' : 'has-error'}>M:{getLabel('componentStatus', l.screenStatus)}</span></>
                         )}
                         {l.cameraMicStatus && (
-                          <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: l.cameraMicStatus === 'ok' || l.cameraMicStatus === 'OK' ? '#10b981' : '#ef4444'}}>C:{getLabel('componentStatus', l.cameraMicStatus)}</span></>
+                          <><span>·</span> <span className={String(l.cameraMicStatus).toLowerCase() === 'ok' ? '' : 'has-error'}>C:{getLabel('componentStatus', l.cameraMicStatus)}</span></>
                         )}
                         {l.mainboardStatus && (
-                          <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: l.mainboardStatus === 'ok' || l.mainboardStatus === 'OK' ? '#10b981' : '#ef4444'}}>Mn:{getLabel('componentStatus', l.mainboardStatus)}</span></>
+                          <><span>·</span> <span className={String(l.mainboardStatus).toLowerCase() === 'ok' ? '' : 'has-error'}>Mn:{getLabel('componentStatus', l.mainboardStatus)}</span></>
                         )}
-                        {l.isLocked && <><span style={{color: '#94a3b8'}}>·</span> <span style={{fontWeight: 700, color: '#ef4444'}}>KHOA</span></>}
                       </div>
-                      <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '0.8rem', fontWeight: 700, color: '#111827', opacity: 0.9 }} title={l.conditionNote}>{l.conditionNote || '-'}</div>
+                      <div className="inventory-condition-text" title={l.conditionNote}>{l.conditionNote || '-'}</div>
                     </td>
                     <td style={{ width: `${colWidths.serial}px`, minWidth: `${colWidths.serial}px`, fontFamily: 'monospace', fontSize: '0.78rem', color: '#475569', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.serial}>
                       {l.serial || '-'}
@@ -1235,7 +1252,7 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="inventory-field-12">Số Serial (SN)</label>
+                    <label htmlFor="inventory-field-12">Số Serial (SN) *</label>
                     <Input id="inventory-field-12"
                       type="text"
                       data-testid="product-serial-input"
@@ -1243,6 +1260,7 @@ export default function Inventory() {
                       disabled={Boolean(editingLaptop && labelToKey('laptopStatus', editingLaptop.status, fieldOptionsConfig) === 'sold')}
                       onChange={e => setFormData({ ...formData, serial: e.target.value })}
                       placeholder="SN12345678"
+                      required
                     />
                   </div>
 

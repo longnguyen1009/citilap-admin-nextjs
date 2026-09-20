@@ -42,7 +42,11 @@ const recordTypeBadgeClass = {
   adjustment: 'pill-badge pill-info'
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const value = new Date();
+  const offset = value.getTimezoneOffset() * 60 * 1000;
+  return new Date(value.getTime() - offset).toISOString().slice(0, 10);
+};
 const formatAmount = value => `${Number(value || 0).toFixed(2)} tr`;
 
 export default function Payments() {
@@ -54,7 +58,7 @@ export default function Payments() {
     paymentDate: today(), referenceCode: '', note: ''
   });
   const [financialForm, setFinancialForm] = useState({
-    recordType: 'expense', category: '', amount: '', occurredOn: today(), note: '', paymentMethod: 'transfer_cash'
+    recordType: 'expense', category: '', amount: '', occurredOn: today(), note: '', paymentMethod: 'transfer_cash', orderId: ''
   });
   const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -137,7 +141,7 @@ export default function Payments() {
         amount: Number(financialForm.amount)
       });
       setFinancialRecords(prev => [saved, ...prev]);
-      setFinancialForm(prev => ({ ...prev, category: '', amount: '', note: '' }));
+      setFinancialForm(prev => ({ ...prev, category: '', amount: '', note: '', orderId: '' }));
       setMessage({ type: 'success', text: 'Đã lưu khoản thu/chi.' });
       setTimeout(() => setIsFinancialModalOpen(false), 600);
     } catch (error) {
@@ -222,7 +226,7 @@ export default function Payments() {
               <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="text"
-                placeholder="Tìm mã đơn, loại, phương thức..."
+                placeholder="Tìm giao dịch..."
                 value={paymentSearch}
                 onChange={e => setPaymentSearch(e.target.value)}
                 style={{ padding: '5px 8px 5px 28px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', width: '200px', background: '#fff' }}
@@ -254,7 +258,7 @@ export default function Payments() {
                 <th style={{ width: '80px', textAlign: 'center' }}>Đơn</th>
                 <th style={{ width: '140px' }}>Loại</th>
                 <th style={{ width: '110px', textAlign: 'right' }}>Số tiền</th>
-                <th style={{ width: '130px' }}>Phương thức</th>
+                <th style={{ width: '190px', minWidth: '190px' }}>Phương thức</th>
                 <th>Tham chiếu</th>
                 <th style={{ width: '120px' }}>Người ghi nhận</th>
               </tr>
@@ -402,7 +406,7 @@ export default function Payments() {
               <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'block' }}>Còn nợ: {formatAmount(remaining)} tr</span>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="finance-form-grid">
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Phương thức</label>
               <select className="form-control" value={paymentForm.paymentMethod} onChange={e => setPaymentForm(prev => ({ ...prev, paymentMethod: e.target.value }))}>
@@ -436,6 +440,14 @@ export default function Payments() {
         <Modal open={isFinancialModalOpen} onOpenChange={setIsFinancialModalOpen} title="Khoản thu / chi khác" maxWidth="max-w-xl">
           <form onSubmit={handleFinancialSubmit} style={{ display: 'grid', gap: '14px' }}>
             <div className="form-group">
+              <label htmlFor="financial-order" style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Liên kết đơn hàng</label>
+              <select id="financial-order" className="form-control" value={financialForm.orderId} onChange={e => setFinancialForm(prev => ({ ...prev, orderId: e.target.value }))}>
+                <option value="">Không gắn với đơn hàng</option>
+                {activeOrders.map(order => <option key={order.id} value={order.id}>#{order.id} · {order.customerInfo || 'Chưa có tên khách'} · {formatAmount(order.salePrice)}</option>)}
+              </select>
+              <small className="form-hint">Chọn đơn để khoản thu/chi xuất hiện trong phần tài chính của hóa đơn tương ứng.</small>
+            </div>
+            <div className="form-group">
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Loại sổ</label>
               <select className="form-control" value={financialForm.recordType} onChange={e => setFinancialForm(prev => ({ ...prev, recordType: e.target.value }))}>
                 <option value="expense">Chi phí</option>
@@ -447,7 +459,7 @@ export default function Payments() {
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Danh mục <span style={{color:'#ef4444'}}>*</span></label>
               <input className="form-control" required value={financialForm.category} onChange={e => setFinancialForm(prev => ({ ...prev, category: e.target.value }))} placeholder="Ví dụ: phí ship, sửa chữa, quảng cáo" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="finance-form-grid">
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Số tiền (triệu VNĐ)</label>
                 <input className="form-control" required type="number" min="0.01" step="0.01" value={financialForm.amount} onChange={e => setFinancialForm(prev => ({ ...prev, amount: e.target.value }))} />

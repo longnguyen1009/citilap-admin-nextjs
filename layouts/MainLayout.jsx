@@ -14,7 +14,9 @@ import {
   Wrench,
           BadgeDollarSign,
   Database,
-  Settings
+  Settings,
+  FileText,
+  MousePointer2
 } from 'lucide-react';
 import { getSupabaseCredentials } from '../lib/supabaseClient';
 
@@ -133,6 +135,20 @@ export default function MainLayout({ children }) {
             >
               <BadgeDollarSign size={20} />
               {!isCollapsed && <span>Thanh toán & Tài chính</span>}
+            </Link>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+            <Link href="/invoices" aria-current={pathname.startsWith('/invoices') ? 'page' : undefined} className="nav-item" title={isCollapsed ? "Hóa đơn" : ""}>
+              <FileText size={20} />
+              {!isCollapsed && <span>Hóa đơn</span>}
+            </Link>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+            <Link href="/accessories" aria-current={pathname === '/accessories' ? 'page' : undefined} className="nav-item" title={isCollapsed ? "Phụ kiện" : ""}>
+              <MousePointer2 size={20} />
+              {!isCollapsed && <span>Phụ kiện</span>}
             </Link>
           )}
 

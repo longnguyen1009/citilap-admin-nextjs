@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useInventory, isOrderCommitted } from '../../context/InventoryContext';
 import { RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
 import { labelToKey, getLabel } from '../../lib/useFieldOptions';
@@ -17,9 +17,11 @@ export default function Warranty() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
   const [formData, setFormData] = useState(emptyCase);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const rows = useMemo(() => warrantyCases.filter(item => {
-    const laptop = laptops.find(machine => machine.id === item.laptopId);
+    const laptop = laptops.find(machine => String(machine.id) === String(item.laptopId));
     const source = [item.id, item.customerInfo, item.reportedIssue, laptop?.id, laptop?.name, laptop?.serial].join(' ').toLowerCase();
     return !searchTerm || source.includes(searchTerm.toLowerCase());
   }), [warrantyCases, laptops, searchTerm]);
@@ -37,9 +39,20 @@ export default function Warranty() {
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const result = editingCase ? await updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
-    if (!result.ok) return toast.error(result.message);
-    setIsModalOpen(false);
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const result = editingCase ? await updateWarrantyCase(editingCase.id, formData) : await createWarrantyCase(formData);
+      if (!result.ok) return toast.error(result.message);
+      toast.success(editingCase ? 'Đã cập nhật phiếu bảo hành.' : 'Đã tạo phiếu bảo hành.');
+      setIsModalOpen(false);
+    } catch (error) {
+      toast.error(error.message || 'Không thể lưu phiếu bảo hành.');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -54,7 +67,7 @@ export default function Warranty() {
       <div className="card glass p-0" style={{ overflowX: 'auto' }}>
         <table className="data-table data-table-wide" style={{ width: '100%' }}><thead><tr><th>Phiếu</th><th>Máy / Serial</th><th>Khách & Đơn</th><th>Lỗi khách báo</th><th>Tiếp nhận</th><th>Trạng thái</th><th>Chi phí (tr)</th><th /></tr></thead>
           <tbody>{rows.length === 0 ? <tr><td colSpan={8} className="empty-cell">Chưa có phiếu bảo hành nào.</td></tr> : rows.map(item => {
-            const laptop = laptops.find(machine => machine.id === item.laptopId);
+            const laptop = laptops.find(machine => String(machine.id) === String(item.laptopId));
             return <tr key={item.id}><td style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.id}</td><td><strong>{laptop?.id || item.laptopId}</strong><br /><span style={{ fontSize: '0.8rem' }}>{laptop?.name || 'Máy đã bị xóa'}</span><br /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{laptop?.serial || '-'}</span></td><td>{item.customerInfo || '-'}<br /><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{item.orderId ? `Đơn #${item.orderId}` : 'Chưa liên kết đơn'}</span></td><td>{item.reportedIssue}</td><td>{item.receivedDate}</td><td><span className={`status-badge ${labelToKey('warrantyCaseStatus', item.status) === 'resolved' || labelToKey('warrantyCaseStatus', item.status) === 'completed' ? 'status-available' : labelToKey('warrantyCaseStatus', item.status) === 'in_progress' ? 'status-repairing' : 'status-back-tq'}`}>{getLabel('warrantyCaseStatus', item.status, appOptions) || item.status}</span></td><td>{Number(item.repairCost || 0).toFixed(2)}</td><td><button className="btn btn-sm btn-primary" onClick={() => openEdit(item)}>Cập nhật</button></td></tr>;
           })}</tbody>
         </table>
@@ -73,7 +86,7 @@ export default function Warranty() {
           <div className="form-group"><label>Chẩn đoán kỹ thuật</label><textarea className="form-control" rows={3} value={formData.diagnosis} onChange={event => setFormData({ ...formData, diagnosis: event.target.value })} /></div>
           <div className="form-group"><label>Hướng xử lý / kết quả</label><textarea className="form-control" rows={3} value={formData.resolution} onChange={event => setFormData({ ...formData, resolution: event.target.value })} /></div>
           <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Ghi chú tiếp nhận</label><textarea className="form-control" rows={2} value={formData.notes} onChange={event => setFormData({ ...formData, notes: event.target.value })} /></div>
-        </div><div className="modal-footer" style={{ marginTop: '20px' }}><button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary"><CheckCircle2 size={16} /> Lưu Phiếu</button></div></form>
+        </div><div className="modal-footer" style={{ marginTop: '20px' }}><button type="button" className="btn btn-secondary" disabled={isSaving} onClick={() => setIsModalOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary" disabled={isSaving}><CheckCircle2 size={16} /> {isSaving ? 'Đang lưu…' : 'Lưu Phiếu'}</button></div></form>
       </div></div>}
     </section>
   );

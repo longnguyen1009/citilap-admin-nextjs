@@ -9,7 +9,7 @@ const ORDER_AUDIT_FIELDS = [
   'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId', 'requestedLaptopId',
   'salePrice', 'depositAmount', 'depositNote', 'codAmount', 'creditCardFee',
   'tradeInLaptopId', 'customerId', 'customerInfo', 'customerNote', 'customerAddress', 'trackingCode',
-  'shipDate', 'setupNote', 'warranty', 'gifts', 'reservationExpiresAt'
+  'shipDate', 'setupNote', 'warranty', 'gifts', 'branchId', 'giftPreset', 'giftAccessoryIds', 'reservationExpiresAt'
 ];
 
 export async function GET(request) {

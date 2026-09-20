@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchWarrantyCasesFromCloud, saveWarrantyCaseToCloud } from '../../../lib/services/dbService';
-import { requireUser, sanitizePayload, WARRANTY_PAYLOAD_KEYS } from '../../../lib/apiAuth';
+import { requireUser, sanitizePayload, validateWarrantyPayload, WARRANTY_PAYLOAD_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
 import { keysToCamel } from '@/lib/services/dbService';
@@ -22,6 +22,7 @@ export async function POST(request) {
     delete body.createdAt;
     delete body.updatedAt;
     body.handledBy = auth.profile.name;
+    validateWarrantyPayload(body);
     const adminClient = getSupabaseAdminClient();
     let previous = null;
     if (adminClient && body.id && /^\d+$/.test(String(body.id))) {

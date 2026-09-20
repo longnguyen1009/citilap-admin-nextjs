@@ -21,6 +21,8 @@ import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
+import InvoiceLink from '../InvoiceLink';
+import InvoiceOrderFields from '../InvoiceOrderFields';
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
   if (vnDate.includes('-')) return vnDate;
@@ -134,6 +136,7 @@ export default function Orders() {
     updateOrder, 
     cancelOrder,
     SALE_ONLINE_OPTIONS,
+    SALE_OFFLINE_OPTIONS,
     SHIPPING_METHOD_OPTIONS,
     ORDER_STATUS_OPTIONS,
     PAYMENT_STATUS_OPTIONS,
@@ -215,6 +218,7 @@ export default function Orders() {
   const [formData, setFormData] = useState({
     createdDate: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     saleOnline: SALE_ONLINE_OPTIONS[0],
+    saleOffline: SALE_OFFLINE_OPTIONS[0],
     note: '',
     shippingMethod: SHIPPING_METHOD_OPTIONS[0],
     orderStatus: ORDER_STATUS_OPTIONS[0],
@@ -229,6 +233,9 @@ export default function Orders() {
     setupNote: 'Cài cơ bản',
     warranty: '6 tháng',
     gifts: GIFT_OPTIONS[0],
+    branchId: '',
+    giftPreset: '',
+    giftAccessoryIds: [],
     customerId: '',
     customerNote: '',
     trackingCode: '',
@@ -237,6 +244,7 @@ export default function Orders() {
     paymentMethod: PAYMENT_METHODS ? PAYMENT_METHODS[0] : 'Chuyển khoản / Tiền mặt',
     
     tradeInLaptopName: '',
+    tradeInSerial: '',
     tradeInPrice: '',
     creditCardFee: ''
   });
@@ -327,7 +335,7 @@ export default function Orders() {
   };
 
   const totalTableWidth = useMemo(() => {
-    return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0) + 64;
+    return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0) + 108;
   }, [colWidths, orderColumnKeys]);
 
   // Đổi máy trực tiếp trên bảng Google Sheet
@@ -352,8 +360,7 @@ export default function Orders() {
       const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
       if (autoPrice) {
         updates.salePrice = autoPrice;
-        // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
-        // normalizeMoney sẽ tự clamp codAmount <= debtAmount
+        // Không tự động ghi đè codAmount — để người dùng tự quyết định số tiền thu hộ.
       }
     }
     const result = updateOrder(ordId, updates);
@@ -369,6 +376,7 @@ export default function Orders() {
     setFormData({
       createdDate: selectedMonth === 'ALL' ? new Date().toLocaleDateString('en-GB') : `01/${selectedMonth}`,
       saleOnline: SALE_ONLINE_OPTIONS[0],
+      saleOffline: SALE_OFFLINE_OPTIONS[0],
       note: '',
       shippingMethod: SHIPPING_METHOD_OPTIONS[0],
       orderStatus: ORDER_STATUS_OPTIONS[0],
@@ -384,6 +392,9 @@ export default function Orders() {
       setupNote: 'Cài cơ bản',
       warranty: '6 tháng',
       gifts: GIFT_OPTIONS[0],
+      branchId: '',
+      giftPreset: '',
+      giftAccessoryIds: [],
       customerId: '',
       customerNote: '',
       trackingCode: '',
@@ -392,6 +403,7 @@ export default function Orders() {
       paymentMethod: PAYMENT_METHODS[0],
       
       tradeInLaptopName: '',
+      tradeInSerial: '',
       tradeInPrice: '',
       creditCardFee: ''
     });
@@ -409,6 +421,7 @@ export default function Orders() {
       id: order.id,
       createdDate: order.createdDate || '',
       saleOnline: getFormOptionLabel('saleOnline', order.saleOnline, SALE_ONLINE_OPTIONS[0]),
+      saleOffline: getFormOptionLabel('saleOffline', order.saleOffline, SALE_OFFLINE_OPTIONS[0]),
       note: order.note || '',
       shippingMethod: getFormOptionLabel('shippingMethod', order.shippingMethod, SHIPPING_METHOD_OPTIONS[0]),
       orderStatus: getFormOptionLabel('orderStatus', order.orderStatus, ORDER_STATUS_OPTIONS[0]),
@@ -424,14 +437,18 @@ export default function Orders() {
       setupNote: order.setupNote || '',
       warranty: order.warranty || '',
       gifts: getFormOptionLabel('giftOptions', order.gifts, GIFT_OPTIONS[0]),
+      branchId: order.branchId || '',
+      giftPreset: order.giftPreset || '',
+      giftAccessoryIds: Array.isArray(order.giftAccessoryIds) ? order.giftAccessoryIds : [],
       customerId: order.customerId || '',
       customerNote: order.customerNote || '',
       trackingCode: order.trackingCode || '',
       shipDate: order.shipDate || '',
       orderType: getFormOptionLabel('orderType', order.orderType, ORDER_TYPES[0]),
       paymentMethod: getFormOptionLabel('paymentMethod', order.paymentMethod, PAYMENT_METHODS[0]),
-      tradeInLaptopName: '',
-      tradeInPrice: '',
+      tradeInLaptopName: order.tradeInLaptopId ? (laptops.find(item => String(item.id) === String(order.tradeInLaptopId))?.name || '') : '',
+      tradeInSerial: order.tradeInLaptopId ? (laptops.find(item => String(item.id) === String(order.tradeInLaptopId))?.serial || '') : '',
+      tradeInPrice: order.tradeInLaptopId ? (laptops.find(item => String(item.id) === String(order.tradeInLaptopId))?.importPriceVnd || '') : '',
       creditCardFee: order.creditCardFee ?? ''
     });
     setIsModalOpen(true);
@@ -518,15 +535,14 @@ export default function Orders() {
     setIsSaving(true);
     try {
     const finalSalePrice = parseFlexibleFloat(formData.salePrice);
-    const finalAmountPaid = parseFlexibleFloat(formData.depositAmount);
-    const finalDebtAmount = Math.max(0, finalSalePrice - finalAmountPaid);
-    const finalCodAmount = Math.min(parseFlexibleFloat(formData.codAmount), finalDebtAmount);
+    const finalCodAmount = parseFlexibleFloat(formData.codAmount);
     
     // Xử lý Thu cũ đổi mới
-    let tradeInLaptopId = '';
-    if (getFormOptionKey('orderType', formData.orderType) === 'trade_in' && formData.tradeInLaptopName && formData.tradeInPrice) {
+    let tradeInLaptopId = formData.tradeInLaptopId || '';
+    if (getFormOptionKey('orderType', formData.orderType) === 'trade_in' && !tradeInLaptopId && formData.tradeInLaptopName && formData.tradeInPrice) {
       const result = await addLaptop({
         name: formData.tradeInLaptopName,
+        serial: formData.tradeInSerial,
         category: 'Thu Cũ',
         status: 'available',
         importPriceVnd: parseFlexibleFloat(formData.tradeInPrice),
@@ -1019,7 +1035,7 @@ export default function Orders() {
                   Quà Tặng
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'gifts')} title="Kéo để chỉnh rộng hẹp cột Quà Tặng" />
                 </th>
-                <th style={{ width: '64px', minWidth: '64px' }}>Sửa</th>
+                <th style={{ width: '108px', minWidth: '108px' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -1360,18 +1376,16 @@ export default function Orders() {
 
                       {/* Quà Tặng */}
                       <td style={{ width: `${colWidths.gifts}px`, minWidth: `${colWidths.gifts}px` }}>
-                        <select
-                          className="sheet-cell-select"
-                          value={selectValue(getLabel('giftOptions', ord.gifts))}
-                          onChange={(e) => updateOrder(ord.id, { gifts: e.target.value })}
-                        >
-                          {GIFT_OPTIONS.map(g => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
+                        {Array.isArray(ord.giftAccessoryIds) && ord.giftAccessoryIds.length > 0 ? (
+                          <span className="order-gift-summary">{ord.giftPreset === 'full' ? 'Full combo' : ord.giftPreset === 'basic' ? 'Chuột + balo' : `${ord.giftAccessoryIds.length} phụ kiện`}</span>
+                        ) : (
+                          <select className="sheet-cell-select" value={selectValue(getLabel('giftOptions', ord.gifts))} onChange={(e) => updateOrder(ord.id, { gifts: e.target.value })}>
+                            {GIFT_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
+                          </select>
+                        )}
                       </td>
                       {/* Mở form sửa chi tiết */}
-                      <td className="order-actions-cell" style={{ width: '64px', minWidth: '64px', textAlign: 'center' }}>
+                      <td className="order-actions-cell" style={{ width: '108px', minWidth: '108px', textAlign: 'center' }}>
                         <div className="order-row-actions">
                         <button
                           type="button"
@@ -1382,6 +1396,11 @@ export default function Orders() {
                         >
                           Sửa
                         </button>
+                        <InvoiceLink
+                          orderId={ord.id}
+                          issue
+                          eligible={['shipping', 'done'].includes(labelToKey('orderStatus', ord.orderStatus, appOptions))}
+                        />
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
@@ -1454,6 +1473,13 @@ export default function Orders() {
                   </select>
                 </div>
 
+                <div className="form-group">
+                  <label htmlFor="order-sale-offline" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Offline</label>
+                  <select id="order-sale-offline" className="form-control" value={formData.saleOffline} onChange={e => setFormData({ ...formData, saleOffline: e.target.value })}>
+                    {SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
                 {/* Phân loại Đơn hàng (Phase 2) */}
                 <div className="form-group">
                   <label htmlFor="order-field-9" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#8b5cf6' }}>Loại Đơn Hàng</label>
@@ -1471,6 +1497,9 @@ export default function Orders() {
                 
                 {getFormOptionKey('orderType', formData.orderType) === 'trade_in' && (
                   <>
+                    {formData.tradeInLaptopId && <div className="order-linked-trade-in" style={{ gridColumn: 'span 2' }}>
+                      Máy thu cũ đã liên kết: <strong>#{formData.tradeInLaptopId} · {formData.tradeInLaptopName || 'Chưa có tên'}</strong>
+                    </div>}
                     <div className="form-group">
                       <label htmlFor="order-field-10" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Tên Máy Khách Bán (Trade-in)</label>
                       <input id="order-field-10"
@@ -1479,8 +1508,13 @@ export default function Orders() {
                         value={formData.tradeInLaptopName} 
                         onChange={e => setFormData({ ...formData, tradeInLaptopName: e.target.value })} 
                         placeholder="VD: Thinkpad T480s i5..."
-                        required 
+                        required={!formData.tradeInLaptopId}
+                        disabled={Boolean(formData.tradeInLaptopId)}
                       />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="order-trade-in-serial" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Serial Máy Thu Cũ</label>
+                      <input id="order-trade-in-serial" type="text" className="form-control" value={formData.tradeInSerial} onChange={e => setFormData({ ...formData, tradeInSerial: e.target.value })} required={!formData.tradeInLaptopId} disabled={Boolean(formData.tradeInLaptopId)} placeholder="Nhập serial để tránh trùng máy" />
                     </div>
                     <div className="form-group">
                       <label htmlFor="order-field-11" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Giá Thu Lại (tr VNĐ)</label>
@@ -1490,7 +1524,9 @@ export default function Orders() {
                         value={formData.tradeInPrice} 
                         onChange={e => setFormData({ ...formData, tradeInPrice: e.target.value })} 
                         placeholder="VD: 5.5"
-                        required 
+                        min="0.01"
+                        required={!formData.tradeInLaptopId}
+                        disabled={Boolean(formData.tradeInLaptopId)}
                       />
                     </div>
                   </>
@@ -1513,7 +1549,7 @@ export default function Orders() {
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
                     <label htmlFor="order-field-13" className="form-label" style={{ flex: 1, marginBottom: 0, fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
-                      10. Máy Trong Kho (ID & Cấu hình)
+                      Máy Trong Kho (ID & Cấu hình)
                     </label>
                     <Input
                       data-testid="order-laptop-search"
@@ -1705,7 +1741,7 @@ export default function Orders() {
                 {/* 17. KHÁCH HÀNG */}
                 <div className="form-group" style={{ gridColumn: 'span 4' }}>
                   <label htmlFor="order-field-25" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                    17. Khách Hàng <button type="button" className="inline-add-button" onClick={() => setShowCustomerForm(prev => !prev)}>{showCustomerForm ? '× Đóng' : '+ Thêm mới'}</button>
+                    Khách Hàng <button type="button" className="inline-add-button" onClick={() => setShowCustomerForm(prev => !prev)}>{showCustomerForm ? '× Đóng' : '+ Thêm mới'}</button>
                   </label>
                   <select id="order-field-25"
                     data-testid="order-customer-select"
@@ -1825,6 +1861,8 @@ export default function Orders() {
                     ))}
                   </select>
                 </div>
+
+                <InvoiceOrderFields value={formData} onChange={setFormData} />
 
               </div>
 

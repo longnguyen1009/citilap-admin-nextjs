@@ -404,6 +404,11 @@ export const InventoryProvider = ({ children }) => {
   const [appOptions, setAppOptions] = useState(() => {
     return readLocalArray(LOCAL_KEYS.appOptions);
   });
+  const appOptionsRef = React.useRef(appOptions);
+
+  useEffect(() => {
+    appOptionsRef.current = appOptions;
+  }, [appOptions]);
 
   const updateAppOptions = useCallback(async () => {
     const opts = await fetchAppOptionsFromCloud();
@@ -559,7 +564,7 @@ export const InventoryProvider = ({ children }) => {
         if (cloudOrders !== null) {
           const committedByLaptop = new Map();
           cloudOrders.forEach(order => {
-            if (!order.laptopId || !isOrderCommitted(order, appOptions)) return;
+            if (!order.laptopId || !isOrderCommitted(order, appOptionsRef.current)) return;
             const list = committedByLaptop.get(order.laptopId) || [];
             list.push(order.id);
             committedByLaptop.set(order.laptopId, list);
@@ -740,12 +745,18 @@ export const InventoryProvider = ({ children }) => {
   // orders chưa về, máy đã bán có thể tạm bị hiểu nhầm là không còn đơn liên kết.
   // Tác vụ định kỳ sau đó mới lưu thay đổi thực sự (ví dụ hết hạn giữ máy).
   useEffect(() => {
-    applyAndSaveLaptopStatuses(orders, false);
+    const initialReconcileId = window.setTimeout(
+      () => applyAndSaveLaptopStatuses(orders, false),
+      0
+    );
     const intervalId = window.setInterval(
       () => applyAndSaveLaptopStatuses(orders, true),
       60 * 60 * 1000
     );
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearTimeout(initialReconcileId);
+      window.clearInterval(intervalId);
+    };
   }, [orders, applyAndSaveLaptopStatuses]);
 
   const addStockMovement = (entry) => {
@@ -908,6 +919,9 @@ const mapLabelsToKeys = (fields, appOpts) => {
       setupNote: orderData.setupNote || 'Cài cơ bản',
       warranty: orderData.warranty || '6 tháng',
       gifts: orderData.gifts || 'basic_gift',
+      branchId: orderData.branchId || null,
+      giftPreset: orderData.giftPreset || '',
+      giftAccessoryIds: Array.isArray(orderData.giftAccessoryIds) ? orderData.giftAccessoryIds : [],
       customerInfo: orderData.customerInfo || customerSummary,
       customerAddress: orderData.customerAddress || selectedCustomer?.address || '',
       customerId: orderData.customerId || null,
@@ -1340,6 +1354,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       receivedDate: caseData.receivedDate || todayVi(),
       reportedIssue: caseData.reportedIssue?.trim() || '',
       status: caseData.status || 'received',
+      resolvedDate: RESOLVED_WARRANTY_STATUS_KEYS.includes(labelToKey('warrantyCaseStatus', caseData.status || 'received', appOptions))
+        ? (caseData.resolvedDate || todayVi()) : '',
       diagnosis: caseData.diagnosis || '',
       resolution: caseData.resolution || '',
       repairCost: parseFlexibleFloat(caseData.repairCost),
@@ -1365,29 +1381,51 @@ const mapLabelsToKeys = (fields, appOpts) => {
       conditionNote: `${laptop.conditionNote || ''}${laptop.conditionNote ? ' | ' : ''}BH ${warrantyCase.receivedDate}: ${warrantyCase.reportedIssue}`
     };
     setLaptops(prev => prev.map(item => item.id == laptop.id ? updatedLaptop : item));
-    void saveLaptopToCloud(updatedLaptop).catch(error => console.error('Không thể đồng bộ máy bảo hành:', error));
+    try {
+      await saveLaptopToCloud({
+        id: laptop.id, name: laptop.name, serial: laptop.serial,
+        conditionNote: updatedLaptop.conditionNote
+      });
+    } catch (error) {
+      setLaptops(prev => prev.map(item => item.id == laptop.id
+        ? { ...item, conditionNote: laptop.conditionNote } : item));
+      import('react-hot-toast').then(mod => mod.default.error(
+        `Phiếu bảo hành #${warrantyCase.id} đã lưu, nhưng chưa cập nhật được ghi chú máy: ${error.message}`
+      ));
+    }
     
     addStockMovement({ laptopId: laptop.id, orderId: warrantyCase.orderId, warrantyCaseId: warrantyCase.id, type: 'TIẾP NHẬN BẢO HÀNH', note: warrantyCase.reportedIssue });
     return { ok: true, warrantyCase };
   };
 
-  const updateWarrantyCase = (id, updates) => {
+  const updateWarrantyCase = async (id, updates) => {
     const currentCase = warrantyCases.find(item => item.id == id);
     if (!currentCase) return { ok: false, message: 'Không tìm thấy phiếu bảo hành.' };
+    const nextStatus = updates.status === undefined ? currentCase.status : updates.status;
+    const isResolved = RESOLVED_WARRANTY_STATUS_KEYS.includes(labelToKey('warrantyCaseStatus', nextStatus, appOptions));
     const updatedCase = {
       ...currentCase,
       ...updates,
+      resolvedDate: isResolved ? (updates.resolvedDate || currentCase.resolvedDate || todayVi()) : '',
       repairCost: updates.repairCost === undefined ? currentCase.repairCost : parseFlexibleFloat(updates.repairCost),
       updatedAt: new Date().toISOString()
     };
     setWarrantyCases(prev => prev.map(item => item.id == id ? updatedCase : item));
-    void saveWarrantyCaseToCloud(updatedCase).catch(error => {
+    let savedCase;
+    try {
+      savedCase = await saveWarrantyCaseToCloud(updatedCase);
+    } catch (error) {
       setWarrantyCases(prev => prev.map(item => item.id == id ? currentCase : item));
-      console.error('Không thể đồng bộ phiếu bảo hành:', error);
-    });
+      return { ok: false, message: error.message || 'Không thể cập nhật phiếu bảo hành.' };
+    }
+    if (!savedCase) {
+      setWarrantyCases(prev => prev.map(item => item.id == id ? currentCase : item));
+      return { ok: false, message: 'Không thể cập nhật phiếu bảo hành.' };
+    }
+    setWarrantyCases(prev => prev.map(item => item.id == id ? savedCase : item));
 
     const laptop = laptops.find(l => l.id == updatedCase.laptopId);
-    if (laptop) {
+    if (laptop && updates.diagnosis) {
       const diagnosisTag = updates.diagnosis ? ` | KT: ${updates.diagnosis}` : '';
       const alreadyHasDiagnosis = diagnosisTag && laptop.conditionNote?.includes(diagnosisTag);
       const updatedLaptop = {
@@ -1395,9 +1433,13 @@ const mapLabelsToKeys = (fields, appOpts) => {
         conditionNote: `${laptop.conditionNote || ''}${alreadyHasDiagnosis ? '' : diagnosisTag}`
       };
       setLaptops(prev => prev.map(l => l.id == laptop.id ? updatedLaptop : l));
-      void saveLaptopToCloud(updatedLaptop).catch(error => {
-        setLaptops(prev => prev.map(item => item.id == laptop.id ? laptop : item));
-        console.error('Không thể đồng bộ máy bảo hành:', error);
+      void saveLaptopToCloud({
+        id: laptop.id, name: laptop.name, serial: laptop.serial,
+        conditionNote: updatedLaptop.conditionNote
+      }).catch(error => {
+        setLaptops(prev => prev.map(item => item.id == laptop.id
+          ? { ...item, conditionNote: laptop.conditionNote } : item));
+        import('react-hot-toast').then(mod => mod.default.error(`Chưa cập nhật được ghi chú máy bảo hành: ${error.message}`));
       });
     }
     
@@ -1408,7 +1450,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       type: `BẢO HÀNH: ${updatedCase.status}`,
       note: updatedCase.resolution || updatedCase.diagnosis || updatedCase.notes || ''
     });
-    return { ok: true, warrantyCase: updatedCase };
+    return { ok: true, warrantyCase: savedCase };
   };
 
   // Tạo đơn hàng cũ

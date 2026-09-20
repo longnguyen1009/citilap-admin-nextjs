@@ -5,7 +5,7 @@ import { requireUser, filterSensitiveFields, sanitizePayload, validateLaptopPayl
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 
 const LAPTOP_AUDIT_FIELDS = [
-  'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
+  'sku', 'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
   'chargerStatus', 'status', 'priceRmb', 'shippingRmb', 'exchangeRate',
   'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd', 'trackingCode',
   'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth', 'isLocked',
@@ -86,18 +86,19 @@ export async function POST(request) {
           }
         }
         if (isSoldOrLocked && isAdmin) {
+          const oldLaptop = keysToCamel(oldData);
           const LOCKED_PROTECTED_FIELDS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
           const changedProtected = LOCKED_PROTECTED_FIELDS.filter(k => {
             if (body[k] === undefined) return false;
             const incoming = Number(body[k]);
-            const existing = Number(oldData[k]);
+            const existing = Number(oldLaptop[k]);
             return Number.isFinite(incoming) && Number.isFinite(existing)
               ? incoming !== existing
-              : String(body[k]) !== String(oldData[k]);
+              : String(body[k]) !== String(oldLaptop[k]);
           });
           if (changedProtected.length > 0) {
             return NextResponse.json({
-              error: `Không thể thay đổi giá trên laptop đã khóa (${oldData.status}). Chỉ có thể sửa số serial và tên.`
+              error: `Không thể thay đổi giá trên laptop đã khóa (${oldData.status}).`
             }, { status: 400 });
           }
         }
