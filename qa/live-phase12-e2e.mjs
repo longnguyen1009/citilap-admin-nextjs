@@ -14,6 +14,17 @@ async function api(path,token,{method='GET',body}={}){const r=await fetch(app+pa
 async function rest(path,{method='GET',body,prefer='return=representation'}={}){const r=await fetch(`${supa}/rest/v1/${path}`,{method,headers:{apikey:service,Authorization:`Bearer ${service}`,...(body?{'Content-Type':'application/json'}:{}),Prefer:prefer},body:body?JSON.stringify(body):undefined});return {status:r.status,ok:r.ok,body:await parse(r),range:r.headers.get('content-range')}}
 
 const admin=await login(env.ADMIN_EMAIL,env.ADMIN_PASSWORD); check('ADMIN real login',true);
+const openingBalanceAt=`${new Date().toISOString().slice(0,10)}T00:00:00.000Z`;
+const createFinanceAccount=async(type,currency,openingBalance)=>{
+  const code=`${tag}-${type}-${currency}`.slice(0,40);
+  const created=await api('/api/cash-accounts',admin,{method:'POST',body:{code,name:code,accountType:type,currency,openingBalance,openingBalanceAt}});
+  check(`create ${currency} regression account`,created.status===201,{status:created.status,error:created.body?.error});
+  return created.body;
+};
+const regressionVndAccount=await createFinanceAccount('BANK','VND',100000000);
+const regressionCnyAccount=await createFinanceAccount('WECHAT','CNY',50000);
+report.ids.regressionVndAccount=regressionVndAccount.id;
+report.ids.regressionCnyAccount=regressionCnyAccount.id;
 const roles=['SALES','TECH','TECHNICAL','STAFF'], accounts=[];
 for(const role of roles){const password=`Qa!${randomBytes(12).toString('base64url')}9a`;const email=`test-live-${role.toLowerCase()}-${stamp.toLowerCase()}@example.com`;const made=await api('/api/users',admin,{method:'POST',body:{email,password,name:`${tag}-${role}`,role}});check(`create ${role} auth account`,made.status===200||made.status===201,{status:made.status,error:made.body?.error});const token=await login(email,password);accounts.push({role,id:made.body.id,email,password,token});const denied=await api('/api/suppliers',token);check(`${role} procurement denied server-side`,denied.status===403,{status:denied.status});const spoof=await api('/api/suppliers',token,{method:'POST',body:{role:'ADMIN',code:`${tag}-${role}`.slice(0,40),name:'spoof'}});check(`${role} cannot self-elevate payload`,spoof.status===403,{status:spoof.status});}
 
@@ -40,10 +51,12 @@ x=await rest(`purchase_items?id=eq.${pitems[0].id}`,{method:'PATCH',body:{purcha
 x=await rest(`purchase_batches?id=eq.${purchase.id}`,{method:'PATCH',body:{domestic_shipping_rmb:1}});check('confirmed batch cost immutable in DB',!x.ok,{status:x.status});
 
 const finBefore=await rest('financial_records?select=id');
-const pay=(amount,key,method)=>api('/api/supplier-payments',admin,{method:'POST',body:{purchaseBatchId:purchase.id,amountRmb:amount,exchangeRate:3600,paymentMethod:method,paymentDate:purchaseDate,reference:tag,notes:tag,idempotencyKey:key}});
+const pay=(amount,key,method)=>api('/api/supplier-payments',admin,{method:'POST',body:{purchaseBatchId:purchase.id,amountRmb:amount,exchangeRate:3600,paymentMethod:method,paymentDate:purchaseDate,reference:tag,notes:tag,accountId:regressionCnyAccount.id,idempotencyKey:key}});
 const pay1=await pay(8000,`${tag}-PAY-1`,'WECHAT');check('supplier payment 8000',pay1.status===201,{status:pay1.status,error:pay1.body?.error});
 const pay2=await pay(4000,`${tag}-PAY-2`,'ALIPAY');check('supplier payment 4000',pay2.status===201,{status:pay2.status,error:pay2.body?.error});
 const pay2Again=await pay(4000,`${tag}-PAY-2`,'ALIPAY');check('payment idempotency',pay2Again.ok&&pay2Again.body.id===pay2.body.id,{status:pay2Again.status});
+const paymentCashEffects=await rest(`account_transactions?reference_type=eq.SUPPLIER_PAYMENT&reference_id=in.(${pay1.body.id},${pay2.body.id})&select=id,account_id,direction,currency`);
+check('supplier payments create exactly one CNY cash effect each',paymentCashEffects.ok&&paymentCashEffects.body.length===2&&paymentCashEffects.body.every(row=>row.account_id===regressionCnyAccount.id&&row.direction==='OUT'&&row.currency==='CNY'),{rows:paymentCashEffects.body});
 detail=await api(`/api/purchases?id=${purchase.id}`,admin);check('paid/debt derived by DB',Number(detail.body.batch.paid_rmb)===12000&&Number(detail.body.batch.debt_rmb)===8000,{paid:detail.body.batch.paid_rmb,debt:detail.body.batch.debt_rmb});
 const over=await pay(9000,`${tag}-OVERPAY`,'BANK_TRANSFER');check('overpayment blocked',!over.ok,{status:over.status});
 const mismatch=await rest('supplier_payments',{method:'POST',body:{supplier_id:supplierB.id,purchase_batch_id:purchase.id,amount_rmb:1,amount_vnd:3600,exchange_rate:3600,payment_method:'CASH',reference:tag,payment_date:purchaseDate,notes:tag,recorded_by:tag,idempotency_key:`${tag}-MISMATCH`}});check('supplier mismatch blocked by DB',!mismatch.ok,{status:mismatch.status});

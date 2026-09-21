@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useInventory, isOrderCommitted, isReservationActive, isInactiveStatus } from '../../context/InventoryContext';
 import { getAuthHeaders } from '../../lib/apiFetchers';
 import { D, RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
@@ -150,6 +151,13 @@ export default function Dashboard() {
           {management?.generated_at && <time>Cập nhật {new Date(management.generated_at).toLocaleString('vi-VN')}</time>}
         </div>
         {managementError ? <div className="management-error"><AlertTriangle size={18}/>{managementError}. Hãy áp dụng migration Phase 7.</div> : !management ? <div className="management-loading">Đang tổng hợp dòng vốn và tuổi tồn…</div> : <>
+          {management.financial_operations && <section className="management-finance-strip"><div><span>Khách còn nợ</span><strong>{vnd(management.financial_operations.customer_receivable_vnd)} ₫</strong></div><div><span>COD chưa về</span><strong>{vnd(management.financial_operations.cod?.outstanding_vnd)} ₫</strong></div><div><span>Phải trả NCC</span><strong>¥{count(management.financial_operations.supplier_payable_cny)}</strong></div><div><span>NCC phải hoàn</span><strong>¥{count(management.financial_operations.supplier_refund_pending_cny)}</strong></div>{(Number(management.financial_operations.cod?.overdue_vnd)>0||Number(management.financial_operations.cod?.disputed)>0||Number(management.financial_operations.reconciliation_differences)>0)&&<div className="warn"><AlertTriangle size={16}/><span>{Number(management.financial_operations.cod?.overdue_vnd)>0?'COD quá hạn · ':''}{Number(management.financial_operations.cod?.disputed)>0?`${management.financial_operations.cod.disputed} COD tranh chấp · `:''}{Number(management.financial_operations.reconciliation_differences)>0?`${management.financial_operations.reconciliation_differences} tài khoản lệch`:''}</span></div>}</section>}
+          {management.financial_operations && <section className="management-finance-strip" aria-label="Financial Action Center">
+            {Object.entries(management.financial_operations.receivable_aging || {}).filter(([key]) => key.startsWith('OVERDUE_')).reduce((sum, [, value]) => sum + Number(value.orders || 0), 0) > 0 && <Link className="warn" href="/finance/receivables"><AlertTriangle size={16}/><span>OVERDUE_CUSTOMER_RECEIVABLE</span></Link>}
+            {Number(management.financial_operations.cod?.overdue_vnd) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>OVERDUE_COD</span></Link>}
+            {Number(management.financial_operations.cod?.disputed) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>COD_DISPUTED</span></Link>}
+            {Number(management.financial_operations.reconciliation_differences) > 0 && <Link className="warn" href="/finance/accounts"><AlertTriangle size={16}/><span>ACCOUNT_RECONCILIATION_DIFFERENCE</span></Link>}
+          </section>}
           <div className="management-stats">
             <ExposureCard icon={WalletCards} label="Vốn tồn sẵn sàng" value={`${vnd(management.available.known_inventory_cost_vnd)} ₫`} meta={`${count(management.available.units)} máy · ${management.available.cost_complete} cost complete`} tone="emerald"/>
             <ExposureCard icon={Truck} label="Hàng đang luân chuyển" value={`${count(management.transit.units)} máy`} meta={`Purchase value ${vnd(management.transit.purchase_value_vnd)} ₫`} tone="blue"/>

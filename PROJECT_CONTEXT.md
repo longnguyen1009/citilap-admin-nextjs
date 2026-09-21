@@ -3826,3 +3826,104 @@ supplier return sau này sẽ reference purchase_item bằng cách nào?
 Sau khi có câu trả lời từ code/schema hiện tại, mới triển khai Phase 1.
 
 Không tự ý triển khai Phase 2+ trong cùng batch.
+
+---
+
+# 109. Phase 8 Completion & Hardening — 2026-09-22
+
+Verified repository implementation:
+
+```text
+financial_records = legacy operational reporting ledger
+payments / supplier_payments / supplier_refunds = business event ledgers
+account_transactions = cash-location ledger only
+```
+
+Added additive hardening migration:
+
+```text
+db/migrations/20261004_phase8_legacy_finance_conflicts.sql
+db/migrations/20261006_phase8_financial_operations_hardening.sql
+```
+
+Dev Supabase contains an earlier unused finance prototype with empty tables named
+`account_transactions`, `cod_receivables` and `cod_settlements`. The preflight
+migration verifies those legacy signatures and zero row counts, then preserves
+them as `legacy_*` before the Phase 8 base migration creates its authoritative
+tables. It raises instead of renaming if any legacy table contains data.
+
+It fixes reconciliation by locking `cash_accounts`, adds consistent COD `DELIVERED`
+transitions, and atomically links customer payments, supplier payments, supplier
+refunds and COD settlements to exactly one account transaction.
+
+Active finance routes:
+
+```text
+/finance
+/finance/cod
+/finance/receivables
+/finance/payables
+/finance/accounts
+/finance/transactions
+```
+
+Server endpoints are role checked. Full finance operations are ADMIN-only. SALES
+may read only the minimal active VND account identity needed for its existing
+customer-payment permission; balances and ledger history remain hidden.
+
+Cross-currency account transfer is intentionally deferred. VND and CNY balances
+must remain separate.
+
+Live verification on 2026-09-22 confirms the Phase 8 preflight, base and
+hardening migrations were applied to Dev Supabase. All five finance tables are
+reachable by `service_role` and denied to `anon`; the finance summary, customer
+payment, supplier payment, supplier refund and reconciliation RPCs are exposed.
+ADMIN authentication and six read-only Finance APIs passed a 22-check live smoke
+suite.
+
+Final transactional verification on 2026-09-22 added and ran
+`qa/live-phase8-e2e.mjs`. The controlled `TEST-FIN-` suite passed 186/186 checks,
+including opening-balance cutover, customer/supplier/refund/COD cash effects,
+idempotency, concurrent retries, append-only ledgers, reconciliation, role API
+matrix, direct RLS/RPC denial, pagination and QA-user deactivation.
+
+Live E2E found a duplicate legacy COD status constraint named
+`cod_receivables_status_check1`. `db/migrations/20261007_phase8_cod_status_constraint_repair.sql`
+was applied successfully to Dev Supabase and the COD scenarios then passed.
+
+Final regression hardening added and applied:
+
+```text
+db/migrations/20261008_phase8_regression_trigger_hardening.sql
+db/migrations/20261009_phase8_action_center_resolution.sql
+```
+
+The Phase 4 failure came from `sync_repair_cost_trigger()` reading
+`NEW.completed_by` on `repair_jobs`, whose actor column is `created_by`. The new
+migration replaces the function without editing applied history and recreates
+only the intended `repair_sync_landed_cost` attachment. Phase 4 then passed 75
+checks and Phase 3 passed 52 checks.
+
+The final Phase 1-8 matrix passes: Phase 1-2 69/69, Phase 3 52, Phase 4 75,
+Phase 5 52, Phase 6 61, Phase 7 27, and Phase 8 186/186. Legacy Phase 1-2 supplier
+payment fixtures now provide dedicated CNY/VND account IDs. Deprecated base RPCs
+remain internal compatibility primitives; production routes use account-aware
+wrappers.
+
+Browser verification covers Finance overview, accounts, COD, receivables and
+payables with live mutations and authoritative refresh after reload. ADMIN has
+full access. SALES, TECH, TECHNICAL and STAFF hide the Finance navigation; direct
+Finance URLs render an access-denied view, while the API matrix returns 403.
+SALES retains only sanitized active VND account identities for customer payments.
+
+The financial Action Center exposes deterministic drill-down links for overdue
+customer receivables, overdue COD, disputed COD and account reconciliation
+differences. `qa/live-phase8-action-center-e2e.mjs` verifies all four alerts,
+resolution behavior, and null-date protections in 11/11 checks. Migration
+`20261009` permits an otherwise valid COD settlement to resolve a disputed COD
+while retaining account, amount, idempotency and append-only controls.
+
+Final validation on 2026-09-22: local finance DB verification 11/11, live Phase 8
+transactional E2E 186/186, ESLint pass, production build pass, and QA accounts
+deactivated. TEST data is intentionally retained for auditability. Phase 8 is
+complete and the repository is ready to begin Phase 9 in a separate batch.

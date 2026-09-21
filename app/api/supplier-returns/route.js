@@ -91,8 +91,9 @@ export async function POST(request) {
       result = await db.rpc('transition_supplier_return', { p_id: body.id, p_target: body.target, p_data: { carrier: clean(body.carrier, 160), tracking_number: clean(body.trackingNumber, 200), resolution_type: body.resolutionType || null }, p_actor: auth.profile.name });
     } else if (body.action === 'refund') {
       if (!UUID.test(String(body.id || ''))) throw new Error('Mã phiếu trả không hợp lệ');
+      if (!UUID.test(String(body.accountId || ''))) throw new Error('Tài khoản nhận hoàn tiền không hợp lệ');
       const rate = body.exchangeRate === '' || body.exchangeRate == null ? null : positive(body.exchangeRate);
-      result = await db.rpc('record_supplier_refund', { p_return_id: body.id, p_amount_rmb: positive(body.amountRmb), p_exchange_rate: rate, p_method: body.method, p_reference: clean(body.reference, 300), p_received_at: body.receivedAt || new Date().toISOString(), p_actor: auth.profile.name, p_idempotency_key: clean(body.idempotencyKey, 100) });
+      result = await db.rpc('record_supplier_refund_with_account', { p_return_id: body.id, p_amount_rmb: positive(body.amountRmb), p_exchange_rate: rate, p_method: body.method, p_reference: clean(body.reference, 300), p_received_at: body.receivedAt || new Date().toISOString(), p_actor: auth.profile.name, p_account_id: body.accountId, p_idempotency_key: clean(body.idempotencyKey, 90) });
     } else if (body.action === 'replacement') {
       result = await db.rpc('link_supplier_replacement', { p_item_id: Number(body.itemId), p_replacement_purchase_item_id: Number(body.replacementPurchaseItemId), p_replacement_laptop_id: body.replacementLaptopId ? Number(body.replacementLaptopId) : null, p_actor: auth.profile.name });
     } else throw new Error('Thao tác Supplier Return không hợp lệ');

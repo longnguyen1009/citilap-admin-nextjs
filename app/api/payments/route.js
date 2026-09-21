@@ -3,6 +3,7 @@ import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS, SENSITIVE_LAP
 import { fetchPaymentsFromCloud, savePaymentToCloud } from '@/lib/services/dbService';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
+import { randomUUID } from 'node:crypto';
 
 const PAYMENT_TYPES = new Set(['deposit', 'balance', 'cod', 'refund', 'other']);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -37,6 +38,8 @@ export async function POST(request) {
     const paymentType = String(body?.paymentType || '');
     const paymentMethod = String(body?.paymentMethod || 'transfer_cash').trim();
     const paymentDate = body?.paymentDate || null;
+    const accountId = String(body?.accountId || '');
+    const idempotencyKey = String(body?.idempotencyKey || randomUUID());
 
     if (!orderId || !Number.isFinite(amount) || amount <= 0 || !PAYMENT_TYPES.has(paymentType)) {
       return NextResponse.json({ error: 'Đơn hàng, loại thanh toán và số tiền không hợp lệ' }, { status: 400 });
@@ -49,6 +52,9 @@ export async function POST(request) {
     }
     if (body.note !== undefined && String(body.note).length > 1000) {
       return NextResponse.json({ error: 'Ghi chú quá dài' }, { status: 400 });
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(accountId) || idempotencyKey.length < 8 || idempotencyKey.length > 90) {
+      return NextResponse.json({ error: 'Tài khoản nhận tiền hoặc idempotency key không hợp lệ' }, { status: 400 });
     }
 
     let previousOrder = null;
@@ -78,7 +84,9 @@ export async function POST(request) {
       paymentDate,
       referenceCode: body.referenceCode ? String(body.referenceCode).trim() : null,
       note: body.note ? String(body.note).trim() : null,
-      recordedBy: auth.profile.name
+      recordedBy: auth.profile.name,
+      accountId,
+      idempotencyKey
     });
     if (data.payment) {
       await logActivity(

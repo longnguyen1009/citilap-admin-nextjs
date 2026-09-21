@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BadgeDollarSign, CircleDollarSign, CreditCard, FileText, RefreshCw, Search, TrendingUp } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
-import { fetchFinancialRecordsFromCloud, saveFinancialRecordToCloud } from '../../lib/apiFetchers';
+import { fetchFinancialRecordsFromCloud, saveFinancialRecordToCloud, getAuthHeaders } from '../../lib/apiFetchers';
 import { getOptions } from '../../lib/useFieldOptions';
 import { Modal } from '../ui/modal';
 import { Button } from '@/components/ui/button';
@@ -53,9 +53,10 @@ export default function Payments() {
   const { orders, payments, recordPayment, appOptions, isAdmin } = useInventory();
   const paymentMethods = getOptions('paymentMethod', appOptions);
   const [financialRecords, setFinancialRecords] = useState([]);
+  const [cashAccounts, setCashAccounts] = useState([]);
   const [paymentForm, setPaymentForm] = useState({
     orderId: '', paymentType: 'deposit', amount: '', paymentMethod: 'transfer_cash',
-    paymentDate: today(), referenceCode: '', note: ''
+    paymentDate: today(), referenceCode: '', note: '', accountId: '', idempotencyKey: ''
   });
   const [financialForm, setFinancialForm] = useState({
     recordType: 'expense', category: '', amount: '', occurredOn: today(), note: '', paymentMethod: 'transfer_cash', orderId: ''
@@ -89,6 +90,10 @@ export default function Payments() {
     });
   }, [isAdmin]);
 
+  useEffect(() => {
+    getAuthHeaders().then(headers => fetch('/api/cash-accounts?currency=VND', { headers })).then(response => response.ok ? response.json() : []).then(setCashAccounts).catch(() => setCashAccounts([]));
+  }, []);
+
   // Filtered payments
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
@@ -120,14 +125,14 @@ export default function Payments() {
     event.preventDefault();
     setSaving(true);
     setMessage(null);
-    const result = await recordPayment({ ...paymentForm, amount: Number(paymentForm.amount) });
+    const result = await recordPayment({ ...paymentForm, amount: Number(paymentForm.amount), idempotencyKey: paymentForm.idempotencyKey || crypto.randomUUID() });
     setSaving(false);
     if (!result.ok) {
       setMessage({ type: 'error', text: result.message });
       return;
     }
     setMessage({ type: 'success', text: 'Đã ghi nhận thanh toán và cập nhật công nợ.' });
-    setPaymentForm(prev => ({ ...prev, amount: '', referenceCode: '', note: '' }));
+    setPaymentForm(prev => ({ ...prev, amount: '', referenceCode: '', note: '', idempotencyKey: '' }));
     setTimeout(() => setIsPaymentModalOpen(false), 600);
   };
 
@@ -417,6 +422,14 @@ export default function Payments() {
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ngày thanh toán</label>
               <input className="form-control" type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))} />
             </div>
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Tài khoản nhận/chi <span style={{color:'#ef4444'}}>*</span></label>
+            <select className="form-control" required value={paymentForm.accountId} onChange={e => setPaymentForm(prev => ({ ...prev, accountId: e.target.value, idempotencyKey: prev.idempotencyKey || crypto.randomUUID() }))}>
+              <option value="">Chọn tài khoản VND</option>
+              {cashAccounts.map(account => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}
+            </select>
+            {!cashAccounts.length && <span style={{fontSize:'.75rem',color:'#b45309'}}>ADMIN cần tạo tài khoản tiền và opening balance trước khi ghi payment mới.</span>}
           </div>
           <div className="form-group">
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Mã tham chiếu</label>

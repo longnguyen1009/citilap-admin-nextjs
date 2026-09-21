@@ -167,7 +167,7 @@ export const AuthProvider = ({ children }) => {
     // 3. Sign out Supabase (async, không await — chạy nền)
     const client = getSupabaseClient();
     if (client) {
-      client.auth.signOut().catch(() => {});
+      await client.auth.signOut().catch(() => {});
     }
   };
 

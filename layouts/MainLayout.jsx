@@ -24,7 +24,8 @@ import {
   PackageCheck,
   ClipboardCheck,
   PackageX,
-  Calculator
+  Calculator,
+  WalletCards
 } from 'lucide-react';
 import { getSupabaseCredentials } from '../lib/supabaseClient';
 
@@ -131,6 +132,7 @@ export default function MainLayout({ children }) {
           {['ADMIN','TECH','TECHNICAL'].includes(user?.role) && <Link href="/qc" aria-current={pathname === '/qc' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'QC kỹ thuật' : ''}><ClipboardCheck size={20}/>{!isCollapsed && <span>QC kỹ thuật</span>}</Link>}
           {['ADMIN','TECH','TECHNICAL'].includes(user?.role) && <Link href="/repairs" aria-current={pathname === '/repairs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Repair Jobs' : ''}><Wrench size={20}/>{!isCollapsed && <span>Repair Jobs</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/costs" aria-current={pathname === '/costs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Giá vốn thực tế' : ''}><Calculator size={20}/>{!isCollapsed && <span>Giá vốn thực tế</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/finance" aria-current={pathname.startsWith('/finance') ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Tài chính vận hành' : ''}><WalletCards size={20}/>{!isCollapsed && <span>Tài chính vận hành</span>}</Link>}
 
           {/* Admin and Sales */}
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
