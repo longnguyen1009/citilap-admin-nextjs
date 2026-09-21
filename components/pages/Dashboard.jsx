@@ -1,10 +1,18 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useInventory, isOrderCommitted, isReservationActive, isInactiveStatus } from '../../context/InventoryContext';
+import { getAuthHeaders } from '../../lib/apiFetchers';
 import { D, RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
 import { labelToKey, getLabel } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
-import { Box, CheckCircle2, ArrowUpRight, TrendingUp, RefreshCw, ShoppingBag, Calendar } from 'lucide-react';
+import { Box, CheckCircle2, ArrowUpRight, TrendingUp, RefreshCw, ShoppingBag, Calendar, Truck, ShieldCheck, Wrench, RotateCcw, AlertTriangle, Timer, WalletCards } from 'lucide-react';
+
+const vnd = value => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+const count = value => Number(value || 0).toLocaleString('vi-VN');
+
+function ExposureCard({ icon: Icon, label, value, meta, tone = 'blue' }) {
+  return <article className={`management-stat ${tone}`}><div className="management-stat-icon"><Icon size={19}/></div><div><span>{label}</span><strong>{value}</strong><small>{meta}</small></div></article>;
+}
 
 export default function Dashboard() {
   const { 
@@ -19,6 +27,22 @@ export default function Dashboard() {
     customers
   } = useInventory();
   const { user } = useAuth();
+  const [management, setManagement] = useState(null);
+  const [managementError, setManagementError] = useState('');
+
+  useEffect(() => {
+    if (user?.role !== 'ADMIN') return;
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch('/api/management-dashboard', { headers: await getAuthHeaders(), cache: 'no-store' });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Không thể tải dashboard quản trị');
+        if (active) setManagement(body);
+      } catch (error) { if (active) setManagementError(error.message); }
+    })();
+    return () => { active = false; };
+  }, [user?.role]);
 
   const statusLabels = dynamicOptions?.STATUS_OPTIONS || [];
 
@@ -119,6 +143,30 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {user?.role === 'ADMIN' && <section className="management-command-center">
+        <div className="management-heading">
+          <div><span className="management-kicker">OPERATIONAL CAPITAL VIEW</span><h2>Nhịp vận hành toàn kho</h2><p>Góc nhìn toàn thời gian · không phụ thuộc kỳ đang chọn · không phải số dư tiền mặt</p></div>
+          {management?.generated_at && <time>Cập nhật {new Date(management.generated_at).toLocaleString('vi-VN')}</time>}
+        </div>
+        {managementError ? <div className="management-error"><AlertTriangle size={18}/>{managementError}. Hãy áp dụng migration Phase 7.</div> : !management ? <div className="management-loading">Đang tổng hợp dòng vốn và tuổi tồn…</div> : <>
+          <div className="management-stats">
+            <ExposureCard icon={WalletCards} label="Vốn tồn sẵn sàng" value={`${vnd(management.available.known_inventory_cost_vnd)} ₫`} meta={`${count(management.available.units)} máy · ${management.available.cost_complete} cost complete`} tone="emerald"/>
+            <ExposureCard icon={Truck} label="Hàng đang luân chuyển" value={`${count(management.transit.units)} máy`} meta={`Purchase value ${vnd(management.transit.purchase_value_vnd)} ₫`} tone="blue"/>
+            <ExposureCard icon={ShieldCheck} label="QC exposure" value={`${count((management.qc.waiting_qc?.units||0)+(management.qc.qc_in_progress?.units||0)+(management.qc.qc_failed?.units||0))} máy`} meta={`Known cost ${vnd(management.qc.known_cost_vnd)} ₫`} tone="amber"/>
+            <ExposureCard icon={Wrench} label="Repair đang mở" value={`${count(management.repairs.active_jobs)} phiếu`} meta={`${management.repairs.waiting_parts} chờ linh kiện · ${vnd(management.repairs.accumulated_cost_vnd)} ₫`} tone="rose"/>
+            <ExposureCard icon={RotateCcw} label="Nghĩa vụ nhà cung cấp" value={`${count(management.supplier_returns.pending)} phiếu`} meta={`Chờ hoàn ¥${count(management.supplier_returns.refund_pending_rmb)}`} tone="violet"/>
+          </div>
+
+          <div className="management-grid">
+            <article className="management-panel aging-panel"><header><div><h3><Timer size={18}/> Tuổi tồn bán hàng</h3><p>Chỉ máy available, tính từ thời điểm QC PASS</p></div><div className="cost-quality"><b>{management.available.cost_complete}</b> đủ cost <span>·</span> <b>{management.available.cost_incomplete}</b> thiếu <span>·</span> <b>{management.available.legacy}</b> legacy</div></header><div className="aging-bars">{management.aging.map(bucket=>{const max=Math.max(...management.aging.map(x=>Number(x.units)),1);return <div className="aging-row" key={bucket.bucket_key}><span>{bucket.bucket_label}</span><div><i style={{width:`${Math.max(4,Number(bucket.units)/max*100)}%`}}/></div><strong>{bucket.units} máy</strong><small>{vnd(bucket.landed_cost_value)} ₫ · TB {bucket.average_age||0} ngày</small></div>})}{management.aging.length===0&&<p className="management-empty">Chưa có máy available có timestamp hợp lệ.</p>}</div>{management.available.missing_aging_timestamp>0&&<div className="data-caveat"><AlertTriangle size={15}/>{management.available.missing_aging_timestamp} máy available chưa có available_for_sale_at nên không được đoán tuổi tồn.</div>}</article>
+
+            <article className="management-panel"><header><div><h3><Box size={18}/> Trạng thái vận hành</h3><p>Reserved được derive từ order đang khóa máy</p></div></header><div className="state-ledger">{[['available','Available'],['reserved','Reserved'],['waiting_qc','Waiting QC'],['qc_in_progress','QC in progress'],['qc_failed','QC failed'],['repair','Repair'],['supplier_return_pending','Return pending'],['supplier_returned','Returned'],['sold','Sold']].map(([key,label])=><div key={key}><span>{label}</span><strong>{count(management.state_summary[key])}</strong></div>)}</div><div className="operations-strip"><div><span>QC lâu nhất</span><b>{Math.max(management.qc.waiting_qc?.oldest_age||0,management.qc.qc_in_progress?.oldest_age||0,management.qc.qc_failed?.oldest_age||0)} ngày</b></div><div><span>Repair lâu nhất</span><b>{management.repairs.oldest_age||0} ngày</b></div><div><span>Chờ replacement</span><b>{management.supplier_returns.waiting_replacement||0}</b></div></div></article>
+          </div>
+
+          <article className="management-panel slow-panel"><header><div><h3><AlertTriangle size={18}/> Action Center · máy chậm bán</h3><p>Warning từ {management.thresholds.warning_days} ngày · Critical từ {management.thresholds.critical_days} ngày</p></div><b>{management.slow_moving.length} ưu tiên</b></header><div className="table-responsive"><table className="management-table"><thead><tr><th>Serial / Model</th><th>Tuổi available</th><th>Landed cost</th><th>Giá bán</th><th>Biên tiềm năng</th><th>Vị trí</th></tr></thead><tbody>{management.slow_moving.map(row=><tr key={row.laptop_id} className={row.age_days>=management.thresholds.critical_days?'critical':'warning'}><td><b>{row.serial||`#${row.laptop_id}`}</b><span>{row.model}</span></td><td><strong>{row.age_days} ngày</strong></td><td>{row.cost_status==='COMPLETE'?`${vnd(row.landed_cost_vnd)} ₫`:row.cost_status}</td><td>{vnd(row.selling_price_vnd)} ₫</td><td>{row.gross_margin_potential_vnd==null?'—':`${vnd(row.gross_margin_potential_vnd)} ₫`}</td><td>{row.location||'—'}</td></tr>)}</tbody></table>{management.slow_moving.length===0&&<p className="management-empty">Không có máy available quá ngưỡng cảnh báo.</p>}</div></article>
+        </>}
+      </section>}
 
       <div className="dashboard-grid mt-4">
         <div className="card glass">

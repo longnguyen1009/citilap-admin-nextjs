@@ -31,7 +31,11 @@ const InventoryContext = createContext();
 
 // ─── Phân quyền data: ẩn thông tin nhạy cảm theo role ─────────────────
 const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'seller', 'warrantySupplier'];
-const SENSITIVE_ORDER_KEYS = ['profitVnd'];
+const SENSITIVE_ORDER_KEYS = [
+  'profitVnd', 'costSnapshotVnd', 'grossProfitSnapshotVnd',
+  'directCostSnapshotVnd', 'netContributionSnapshotVnd',
+  'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt'
+];
 
 const filterSensitiveFields = (items, sensitiveKeys) => {
   if (!Array.isArray(items)) return items;

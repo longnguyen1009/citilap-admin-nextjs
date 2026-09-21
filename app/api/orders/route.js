@@ -37,6 +37,12 @@ export async function POST(request) {
 
   try {
     const rawPayload = await request.json();
+    const protectedCostFields = ['costSnapshotVnd', 'grossProfitSnapshotVnd', 'directCostSnapshotVnd', 'netContributionSnapshotVnd', 'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt'];
+    const isNewOrder = !(rawPayload?.id && /^\d+$/.test(String(rawPayload.id)) && Number(rawPayload.id) > 0);
+    if (isNewOrder && protectedCostFields.some((key) => rawPayload?.[key] !== undefined && rawPayload?.[key] !== null && rawPayload?.[key] !== '')) {
+      return NextResponse.json({ error: 'Snapshot giá vốn chỉ được hệ thống tạo khi chốt bán.' }, { status: 400 });
+    }
+    for (const key of protectedCostFields) delete rawPayload[key];
     const body = sanitizePayload(rawPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
 
     // P0.4: Trả lỗi nếu non-admin gửi profitVnd
@@ -94,6 +100,17 @@ export async function POST(request) {
     if (body.laptopId && /^\d+$/.test(String(body.laptopId))) {
       const adminClient = getSupabaseAdminClient();
       const laptopId = Number(body.laptopId);
+      const laptopChanged = Number(oldData?.laptop_id || 0) !== laptopId;
+      if (laptopChanged) {
+        const { data: selectedLaptop, error: laptopError } = await adminClient
+          .from('laptops').select('id, status, is_active').eq('id', laptopId).maybeSingle();
+        if (laptopError || !selectedLaptop || selectedLaptop.is_active !== true) {
+          return NextResponse.json({ error: 'Laptop không tồn tại hoặc đã ngừng sử dụng.' }, { status: 400 });
+        }
+        if (!['available', 'deposited'].includes(selectedLaptop.status)) {
+          return NextResponse.json({ error: `Laptop chưa sẵn sàng để bán (trạng thái: ${selectedLaptop.status || 'không xác định'}).` }, { status: 409 });
+        }
+      }
       const { data: conflictOrder } = await adminClient
         .from('orders')
         .select('id, order_status, payment_status')
@@ -104,6 +121,18 @@ export async function POST(request) {
         .maybeSingle();
       if (conflictOrder && (!persistedId || conflictOrder.id !== body.id)) {
         return NextResponse.json({ error: `Laptop đang được giữ/bán bởi đơn hàng #${conflictOrder.id}. Vui lòng chọn laptop khác.` }, { status: 409 });
+      }
+    }
+
+    if (!body.laptopId && body.requestedLaptopId && /^\d+$/.test(String(body.requestedLaptopId))) {
+      const requestedId = Number(body.requestedLaptopId);
+      const requestedChanged = Number(oldData?.requested_laptop_id || 0) !== requestedId;
+      if (requestedChanged) {
+        const adminClient = getSupabaseAdminClient();
+        const { data: requestedLaptop } = await adminClient.from('laptops').select('status, is_active').eq('id', requestedId).maybeSingle();
+        if (!requestedLaptop || requestedLaptop.is_active !== true || !['available', 'deposited'].includes(requestedLaptop.status)) {
+          return NextResponse.json({ error: `Laptop chưa sẵn sàng để giữ/bán (trạng thái: ${requestedLaptop?.status || 'không xác định'}).` }, { status: 409 });
+        }
       }
     }
 

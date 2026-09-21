@@ -16,7 +16,15 @@ import {
   Database,
   Settings,
   FileText,
-  MousePointer2
+  MousePointer2,
+  Truck,
+  Building2,
+  Landmark,
+  Ship,
+  PackageCheck,
+  ClipboardCheck,
+  PackageX,
+  Calculator
 } from 'lucide-react';
 import { getSupabaseCredentials } from '../lib/supabaseClient';
 
@@ -112,6 +120,17 @@ export default function MainLayout({ children }) {
             <Package size={20} />
             {!isCollapsed && <span>Kho Laptop</span>}
           </Link>
+
+          {user?.role === 'ADMIN' && <div className="nav-section-label">{!isCollapsed && 'Mua hàng'}</div>}
+          {user?.role === 'ADMIN' && <Link href="/suppliers" aria-current={pathname === '/suppliers' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhà cung cấp' : ''}><Building2 size={20}/>{!isCollapsed && <span>Nhà cung cấp</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/purchases" aria-current={pathname === '/purchases' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Lô mua hàng' : ''}><Truck size={20}/>{!isCollapsed && <span>Lô mua hàng</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/supplier-payments" aria-current={pathname === '/supplier-payments' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Thanh toán NCC' : ''}><Landmark size={20}/>{!isCollapsed && <span>Thanh toán NCC</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/shipments" aria-current={pathname.startsWith('/shipments') ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Shipments' : ''}><Ship size={20}/>{!isCollapsed && <span>Shipments</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/receiving" aria-current={pathname === '/receiving' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhận hàng' : ''}><PackageCheck size={20}/>{!isCollapsed && <span>Nhận hàng</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/supplier-returns" aria-current={pathname === '/supplier-returns' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Trả nhà cung cấp' : ''}><PackageX size={20}/>{!isCollapsed && <span>Trả nhà cung cấp</span>}</Link>}
+          {['ADMIN','TECH','TECHNICAL'].includes(user?.role) && <Link href="/qc" aria-current={pathname === '/qc' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'QC kỹ thuật' : ''}><ClipboardCheck size={20}/>{!isCollapsed && <span>QC kỹ thuật</span>}</Link>}
+          {['ADMIN','TECH','TECHNICAL'].includes(user?.role) && <Link href="/repairs" aria-current={pathname === '/repairs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Repair Jobs' : ''}><Wrench size={20}/>{!isCollapsed && <span>Repair Jobs</span>}</Link>}
+          {user?.role === 'ADMIN' && <Link href="/costs" aria-current={pathname === '/costs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Giá vốn thực tế' : ''}><Calculator size={20}/>{!isCollapsed && <span>Giá vốn thực tế</span>}</Link>}
 
           {/* Admin and Sales */}
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
