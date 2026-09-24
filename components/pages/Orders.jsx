@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useInventory, parseFlexibleFloat, isReservationActive, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
@@ -195,6 +195,7 @@ export default function Orders() {
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [filterSaleOnline, setFilterSaleOnline] = useState('');
   const [filterOrderStatus, setFilterOrderStatus] = useState('');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
@@ -556,12 +557,12 @@ export default function Orders() {
   // Lọc Đơn Hàng Thông Minh
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
-      if (searchTerm) {
+      if (deferredSearchTerm) {
         // Search consistently across identifiers and customer details. Customer
         // names/phones may live on the order snapshot (`customerInfo`) or in the
         // linked customer record, so include both sources.
         const normalizeSearch = (value) => String(value ?? '').trim().toLocaleLowerCase('vi-VN');
-        const term = normalizeSearch(searchTerm);
+        const term = normalizeSearch(deferredSearchTerm);
         const customer = customers.find(item => String(item.id) === String(o.customerId));
         const matchId = normalizeSearch(o.id).includes(term);
         const matchCustomer = [
@@ -594,7 +595,7 @@ export default function Orders() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [orders, laptops, customers, searchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
+  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
 
   const hasActiveFilters = Boolean(
     searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory

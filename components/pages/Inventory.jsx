@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import { 
   useInventory, 
   computeImportPrice, 
@@ -68,6 +68,7 @@ export default function Inventory() {
 
   // State tìm kiếm & lọc
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [selectedCats, setSelectedCats] = useState([]); // Multi-select cho Phân loại
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
   const [selectedLoc, setSelectedLoc] = useState('ALL');
@@ -331,15 +332,15 @@ export default function Inventory() {
   const filteredLaptops = useMemo(() => {
     return laptops.filter(laptop => {
       const matchSearch = 
-        !searchTerm ||
-        String(laptop.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.serial || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.seller || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.trackingCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.conditionNote || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.importDate || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(laptop.warehouseDate || '').toLowerCase().includes(searchTerm.toLowerCase());
+        !deferredSearchTerm ||
+        String(laptop.name || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.id || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.serial || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.seller || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.trackingCode || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.conditionNote || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.importDate || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.warehouseDate || '').toLowerCase().includes(deferredSearchTerm.toLowerCase());
 
       const laptopCatKey = laptop.category;
       const matchCat = selectedCats.length === 0 || selectedCats.includes(laptopCatKey);
@@ -372,7 +373,7 @@ export default function Inventory() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [laptops, searchTerm, selectedCats, selectedLoc, selectedStatus, selectedSeller, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
+  }, [laptops, deferredSearchTerm, selectedCats, selectedLoc, selectedStatus, selectedSeller, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
 
   const hasActiveFilters = Boolean(
     searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || selectedSeller !== 'ALL' || warehouseDateFrom || warehouseDateTo

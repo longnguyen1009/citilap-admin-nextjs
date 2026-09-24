@@ -3,6 +3,7 @@ import { fetchOrdersFromCloud, saveOrderToCloud, createOrderWithInventoryToCloud
 import { diffObject, pickAuditFields, logActivity } from '../../../lib/services/logger';
 import { requireUser, filterSensitiveFields, sanitizePayload, validateOrderPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
+import { createTiming, timeAsync, markTiming, withServerTiming } from '../../../lib/apiTiming';
 
 const ORDER_AUDIT_FIELDS = [
   'createdDate', 'saleOnline', 'saleOffline', 'note', 'orderType', 'orderStatus',
@@ -15,13 +16,23 @@ const ORDER_AUDIT_FIELDS = [
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
+  const timing = createTiming();
   const { profile } = auth;
   const isAdmin = profile.role === 'ADMIN';
 
   const { searchParams } = new URL(request.url);
   const monthKey = searchParams.get('monthKey');
   const all = searchParams.get('all') === 'true';
-  const data = await fetchOrdersFromCloud({ monthKey, all });
+  const requestedLimit = Number(searchParams.get('limit'));
+  const requestedOffset = Number(searchParams.get('offset'));
+  const query = {
+    monthKey,
+    all,
+    ...(Number.isInteger(requestedLimit) && requestedLimit > 0 ? { limit: requestedLimit, offset: requestedOffset } : {})
+  };
+  const result = await timeAsync(timing, 'query', () => fetchOrdersFromCloud(query));
+  const paginated = result && !Array.isArray(result);
+  const data = paginated ? result.data : result;
 
   if (!data) return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
 
@@ -45,7 +56,7 @@ export async function GET(request) {
     commissionsByOrder.set(key, [...(commissionsByOrder.get(key) || []), keysToCamel(item)]);
   }
   const base = isAdmin ? data : filterSensitiveFields(data, SENSITIVE_ORDER_KEYS);
-  return NextResponse.json(base.map(item => ({
+  const responseData = base.map(item => ({
     ...item,
     reservation: reservationByOrder.get(String(item.id)) || null,
     tradeIn: tradeInByOrder.get(String(item.id)) || null,
@@ -54,7 +65,12 @@ export async function GET(request) {
       salesOperationsSummary: summaryByOrder.get(String(item.id)) || null,
       commissions: commissionsByOrder.get(String(item.id)) || []
     } : {})
-  })));
+  }));
+  markTiming(timing, 'total', timing.startedAt);
+  const payload = paginated
+    ? { data: responseData, total: result.total, offset: result.offset, limit: result.limit, hasMore: result.hasMore }
+    : responseData;
+  return withServerTiming(NextResponse.json(payload), timing);
 }
 
 export async function POST(request) {

@@ -522,9 +522,10 @@ export const InventoryProvider = ({ children }) => {
       const needsPayments = pathname.startsWith('/payments');
       const needsLaptops = pathname === '/' || ['/inventory', '/orders', '/warranty', '/settings'].some(route => pathname.startsWith(route));
       const needsOrders = pathname === '/' || ['/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route));
-      // Tải theo hai lớp ưu tiên, mỗi lớp tối đa hai request đồng thời.
-      // Cách này tránh dồn 5–7 response vào main thread nhưng không kéo dài
-      // thời gian chờ như chạy từng request tuyệt đối.
+      // Lấy token một lần rồi khởi chạy đồng thời mọi request độc lập của route.
+      // Các API nghiệp vụ vẫn tự kiểm tra quyền ở server.
+      const sharedHeaders = await getAuthHeaders();
+      const sharedQuery = { ...monthQuery, headers: sharedHeaders };
       let cloudLaptops = null;
       let cloudOrders = null;
       let cloudWarranty = null;
@@ -533,34 +534,51 @@ export const InventoryProvider = ({ children }) => {
       let cloudOptions = null;
       let cloudPayments = null;
       let cloudMonths = null;
-      if (!background) setLoadingStage('Đang tải dữ liệu chính…');
-      [cloudLaptops, cloudOrders] = await Promise.all([
-        needsLaptops ? safeFetch(() => fetchLaptopsFromCloud(monthQuery)) : null,
-        needsOrders ? safeFetch(() => fetchOrdersFromCloud(monthQuery)) : null
-      ]);
-      if (!background) setLoadingStage('Đang tải danh mục và dữ liệu bổ sung…');
+      if (!background) setLoadingStage('Đang tải đồng thời dữ liệu màn hình…');
       const secondaryTasks = [
-        ['options', () => safeFetch(() => fetchAppOptionsFromCloud())],
+        ['options', () => safeFetch(() => fetchAppOptionsFromCloud({ headers: sharedHeaders }))],
         ['months', async () => {
           try {
-            const headers = await getAuthHeaders();
-            const response = await fetch('/api/months', { headers });
+            const response = await fetch('/api/months', { headers: sharedHeaders });
             return response.ok ? response.json() : null;
           } catch {
             return null;
           }
         }],
-        ...(needsPayments ? [['payments', () => safeFetch(() => fetchPaymentsFromCloud())]] : []),
-        ...(needsWarranty ? [['warranty', () => safeFetch(() => fetchWarrantyCasesFromCloud())]] : []),
-        ...(needsCustomers ? [['customers', () => safeFetch(() => fetchCustomersFromCloud())]] : []),
-        ...(needsSettings ? [['settings', () => safeFetch(() => fetchAllSettings())]] : [])
+        ...(needsPayments ? [['payments', () => safeFetch(() => fetchPaymentsFromCloud({ headers: sharedHeaders }))]] : []),
+        ...(needsWarranty ? [['warranty', () => safeFetch(() => fetchWarrantyCasesFromCloud({ headers: sharedHeaders }))]] : []),
+        ...(needsCustomers ? [['customers', () => safeFetch(() => fetchCustomersFromCloud({ headers: sharedHeaders }))]] : []),
+        ...(needsSettings ? [['settings', () => safeFetch(() => fetchAllSettings({ headers: sharedHeaders }))]] : [])
       ];
       const secondaryResults = {};
-      for (let index = 0; index < secondaryTasks.length; index += 2) {
-        const batch = secondaryTasks.slice(index, index + 2);
-        const values = await Promise.all(batch.map(([, task]) => task()));
-        batch.forEach(([key], resultIndex) => { secondaryResults[key] = values[resultIndex]; });
-      }
+      const primaryPromise = Promise.all([
+        needsLaptops ? safeFetch(() => fetchLaptopsFromCloud(sharedQuery)) : null,
+        needsOrders ? safeFetch(() => fetchOrdersFromCloud(sharedQuery)) : null
+      ]);
+      const secondaryPromise = Promise.all(secondaryTasks.map(([, task]) => task()));
+      // Cho màn hình dùng được ngay khi danh sách chính sẵn sàng. Các metadata
+      // phụ vẫn tải song song và sẽ được gắn vào state ở bước dưới.
+      primaryPromise.then(([readyLaptops, readyOrders]) => {
+        if (cancelled) return;
+        const primaryFailed = (needsLaptops && readyLaptops === null)
+          || (needsOrders && readyOrders === null);
+        if (primaryFailed) {
+          setCloudStatus('error');
+        } else {
+          setCloudStatus('connected');
+          if (readyLaptops !== null) setLaptops(readyLaptops);
+          if (readyOrders !== null) setOrders(readyOrders);
+        }
+        if (!background) setDataLoading(false);
+      }).catch(() => {
+        if (!cancelled) {
+          setCloudStatus('error');
+          if (!background) setDataLoading(false);
+        }
+      });
+      const [primaryValues, secondaryValues] = await Promise.all([primaryPromise, secondaryPromise]);
+      [cloudLaptops, cloudOrders] = primaryValues;
+      secondaryTasks.forEach(([key], resultIndex) => { secondaryResults[key] = secondaryValues[resultIndex]; });
       cloudOptions = secondaryResults.options ?? null;
       cloudPayments = secondaryResults.payments ?? null;
       cloudWarranty = secondaryResults.warranty ?? null;
