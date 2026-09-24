@@ -25,8 +25,38 @@ export async function GET(request) {
 
   if (!data) return NextResponse.json({ error: 'Failed to fetch laptops' }, { status: 500 });
 
-  const filteredData = isAdmin ? data : filterSensitiveFields(data, SENSITIVE_LAPTOP_KEYS);
-  return NextResponse.json(filteredData);
+  const db = getSupabaseAdminClient();
+  const laptopIds = data.map(item => Number(item.id)).filter(Number.isFinite);
+  const [{ data: reservations }, { data: tradeIns }] = laptopIds.length ? await Promise.all([
+    db.from('reservations').select('id,reservation_code,laptop_id,customer_id,reserved_by,expires_at,status').in('laptop_id', laptopIds).eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString()),
+    db.from('trade_ins').select('trade_in_code,inventory_laptop_id').in('inventory_laptop_id', laptopIds)
+  ]) : [{ data: [] }, { data: [] }];
+  const customerIds = [...new Set((reservations || []).map(item => item.customer_id).filter(Boolean))];
+  const userIds = [...new Set((reservations || []).map(item => item.reserved_by).filter(Boolean))];
+  const [{ data: customers }, { data: users }] = await Promise.all([
+    customerIds.length ? db.from('customers').select('id,name,phone').in('id', customerIds) : Promise.resolve({ data: [] }),
+    userIds.length ? db.from('user_profiles').select('id,name').in('id', userIds) : Promise.resolve({ data: [] })
+  ]);
+  const customerById = new Map((customers || []).map(item => [String(item.id), item]));
+  const userById = new Map((users || []).map(item => [String(item.id), item]));
+  const reservationByLaptop = new Map((reservations || []).map(item => [String(item.laptop_id), item]));
+  const tradeInByLaptop = new Map((tradeIns || []).map(item => [String(item.inventory_laptop_id), item.trade_in_code]));
+  const canSeeCustomer = ['ADMIN', 'SALES'].includes(profile.role);
+  const enriched = data.map(item => {
+    const reservation = reservationByLaptop.get(String(item.id));
+    return {
+      ...item,
+      activeReservation: reservation ? {
+        id: reservation.id,
+        code: reservation.reservation_code,
+        expiresAt: reservation.expires_at,
+        reservedBy: userById.get(String(reservation.reserved_by))?.name || null,
+        ...(canSeeCustomer ? { customer: customerById.get(String(reservation.customer_id)) || null } : {})
+      } : null,
+      tradeInSourceCode: isAdmin ? tradeInByLaptop.get(String(item.id)) || null : undefined
+    };
+  });
+  return NextResponse.json(isAdmin ? enriched : filterSensitiveFields(enriched, SENSITIVE_LAPTOP_KEYS));
 }
 
 export async function POST(request) {

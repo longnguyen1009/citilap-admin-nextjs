@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const base = await readFile('db/migrations/20261005_phase8_financial_operations.sql', 'utf8');
 const hardening = await readFile('db/migrations/20261006_phase8_financial_operations_hardening.sql', 'utf8');
+const cancelledReceivableRepair = await readFile('db/migrations/20261015_cancelled_receivable_repair.sql', 'utf8');
 const checks = [];
 const ok = (name, value) => { checks.push({ name, ok: Boolean(value) }); assert(value, name); };
 ok('base creates account ledger', /CREATE TABLE public\.account_transactions/i.test(base));
@@ -16,5 +17,7 @@ ok('supplier payment atomic wrapper', /record_supplier_payment_with_account/i.te
 ok('supplier refund atomic wrapper', /record_supplier_refund_with_account/i.test(hardening));
 ok('customer receivable remains order-derived', /FROM orders o LEFT JOIN customers/i.test(hardening));
 ok('direct authenticated access revoked', /REVOKE ALL ON customer_receivable_summaries FROM PUBLIC,anon,authenticated/i.test(hardening));
+ok('cancelled orders excluded from receivables', /order_status NOT IN \('cancelled', 'returned'\)/i.test(cancelledReceivableRepair));
+ok('refunded orders excluded from receivables', /payment_status <> 'refunded'/i.test(cancelledReceivableRepair));
+ok('financial summary reuses authoritative receivable view', /FROM public\.customer_receivable_summaries r/i.test(cancelledReceivableRepair));
 console.log(JSON.stringify({ checksPassed: checks.length, checks }, null, 2));
-

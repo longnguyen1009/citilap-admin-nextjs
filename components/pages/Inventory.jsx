@@ -513,7 +513,7 @@ export default function Inventory() {
     const headers = [
       "Ngày nhập", "NO", "Tên", "Vị trí kho", "", "Phân Loại",
       "SERIAL", "Tình trạng Sạc", "Tình trạng", "Người bán", "Tình Trạng Note", "Trạng thái bán",
-      ...(isAdmin ? ["Giá tệ", "Phí vc nội địa", "Tỷ giá tệ", "Giá Nhập"] : []),
+      ...(isAdmin ? ["Giá mua (RMB)", "Phí nội địa (RMB)", "Tỷ giá (VNĐ/RMB)", "Giá nhập (triệu VNĐ)"] : []),
       "Giá bán thợ", "giá bán lẻ", "Mã đơn vận"
     ];
 
@@ -728,11 +728,12 @@ export default function Inventory() {
 
           {/* MULTI-SELECT BỘ LỌC PHÂN LOẠI MÁY (DẠNG XỔ XUỐNG DIRECT INLINE DROPDOWN) */}
           <div className="filter-item" ref={catDropdownRef} style={{ flex: '0 1 170px', position: 'relative' }}>
-            <label htmlFor="inventory-field-2" style={{ fontSize: '0.75rem', marginBottom: '0.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label htmlFor="inventory-category-filter" style={{ fontSize: '0.75rem', marginBottom: '0.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span><Tag size={13} style={{ display: 'inline', marginRight: '3px' }} /> Phân loại máy (Chọn nhiều)</span>
             </label>
             
             <button
+              id="inventory-category-filter"
               type="button"
               onClick={() => setIsCatDropdownOpen(prev => !prev)}
               style={{
@@ -844,7 +845,7 @@ export default function Inventory() {
           </div>
 
           <div className="filter-item" style={{ flex: '0 1 130px' }}>
-            <label style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Layers size={11} style={{ display: 'inline', marginRight: '3px' }} /> Vị trí kho</label>
+            <label htmlFor="inventory-field-2" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Layers size={11} style={{ display: 'inline', marginRight: '3px' }} /> Vị trí kho</label>
             <select id="inventory-field-2" className="filter-input" value={selectedLoc} onChange={e => setSelectedLoc(e.target.value)}>
               <option value="ALL">-- Tất cả Vị trí --</option>
               {getOptions('laptopLocation').map(loc => (
@@ -998,20 +999,20 @@ export default function Inventory() {
                 {user?.role === 'ADMIN' && (
                   <>
                     <th style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, position: 'relative', textAlign: 'center' }}>
-                      Giá tệ
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'priceRmb')} title="Kéo để chỉnh rộng hẹp cột Giá tệ" />
+                      Giá mua<br/>(RMB)
+                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'priceRmb')} title="Kéo để chỉnh rộng hẹp cột Giá mua (RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, position: 'relative', textAlign: 'center' }}>
-                      Phí VC
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'shippingRmb')} title="Kéo để chỉnh rộng hẹp cột Phí VC" />
+                      Phí nội địa<br/>(RMB)
+                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'shippingRmb')} title="Kéo để chỉnh rộng hẹp cột Phí nội địa (RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, position: 'relative', textAlign: 'center' }}>
-                      Tỷ giá
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá" />
+                      Tỷ giá<br/>(VNĐ/RMB)
+                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá (VNĐ/RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#111827', position: 'relative', textAlign: 'center' }}>
-                      Giá Nhập
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá Nhập" />
+                      Giá nhập<br/>(triệu VNĐ)
+                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá nhập (triệu VNĐ)" />
                     </th>
                   </>
                 )}
@@ -1079,11 +1080,13 @@ export default function Inventory() {
                     </td>
                     <td className="inventory-name-cell" style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px` }} title={l.name}>
                       <span>{l.name}</span>
+                      {l.tradeInSourceCode && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(l.tradeInSourceCode)}`}>Thu cũ · {l.tradeInSourceCode}</a>}
                     </td>
                     <td className="inventory-status-cell" style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
                       <span className={`status-badge ${getStatusBadgeClass(l.status)}`}>
                         {getLabel('laptopStatus', l.status, fieldOptionsConfig) || 'Chưa có trạng thái'}
                       </span>
+                      {l.activeReservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(l.activeReservation.code)}`} title={`Hết hạn ${new Date(l.activeReservation.expiresAt).toLocaleString('vi-VN')}`}>Đang giữ · {l.activeReservation.customer?.name || l.activeReservation.code}</a>}
                       {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'sold' && <InvoiceLink laptopId={l.id} label="Xem hóa đơn" />}
                     </td>
                     <td className="inventory-category-cell" style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
@@ -1210,11 +1213,12 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="inventory-field-9">Trạng thái máy</label>
+                    <label htmlFor="inventory-field-9">Trạng thái máy *</label>
                     <select id="inventory-field-9"
                       value={formData.status} 
                       onChange={e => setFormData({ ...formData, status: e.target.value })}
                       className="form-control"
+                      required
                     >
                       {STATUS_OPTIONS.map(st => (
 <option key={st.key} value={st.key}>{st.label}</option>
@@ -1225,12 +1229,13 @@ export default function Inventory() {
 
                 <div className="form-row mt-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div className="form-group">
-                    <label htmlFor="inventory-field-10">Phân loại máy</label>
+                    <label htmlFor="inventory-field-10">Phân loại máy *</label>
                     <select id="inventory-field-10"
                       value={formData.category} 
                       onChange={e => setFormData({ ...formData, category: e.target.value })}
                       className="form-control"
                       style={{ width: '100%' }}
+                      required
                     >
                       {CATEGORY_OPTIONS.map(cat => (
 <option key={cat.key} value={cat.key}>{cat.label}</option>
@@ -1328,11 +1333,12 @@ export default function Inventory() {
 
                 <div className="form-row mt-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                   <div className="form-group">
-                    <label htmlFor="inventory-field-15">Vị trí kho</label>
+                    <label htmlFor="inventory-field-15">Vị trí kho *</label>
                     <select id="inventory-field-15"
                       value={formData.location} 
                       onChange={e => setFormData({ ...formData, location: e.target.value })}
                       className="form-control"
+                      required
                     >
                       {LOCATION_OPTIONS.map(loc => (
 <option key={loc.key} value={loc.key}>{loc.label}</option>
@@ -1341,11 +1347,12 @@ export default function Inventory() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="inventory-field-16"><Zap size={13} style={{ display: 'inline', color: '#fbbf24' }} /> Tình trạng Sạc</label>
+                    <label htmlFor="inventory-field-16"><Zap size={13} style={{ display: 'inline', color: '#fbbf24' }} /> Tình trạng Sạc *</label>
                     <select id="inventory-field-16"
                       value={formData.chargerStatus} 
                       onChange={e => setFormData({ ...formData, chargerStatus: e.target.value })}
                       className="form-control"
+                      required
                     >
                       {CHARGER_OPTIONS.map(ch => (
 <option key={ch.key} value={ch.key}>{ch.label}</option>
@@ -1400,7 +1407,7 @@ export default function Inventory() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                     <div className="form-group">
-                      <label htmlFor="inventory-field-20">Giá tệ (¥)</label>
+                      <label htmlFor="inventory-field-20">Giá mua (RMB)</label>
                       <Input id="inventory-field-20"
                         type="number"
                         min="0"
@@ -1413,7 +1420,7 @@ export default function Inventory() {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="inventory-field-21">Phí VC nội địa (¥)</label>
+                      <label htmlFor="inventory-field-21">Phí vận chuyển nội địa (RMB)</label>
                       <Input id="inventory-field-21"
                         type="number"
                         min="0"
@@ -1426,10 +1433,10 @@ export default function Inventory() {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="inventory-field-22">Tỷ giá tệ</label>
+                      <label htmlFor="inventory-field-22">Tỷ giá (VNĐ / RMB)</label>
                       <Input id="inventory-field-22"
                         type="number"
-                        min="0"
+                        min="1"
                         data-testid="product-exchange-rate-input"
                         step="any"
                         value={formData.exchangeRate}
@@ -1440,7 +1447,7 @@ export default function Inventory() {
 
                     <div className="form-group" style={{ position: 'relative' }}>
                       <label htmlFor="inventory-field-23" style={{ color: '#60a5fa', fontWeight: 700 }}>
-                        Giá Nhập (tr)
+                        Giá nhập (triệu VNĐ)
                         <span style={{ fontSize: '0.65rem', fontWeight: 400, color: '#94a3b8', marginLeft: '4px' }}>
                           {formData.importPriceManuallyEdited ? '(tự nhập)' : '(tự tính)'}
                         </span>
@@ -1460,7 +1467,7 @@ export default function Inventory() {
 
                   <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                     <div className="form-group">
-                      <label htmlFor="inventory-field-24">Giá Bán Sỉ (tr)</label>
+                      <label htmlFor="inventory-field-24">Giá bán sỉ (triệu VNĐ)</label>
                       <Input id="inventory-field-24"
                         type="number"
                         min="0"
@@ -1473,7 +1480,7 @@ export default function Inventory() {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="inventory-field-25">Giá Bán Lẻ (tr)</label>
+                      <label htmlFor="inventory-field-25">Giá bán lẻ (triệu VNĐ)</label>
                       <Input id="inventory-field-25"
                         type="number"
                         min="0"
@@ -1521,12 +1528,12 @@ export default function Inventory() {
                 <div className="formula-box">
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Công thức hiện tại đang áp dụng:</div>
                   <div className="formula-expression">
-                    Giá Nhập (triệu) = ((Giá Tệ + Phí VC Tệ) * Tỷ Giá + {(formulaForm.shippingVnd).toLocaleString('vi-VN')}đ) / 1.000.000
+                    Giá nhập (triệu VNĐ) = ((Giá mua RMB + Phí nội địa RMB) × Tỷ giá VNĐ/RMB + {(formulaForm.shippingVnd).toLocaleString('vi-VN')} VNĐ) / 1.000.000
                   </div>
                 </div>
 
                 <div className="form-group mt-3">
-                  <label htmlFor="inventory-field-26">Phí Vận Chuyển Cố Định (VNĐ) - Cộng thêm mỗi máy</label>
+                  <label htmlFor="inventory-field-26">Phí vận chuyển Trung Quốc → Việt Nam (VNĐ / máy)</label>
                   <input id="inventory-field-26"
                     type="number" 
                     required
@@ -1540,7 +1547,7 @@ export default function Inventory() {
                 </div>
 
                 <div className="form-group mt-3">
-                  <label htmlFor="inventory-field-27">Tỷ Giá Mặc Định (RMB/VND)</label>
+                  <label htmlFor="inventory-field-27">Tỷ giá mặc định (VNĐ / RMB)</label>
                   <input id="inventory-field-27"
                     type="number" 
                     required

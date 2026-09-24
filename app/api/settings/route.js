@@ -3,12 +3,18 @@ import { fetchAllSettings, saveSettings } from '../../../lib/services/dbService'
 import { requireUser } from '../../../lib/apiAuth';
 import { diffObject, logActivity } from '../../../lib/services/logger';
 
+const canonicalSettings = settings => {
+  if (!settings?.formula || typeof settings.formula !== 'object') return settings;
+  const { shippingVnd, divisor, defaultRate } = settings.formula;
+  return { ...settings, formula: { shippingVnd, divisor, defaultRate } };
+};
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN']);
   if (!auth.ok) return auth.response;
   const data = await fetchAllSettings();
   if (!data) return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json(canonicalSettings(data));
 }
 
 export async function POST(request) {

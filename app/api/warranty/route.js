@@ -5,6 +5,10 @@ import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
 import { keysToCamel } from '@/lib/services/dbService';
 
+const OPEN_STATUSES = ['received', 'checking', 'wait_parts', 'repairing'];
+const RESOLVED_STATUSES = ['done', 'swap_device', 'refunded'];
+const WARRANTY_STATUSES = [...OPEN_STATUSES, ...RESOLVED_STATUSES];
+
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
   if (!auth.ok) return auth.response;
@@ -30,6 +34,30 @@ export async function POST(request) {
       if (oldError) return NextResponse.json({ error: oldError.message }, { status: 500 });
       previous = oldData ? keysToCamel(oldData) : null;
     }
+    if (previous && String(body.laptopId) !== String(previous.laptopId)) {
+      return NextResponse.json({ error: 'Không thể đổi máy gốc của phiếu bảo hành đã tiếp nhận.' }, { status: 400 });
+    }
+    if (!WARRANTY_STATUSES.includes(String(body.status))) {
+      return NextResponse.json({ error: 'Trạng thái bảo hành không hợp lệ.' }, { status: 400 });
+    }
+    if (body.orderId) {
+      const { data: linkedOrder, error: orderError } = await adminClient.from('orders')
+        .select('id,laptop_id,requested_laptop_id,customer_info')
+        .eq('id', Number(body.orderId)).maybeSingle();
+      if (orderError) return NextResponse.json({ error: orderError.message }, { status: 500 });
+      if (!linkedOrder || ![linkedOrder.laptop_id, linkedOrder.requested_laptop_id].some(id => String(id) === String(body.laptopId))) {
+        return NextResponse.json({ error: 'Đơn gốc không thuộc máy đang tiếp nhận bảo hành.' }, { status: 400 });
+      }
+    }
+    if (!previous && OPEN_STATUSES.includes(String(body.status))) {
+      const { data: openCase, error: openCaseError } = await adminClient.from('warranty_cases')
+        .select('id').eq('laptop_id', Number(body.laptopId)).in('status', OPEN_STATUSES).limit(1).maybeSingle();
+      if (openCaseError) return NextResponse.json({ error: openCaseError.message }, { status: 500 });
+      if (openCase) return NextResponse.json({ error: `Máy đang có phiếu bảo hành #${openCase.id} chưa hoàn tất.` }, { status: 409 });
+    }
+    body.resolvedDate = RESOLVED_STATUSES.includes(String(body.status))
+      ? (body.resolvedDate || new Date().toLocaleDateString('vi-VN'))
+      : '';
     const data = await saveWarrantyCaseToCloud(body);
     if (!data) return NextResponse.json({ error: 'Failed to save warranty case' }, { status: 500 });
     const fields = ['orderId', 'laptopId', 'reportedIssue', 'status', 'receivedDate', 'resolvedDate', 'repairCost', 'partsReplaced', 'diagnosis', 'resolution', 'resolutionNote', 'notes', 'customerInfo', 'handledBy'];

@@ -9,6 +9,8 @@ import PresetManagementSection from './PresetManagementSection';
 import { getAuthHeaders } from '../../lib/apiFetchers';
 import { labelToKey } from '../../lib/useFieldOptions';
 import InvoiceCatalog from './InvoiceCatalog';
+import { isExtensibleOptionGroup } from '../../lib/optionPolicy';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 const GROUP_SECTIONS = [
   {
@@ -17,7 +19,7 @@ const GROUP_SECTIONS = [
   },
   {
     sectionLabel: '🛒 Đơn hàng',
-    groups: ['orderStatus', 'paymentStatus', 'deliveryStatus', 'orderType', 'paymentMethod', 'shippingMethod', 'giftOptions', 'saleOnline', 'saleOffline'],
+    groups: ['orderStatus', 'paymentStatus', 'deliveryStatus', 'orderType', 'paymentMethod', 'shippingMethod', 'saleOnline', 'saleOffline'],
   },
   {
     sectionLabel: '🔧 Bảo hành',
@@ -39,7 +41,6 @@ const GROUP_TITLES = {
   orderType: 'Loại Đơn hàng',
   paymentMethod: 'Phương thức Thanh toán',
   shippingMethod: 'Đơn vị Vận chuyển',
-  giftOptions: 'Gói Quà tặng',
   saleOnline: 'Nhân viên Sale (Kênh bán)',
   saleOffline: 'Nhân viên Sale (Tại shop)',
   warrantyCaseStatus: 'Trạng thái Bảo hành'
@@ -118,11 +119,11 @@ function OptionRow({ option, onUpdate, onDelete }) {
         <button onClick={commit} style={{ background: '#ecfdf5', border: '1px solid #34d399', borderRadius: '6px', padding: '4px 8px', color: '#059669', cursor: 'pointer' }}>
           <Check size={14} />
         </button>
-      ) : (
+      ) : onDelete ? (
         <button data-testid={`option-delete-${option.option_key}`} onClick={() => onDelete(option.id)} title="Xoá option này" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
           <Trash2 size={16} />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -135,9 +136,11 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const title = GROUP_TITLES[groupKey] || groupKey;
+  const canExtend = isExtensibleOptionGroup(groupKey);
   
   // Sort options alphabetically by label for consistency
   const sortedOptions = [...(options || [])].sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  const optionPages = useListPagination(sortedOptions, groupKey);
 
   const handleAddNewOption = async (e) => {
     e.preventDefault();
@@ -206,18 +209,19 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
               Chưa có tuỳ chọn nào.
             </div>
           ) : (
-            sortedOptions.map(opt => (
+            optionPages.pageRows.map(opt => (
               <OptionRow
                 key={opt.id}
                 option={opt}
                 onUpdate={onUpdate}
-                onDelete={onDelete}
+                onDelete={canExtend ? onDelete : null}
               />
             ))
           )}
+          <ListPagination {...optionPages} />
 
           {/* Add option button / form */}
-          {showAddForm ? (
+          {canExtend && (showAddForm ? (
             <form onSubmit={handleAddNewOption} style={{ display: 'flex', gap: '8px', marginTop: '8px', padding: '4px 0', flexWrap: 'wrap' }}>
               <input
                 autoFocus
@@ -257,7 +261,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
             >
               <Plus size={16} /> Thêm tuỳ chọn mới
             </button>
-          )}
+          ))}
         </div>
       )}
     </div>

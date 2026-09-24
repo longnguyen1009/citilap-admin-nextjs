@@ -49,6 +49,25 @@ body {
     line-height: 1.5;
 }
 
+@keyframes app-spin { to { transform: rotate(360deg); } }
+@keyframes loading-sweep { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
+.app-spinner { animation: app-spin .8s linear infinite; }
+.login-progress { margin: 10px 0 0; color: rgba(255,255,255,.62); font-size: .76rem; text-align: center; }
+.auth-loading-screen { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(135deg,#0f172a,#172554 55%,#0f3460); }
+.auth-loading-card { width: min(360px, calc(100vw - 40px)); padding: 28px; border: 1px solid rgba(255,255,255,.14); border-radius: 18px; color: #fff; background: rgba(255,255,255,.08); box-shadow: 0 25px 70px rgba(0,0,0,.28); text-align: center; backdrop-filter: blur(14px); }
+.auth-loading-card strong { display: block; margin-top: 14px; font-size: 1rem; }
+.auth-loading-card p { margin: 6px 0 0; color: rgba(255,255,255,.62); font-size: .8rem; }
+.route-loading-overlay { position: fixed; inset: 0 0 0 var(--sidebar-width, 260px); z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(241,245,249,.78); backdrop-filter: blur(5px); }
+.main-content.collapsed .route-loading-overlay { left: 76px; }
+.route-loading-card { width: min(360px, calc(100vw - 40px)); padding: 24px; border: 1px solid #d9e2ef; border-radius: 18px; background: rgba(255,255,255,.96); box-shadow: 0 22px 70px rgba(30,48,75,.16); text-align: center; }
+.route-loading-card strong { display: block; margin-top: 12px; color: #17243a; font-size: 1rem; }
+.route-loading-card p { min-height: 20px; margin: 5px 0 16px; color: #6b7a8f; font-size: .8rem; }
+.route-loading-mark { display: inline-grid; width: 42px; height: 42px; place-items: center; border: 3px solid #dbeafe; border-top-color: #2563eb; border-radius: 50%; animation: app-spin .85s linear infinite; }
+.route-loading-mark span { width: 14px; height: 14px; border-radius: 4px; background: #2563eb; }
+.route-loading-bar { overflow: hidden; height: 5px; border-radius: 999px; background: #e8edf5; }
+.route-loading-bar span { display: block; width: 34%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#2563eb,#22c55e); animation: loading-sweep 1.25s ease-in-out infinite; }
+@media (max-width: 768px) { .route-loading-overlay, .main-content.collapsed .route-loading-overlay { inset: 0; } }
+
 /* Glassmorphism Class */
 .glass {
     background: var(--bg-card);
@@ -1237,21 +1256,21 @@ textarea:focus-visible {
 
 /* Google Sheet-style status rows: muted closed rows, warm active stock, and clear workflow colors. */
 tr.row-chua-nhap { --row-bg: #ffffff; --row-accent: #64748b; }
-tr.row-san-hang { --row-bg: #f2c94c; --row-accent: #9a6700; }
-tr.row-da-coc { --row-bg: #5b9bd5; --row-accent: #1d4ed8; }
-tr.row-dang-sua { --row-bg: #ef9a9a; --row-accent: #b42318; }
-tr.row-da-ban { --row-bg: #87909c; --row-accent: #27313d; }
-tr.row-tra-hang { --row-bg: #5b6470; --row-accent: #17202b; }
-tr.row-tra-tien { --row-bg: #5b6470; --row-accent: #17202b; }
-tr.row-bo-qua { --row-bg: #5b6470; --row-accent: #17202b; }
+tr.row-san-hang { --row-bg: #fff9df; --row-accent: #d9a400; }
+tr.row-da-coc { --row-bg: #eef6ff; --row-accent: #3b82f6; }
+tr.row-dang-sua { --row-bg: #fff1f0; --row-accent: #dc4c45; }
+tr.row-da-ban { --row-bg: #f3f5f7; --row-accent: #64748b; }
+tr.row-tra-hang { --row-bg: #f1f3f5; --row-accent: #475569; }
+tr.row-tra-tien { --row-bg: #f1f3f5; --row-accent: #475569; }
+tr.row-bo-qua { --row-bg: #f1f3f5; --row-accent: #475569; }
 tr.row-other { --row-bg: #ffffff; --row-accent: #64748b; }
-tr.order-row-preparing { --row-bg: #f2c94c; --row-accent: #9a6700; }
-tr.order-row-shipping { --row-bg: #f2c94c; --row-accent: #9a6700; }
-tr.order-row-completed { --row-bg: #9ca3af; --row-accent: #374151; }
-tr.order-row-cancelled { --row-bg: #6b7280; --row-accent: #1f2937; }
-tr.order-row-returned { --row-bg: #6b7280; --row-accent: #1f2937; }
+tr.order-row-preparing { --row-bg: #fff9df; --row-accent: #d9a400; }
+tr.order-row-shipping { --row-bg: #fff9df; --row-accent: #d9a400; }
+tr.order-row-completed { --row-bg: #f3f5f7; --row-accent: #64748b; }
+tr.order-row-cancelled { --row-bg: #eef0f2; --row-accent: #475569; }
+tr.order-row-returned { --row-bg: #eef0f2; --row-accent: #475569; }
 tr.order-row-new { --row-bg: #ffffff; --row-accent: #64748b; }
-tr.order-row-deposited { --row-bg: #5b9bd5; --row-accent: #1d4ed8; }
+tr.order-row-deposited { --row-bg: #eef6ff; --row-accent: #3b82f6; }
 tr.order-row-other { --row-bg: #ffffff; --row-accent: #64748b; }
 .list-table-scroll .data-table tbody tr td { background: var(--row-bg, #ffffff); color: var(--text-main); }
 .list-table-scroll .data-table tbody tr td:first-child { box-shadow: inset 3px 0 var(--row-accent, transparent); }
@@ -2665,6 +2684,74 @@ body {
     .filter-item select { transition: none !important; }
 }
 
+/* Compact operational headers and shared 50-row pagination. */
+.brand { min-height: 58px; padding: 0 2px 12px; }
+.brand-text h2 { margin: 0; font-size: .94rem; letter-spacing: -.02em; }
+.brand-operator { display: flex; align-items: center; gap: 6px; margin-top: 3px; color: #64748b; font-size: .69rem; font-weight: 700; }
+.database-status-icon { padding: 2px; border-radius: 999px; color: #94a3b8; background: #e2e8f0; box-sizing: content-box; }
+.database-status-icon.is-connected { color: #047857; background: #d1fae5; box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+.database-status-icon.is-checking { color: #b45309; background: #fef3c7; }
+.database-status-icon.is-error,
+.database-status-icon.is-disconnected { color: #b91c1c; background: #fee2e2; }
+.sidebar-footer { padding-top: 9px; }
+
+.page-section > .section-title,
+.invoice-toolbar,
+.procurement-header,
+.qc-header,
+.repair-hero,
+.cost-hero,
+.finance-hero,
+.salesops-hero,
+.supplier-return-hero {
+  min-height: 0 !important;
+  margin-bottom: 10px !important;
+  padding-top: 4px !important;
+  padding-bottom: 9px !important;
+  gap: 12px !important;
+}
+.page-section > .section-title h1,
+.invoice-toolbar h1,
+.invoice-toolbar h2,
+.procurement-header h1,
+.qc-header h1,
+.repair-hero h1,
+.cost-hero h1,
+.finance-hero h1,
+.salesops-hero h1,
+.supplier-return-hero h1 { margin-block: 0 2px !important; font-size: 1.18rem !important; line-height: 1.2 !important; }
+.page-section > .section-title p,
+.page-section > .section-title span,
+.invoice-toolbar p,
+.procurement-header span,
+.qc-header p,
+.repair-hero p,
+.cost-hero p,
+.finance-hero p,
+.salesops-hero p,
+.supplier-return-hero p { margin-block: 2px 0 !important; line-height: 1.35 !important; }
+.list-summary-strip { margin-bottom: 9px !important; }
+
+.list-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 12px; border-top: 1px solid #e2e8f0; color: #64748b; background: #fff; font-size: .76rem; }
+.list-pagination > div { display: flex; align-items: center; gap: 8px; }
+.list-pagination button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #cbd5e1; border-radius: 8px; color: #334155; background: #fff; cursor: pointer; }
+.list-pagination button:hover:not(:disabled) { border-color: #2457d6; color: #2457d6; background: #eef3ff; }
+.list-pagination button:disabled { opacity: .38; cursor: default; }
+.list-pagination strong { min-width: 92px; color: #334155; text-align: center; }
+
+@media (max-width: 640px) {
+  .list-pagination { align-items: flex-start; flex-direction: column; }
+  .page-section > .section-title,
+  .invoice-toolbar,
+  .procurement-header,
+  .qc-header,
+  .repair-hero,
+  .cost-hero,
+  .finance-hero,
+  .salesops-hero,
+  .supplier-return-hero { padding-top: 0 !important; }
+}
+
 /* Invoice workspace */
 .invoice-workspace { padding: 20px; color: #203047; }
 .invoice-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
@@ -2769,6 +2856,20 @@ body {
 
 /* Procurement — Phase 1 */
 .nav-section-label{margin:14px 12px 5px;color:#8090a7;font-size:.61rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+
+/* Pilot navigation: dense, task-based operations index. */
+.nav-menu{overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin;scrollbar-color:#c7d2e2 transparent}
+.nav-menu::-webkit-scrollbar{width:5px}.nav-menu::-webkit-scrollbar-thumb{border-radius:999px;background:#c7d2e2}
+.nav-section-label{display:flex;align-items:center;gap:8px;min-height:18px;margin:15px 10px 3px;color:#75849a}
+.nav-section-label::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#d7dee8,transparent)}
+.sidebar.collapsed .nav-section-label{min-height:1px;margin:9px 7px;background:#dce3ed}.sidebar.collapsed .nav-section-label::after{display:none}
+.sidebar-footer{flex-shrink:0}
+
+@media(max-width:768px){
+  .mobile-navigation{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  .mobile-navigation a,.mobile-navigation button{min-width:0;padding:6px 3px;flex-direction:column;gap:3px;font-size:.66rem;line-height:1.05;white-space:nowrap}
+  .mobile-navigation button{margin-left:0}
+}
 .procurement-page{min-height:100%;padding:22px;color:#1c2b41;background:#f4f6f9}
 .procurement-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px;padding:2px 2px 16px;border-bottom:1px solid #d8e0e9}
 .procurement-header p,.purchase-detail-head p{margin:0 0 4px;color:#28716a;font-size:.66rem;font-weight:850;letter-spacing:.13em}
@@ -2821,3 +2922,154 @@ body {
 .management-finance-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.management-finance-strip>div{display:grid;gap:5px;padding:14px;border:1px solid #d3ddd7;background:#fbfdfc}.management-finance-strip span{font-size:.75rem;color:#65746c}.management-finance-strip strong{font-size:1rem;color:#173f34}.management-finance-strip .warn{grid-column:1/-1;display:flex;align-items:center;color:#9a5b15;background:#fff9e8;border-color:#ead49e}
 @media(max-width:900px){.finance-page{padding:12px}.finance-hero{align-items:flex-start;flex-direction:column}.finance-metrics,.management-finance-strip{grid-template-columns:1fr 1fr}.finance-account-board{grid-template-columns:1fr}.finance-actions{position:static;flex-wrap:wrap;margin-top:15px}.finance-dialog{grid-template-columns:1fr}.finance-dialog>*{grid-column:1}}
 @media(max-width:560px){.finance-metrics{grid-template-columns:1fr}.finance-hero{padding:20px}.finance-hero h1{font-size:1.8rem}}
+
+/* Phase 9 sales operations */
+.salesops-page{min-height:100%;padding:28px;background:linear-gradient(145deg,#f8fafc 0%,#eef2ff 52%,#fff7ed 100%)}
+.salesops-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:28px;border:1px solid #dbe4f0;border-radius:22px;background:rgba(255,255,255,.88);box-shadow:0 18px 50px rgba(30,41,59,.08)}
+.salesops-title{display:flex;align-items:flex-start;gap:16px}.salesops-title>svg{width:42px;height:42px;padding:10px;color:#fff;background:#172554;border-radius:13px}.salesops-title span,.salesops-dialog small{font-size:.72rem;font-weight:800;letter-spacing:.14em;color:#b45309}.salesops-title h1{margin:3px 0;font-size:clamp(1.7rem,3vw,2.5rem);color:#172554}.salesops-title p{margin:0;color:#64748b}
+.salesops-hero button,.salesops-toolbar button,.salesops-card footer button,.salesops-dialog footer button:last-child{border:0;border-radius:10px;padding:10px 15px;background:#172554;color:#fff;font-weight:750;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.salesops-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 220px auto;gap:12px;margin:20px 0}.salesops-toolbar input,.salesops-toolbar select,.salesops-dialog input,.salesops-dialog select,.salesops-dialog textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px;background:#fff;color:#0f172a}
+.salesops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}.salesops-card{padding:20px;border:1px solid #dbe4f0;border-radius:18px;background:#fff;box-shadow:0 12px 30px rgba(30,41,59,.06)}.salesops-card header{display:flex;justify-content:space-between;gap:12px}.salesops-card h3{margin:4px 0;color:#172554}.salesops-card small{font-weight:800;color:#64748b}.salesops-card header>span{height:max-content;border-radius:999px;padding:5px 9px;background:#e2e8f0;font-size:.7rem;font-weight:850}.salesops-card header>span[data-status="ACTIVE"],.salesops-card header>span[data-status="PAID"],.salesops-card header>span[data-status="CONVERTED_TO_INVENTORY"]{background:#dcfce7;color:#166534}.salesops-card p{color:#475569}.salesops-card dl{display:grid;grid-template-columns:1fr 1fr;gap:10px}.salesops-card dl div{padding:10px;background:#f8fafc;border-radius:10px}.salesops-card dt{font-size:.72rem;color:#64748b}.salesops-card dd{margin:3px 0 0;font-weight:750;color:#0f172a}.salesops-card footer{display:flex;gap:8px;margin-top:16px}.salesops-card footer .quiet{background:#f1f5f9;color:#334155}.salesops-empty{margin-top:20px;padding:36px;text-align:center;border:1px dashed #94a3b8;border-radius:16px;background:#fff;color:#64748b}
+.salesops-dialog{width:min(680px,calc(100vw - 32px));display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:22px;border-radius:18px;background:#fff}.salesops-dialog header,.salesops-dialog footer,.salesops-dialog .wide{grid-column:1/-1}.salesops-dialog header,.salesops-dialog footer{display:flex;align-items:center;justify-content:space-between}.salesops-dialog header h2{margin:3px 0}.salesops-dialog header>button,.salesops-dialog footer>button:first-child{border:0;background:transparent;font-size:1.4rem;cursor:pointer}.salesops-dialog label{font-size:.8rem;font-weight:750;color:#475569}.salesops-dialog label>*{margin-top:6px}
+@media(max-width:720px){.salesops-page{padding:14px}.salesops-hero{align-items:flex-start;padding:20px}.salesops-title p{display:none}.salesops-toolbar{grid-template-columns:1fr}.salesops-dialog{grid-template-columns:1fr}.salesops-dialog label{grid-column:1/-1}}
+.phase9-inline-link{display:block;margin-top:3px;font-size:.68rem;font-weight:750;color:#2563eb;text-decoration:none}.phase9-inline-link.warning{color:#b45309}.phase9-inline-link:hover{text-decoration:underline}.phase9-cell-meta{margin-top:3px;font-size:.66rem;line-height:1.25;color:#64748b;font-weight:650}
+
+/* Screen audit: keep form controls within their grid tracks on narrow screens. */
+.procurement-grid > *, .purchase-item-row > *, .warranty-form-grid > * { min-width: 0; }
+.purchase-item-row { grid-template-columns: 28px repeat(8, minmax(0, 1fr)) 30px; }
+.procurement-form input, .procurement-form select, .procurement-form textarea,
+.warranty-form-grid input, .warranty-form-grid select, .warranty-form-grid textarea { min-width: 0; max-width: 100%; width: 100%; }
+.finance-dialog, .salesops-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.finance-dialog footer, .salesops-dialog footer { flex-wrap: wrap; }
+.finance-dialog footer > button:first-child, .salesops-dialog footer > button:first-child { font-size: .875rem; }
+.form-submit-error { flex-basis: 100%; margin: 0; padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: .875rem; overflow-wrap: anywhere; }
+
+/* Restore the quick-scan status colors for the two operational sheets. Keep
+   these rules scoped and last so compact table styling cannot wash them out. */
+.inventory-list-table tbody tr.row-san-hang { --row-bg: #d89f00; }
+.inventory-list-table tbody tr.row-da-coc,
+.orders-list-table tbody tr.order-row-deposited { --row-bg: #a9c9f7; }
+.inventory-list-table tbody tr.row-dang-sua { --row-bg: #c9362b; }
+.inventory-list-table tbody tr.row-da-ban,
+.inventory-list-table tbody tr.row-tra-hang,
+.inventory-list-table tbody tr.row-tra-tien,
+.inventory-list-table tbody tr.row-bo-qua,
+.orders-list-table tbody tr.order-row-cancelled,
+.orders-list-table tbody tr.order-row-returned,
+.orders-list-table tbody tr.order-row-completed { --row-bg: #89919b; }
+.orders-list-table tbody tr.order-row-preparing,
+.orders-list-table tbody tr.order-row-shipping { --row-bg: #d89f00; }
+.inventory-list-table tbody tr.row-san-hang td { background: var(--row-bg) !important; color: #000 !important; }
+.inventory-list-table tbody tr.row-da-coc td,
+.orders-list-table tbody tr.order-row-deposited td {
+    background: var(--row-bg) !important;
+    color: #000 !important;
+    font-weight: 750 !important;
+}
+.inventory-list-table tbody tr.row-da-coc :is(input, select, textarea, button, a, span),
+.orders-list-table tbody tr.order-row-deposited :is(input, select, textarea, button, a, span) {
+    color: #000 !important;
+    font-weight: 750 !important;
+}
+.orders-list-table tbody tr.order-row-deposited .order-payment-cell,
+.orders-list-table tbody tr.order-row-deposited .order-payment-cell :is(.status-badge, .phase9-cell-meta, .phase9-inline-link) {
+    color: #000 !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+}
+.orders-list-table tbody tr.order-row-deposited .order-payment-cell .phase9-cell-meta {
+    line-height: 1.35;
+}
+.inventory-list-table tbody tr.row-dang-sua td { background: #c9362b !important; color: #000 !important; }
+.inventory-list-table tbody tr.row-da-ban td,
+.inventory-list-table tbody tr.row-tra-hang td,
+.inventory-list-table tbody tr.row-tra-tien td,
+.inventory-list-table tbody tr.row-bo-qua td,
+.orders-list-table tbody tr.order-row-cancelled td,
+.orders-list-table tbody tr.order-row-returned td,
+.orders-list-table tbody tr.order-row-completed td { background: #89919b !important; color: #000 !important; }
+.orders-list-table tbody tr.order-row-preparing td,
+.orders-list-table tbody tr.order-row-shipping td { background: #d89f00 !important; color: #000 !important; }
+.inventory-list-table tbody tr.row-san-hang td:first-child,
+.orders-list-table tbody tr.order-row-preparing td:first-child,
+.orders-list-table tbody tr.order-row-shipping td:first-child { box-shadow: inset 4px 0 #7a5200, 5px 0 12px rgba(35,52,82,.025) !important; }
+.inventory-list-table tbody tr.row-da-coc td:first-child,
+.orders-list-table tbody tr.order-row-deposited td:first-child { box-shadow: inset 4px 0 #2563eb, 5px 0 12px rgba(35,52,82,.025) !important; }
+.inventory-list-table tbody tr.row-dang-sua td:first-child { box-shadow: inset 4px 0 #7f1d1d, 5px 0 12px rgba(35,52,82,.025) !important; }
+.inventory-list-table tbody tr.row-da-ban td:first-child,
+.inventory-list-table tbody tr.row-tra-hang td:first-child,
+.inventory-list-table tbody tr.row-tra-tien td:first-child,
+.inventory-list-table tbody tr.row-bo-qua td:first-child,
+.orders-list-table tbody tr.order-row-completed td:first-child,
+.orders-list-table tbody tr.order-row-cancelled td:first-child,
+.orders-list-table tbody tr.order-row-returned td:first-child { box-shadow: inset 4px 0 #303640, 5px 0 12px rgba(35,52,82,.025) !important; }
+.inventory-list-table tbody tr:hover td,
+.orders-list-table tbody tr:hover td {
+    background: color-mix(in srgb, var(--row-bg, #fff) 94%, #000 6%) !important;
+}
+.inventory-list-table tbody tr:hover,
+.orders-list-table tbody tr:hover { filter: none !important; }
+
+/* Readability refinements: preserve every status background above while
+   reducing grid noise and clarifying the frozen columns during horizontal scan. */
+.list-table-scroll .data-table-wide.inventory-list-table th,
+.list-table-scroll .data-table-wide.inventory-list-table td,
+.list-table-scroll .data-table-wide.orders-list-table th,
+.list-table-scroll .data-table-wide.orders-list-table td {
+    border-right-color: rgba(15, 23, 42, .42) !important;
+    border-bottom-color: rgba(15, 23, 42, .42) !important;
+}
+.inventory-list-table tbody td,
+.orders-list-table tbody td,
+.inventory-list-table tbody input,
+.inventory-list-table tbody select,
+.inventory-list-table tbody textarea,
+.orders-list-table tbody input,
+.orders-list-table tbody select,
+.orders-list-table tbody textarea {
+    color: #000 !important;
+    font-variant-numeric: tabular-nums;
+}
+.inventory-list-table .sticky-col-2,
+.orders-list-table .sticky-col-2 {
+    box-shadow: 7px 0 9px -7px rgba(15, 23, 42, .72) !important;
+}
+.inventory-list-table tbody td,
+.orders-list-table tbody td {
+    transition: background-color 100ms ease-out;
+}
+.inventory-list-table tbody tr:focus-within td,
+.orders-list-table tbody tr:focus-within td {
+    border-top-color: rgba(0, 0, 0, .72) !important;
+    border-bottom-color: rgba(0, 0, 0, .72) !important;
+}
+@media (max-width: 1100px) { .purchase-item-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .mobile-navigation { margin-inline: 0 !important; }
+  .purchase-item-row, .procurement-grid { grid-template-columns: minmax(0, 1fr); }
+  .purchase-item-row > *, .procurement-grid > * { grid-column: 1 / -1; }
+  .warranty-form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .warranty-form-grid > * { grid-column: 1 / -1 !important; }
+}
+
+/* Keep the first viewport focused on operational content. */
+.main-content:not(.list-workspace) { padding-top: 6px; }
+.main-content.list-workspace { padding-top: 8px; }
+.main-content:not(.list-workspace) > .page-section,
+.main-content:not(.list-workspace) > .invoice-workspace,
+.main-content:not(.list-workspace) > .procurement-page,
+.main-content:not(.list-workspace) > .qc-page,
+.main-content:not(.list-workspace) > .repair-page,
+.main-content:not(.list-workspace) > .finance-page,
+.main-content:not(.list-workspace) > .salesops-page { padding-top: 6px; }
+@media (max-width: 768px) {
+  .main-content:not(.list-workspace) { padding-top: 4px; }
+  .main-content.list-workspace { padding-top: 6px; }
+  .main-content:not(.list-workspace) > .page-section,
+  .main-content:not(.list-workspace) > .invoice-workspace,
+  .main-content:not(.list-workspace) > .procurement-page,
+  .main-content:not(.list-workspace) > .qc-page,
+  .main-content:not(.list-workspace) > .repair-page,
+  .main-content:not(.list-workspace) > .finance-page,
+  .main-content:not(.list-workspace) > .salesops-page { padding-top: 4px; }
+}

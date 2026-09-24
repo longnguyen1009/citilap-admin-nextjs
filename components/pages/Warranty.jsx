@@ -5,6 +5,7 @@ import { RESOLVED_WARRANTY_STATUS_KEYS } from '../../lib/fieldOptions';
 import { labelToKey, getLabel } from '../../lib/useFieldOptions';
 import { Wrench, Search, Plus, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 const emptyCase = () => ({
   laptopId: '', orderId: '', customerInfo: '', receivedDate: new Date().toLocaleDateString('vi-VN'),
@@ -29,6 +30,7 @@ export default function Warranty() {
     const k = labelToKey('warrantyCaseStatus', item.status);
     return !RESOLVED_WARRANTY_STATUS_KEYS.includes(k);
   }).length;
+  const warrantyPages = useListPagination(rows, searchTerm);
 
   const openCreate = () => { setEditingCase(null); setFormData(emptyCase()); setIsModalOpen(true); };
   const openEdit = (item) => { setEditingCase(item); setFormData({ ...item, repairCost: item.repairCost ?? '' }); setIsModalOpen(true); };
@@ -66,16 +68,17 @@ export default function Warranty() {
 
       <div className="card glass p-0" style={{ overflowX: 'auto' }}>
         <table className="data-table data-table-wide" style={{ width: '100%' }}><thead><tr><th>Phiếu</th><th>Máy / Serial</th><th>Khách & Đơn</th><th>Lỗi khách báo</th><th>Tiếp nhận</th><th>Trạng thái</th><th>Chi phí (tr)</th><th /></tr></thead>
-          <tbody>{rows.length === 0 ? <tr><td colSpan={8} className="empty-cell">Chưa có phiếu bảo hành nào.</td></tr> : rows.map(item => {
+          <tbody>{rows.length === 0 ? <tr><td colSpan={8} className="empty-cell">Chưa có phiếu bảo hành nào.</td></tr> : warrantyPages.pageRows.map(item => {
             const laptop = laptops.find(machine => String(machine.id) === String(item.laptopId));
             return <tr key={item.id}><td style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.id}</td><td><strong>{laptop?.id || item.laptopId}</strong><br /><span style={{ fontSize: '0.8rem' }}>{laptop?.name || 'Máy đã bị xóa'}</span><br /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{laptop?.serial || '-'}</span></td><td>{item.customerInfo || '-'}<br /><span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{item.orderId ? `Đơn #${item.orderId}` : 'Chưa liên kết đơn'}</span></td><td>{item.reportedIssue}</td><td>{item.receivedDate}</td><td><span className={`status-badge ${labelToKey('warrantyCaseStatus', item.status) === 'resolved' || labelToKey('warrantyCaseStatus', item.status) === 'completed' ? 'status-available' : labelToKey('warrantyCaseStatus', item.status) === 'in_progress' ? 'status-repairing' : 'status-back-tq'}`}>{getLabel('warrantyCaseStatus', item.status, appOptions) || item.status}</span></td><td>{Number(item.repairCost || 0).toFixed(2)}</td><td><button className="btn btn-sm btn-primary" onClick={() => openEdit(item)}>Cập nhật</button></td></tr>;
           })}</tbody>
         </table>
+        <ListPagination {...warrantyPages} />
       </div>
 
       {isModalOpen && <div className="modal-backdrop active"><div className="modal-box glass" style={{ maxWidth: '760px' }}>
         <div className="modal-header"><h3>{editingCase ? `Cập nhật phiếu ${editingCase.id}` : 'Tiếp nhận bảo hành / đổi trả'}</h3><button className="modal-close" type="button" onClick={() => setIsModalOpen(false)}>&times;</button></div>
-        <form onSubmit={handleSubmit}><div className="modal-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+        <form onSubmit={handleSubmit}><div className="modal-body warranty-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
           <div className="form-group"><label>Máy *</label><select className="form-control" value={formData.laptopId} onChange={event => handleLaptopChange(event.target.value)} disabled={Boolean(editingCase)} required><option value="">-- Chọn máy --</option>{laptops.map(laptop => <option key={laptop.id} value={laptop.id}>{laptop.id} · {laptop.name} · SN: {laptop.serial || '-'}</option>)}</select></div>
           <div className="form-group"><label>Đơn gốc</label><select className="form-control" value={formData.orderId} onChange={event => setFormData({ ...formData, orderId: event.target.value })}><option value="">-- Chưa liên kết --</option>{orders.filter(order => !formData.laptopId || String(order.laptopId) === String(formData.laptopId)).map(order => <option key={order.id} value={order.id}>#{order.id} · {customers.find(c => String(c.id) === String(order.customerId))?.name}</option>)}</select></div>
           <div className="form-group"><label>Khách hàng</label><input className="form-control" value={formData.customerInfo} onChange={event => setFormData({ ...formData, customerInfo: event.target.value })} /></div>

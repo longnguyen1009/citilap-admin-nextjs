@@ -1,0 +1,86 @@
+{
+  "generatedAt": "2026-09-22T17:07:54.050Z",
+  "environment": "current Supabase seed data",
+  "inventory": {
+    "totalActive": 174,
+    "byStatus": {
+      "sold": 24,
+      "available": 89,
+      "waiting_qc": 30,
+      "repair": 2,
+      "supplier_returned": 6,
+      "qc_failed": 16,
+      "qc_in_progress": 2,
+      "deposited": 5
+    },
+    "byLocation": {
+      "store": 49,
+      "BAC_NINH": 125
+    }
+  },
+  "orders": {
+    "totalActive": 112,
+    "byOrderStatus": {
+      "done": 34,
+      "pending": 8,
+      "cancelled": 6,
+      "deposited": 4,
+      "new": 8,
+      "shipping": 46,
+      "prepared": 6
+    },
+    "byPaymentStatus": {
+      "paid": 18,
+      "unpaid": 51,
+      "cod": 35,
+      "deposited": 6,
+      "refunded": 2
+    },
+    "salePriceMillionVnd": 1782.14,
+    "cashPaidMillionVnd": 1110.45,
+    "collectibleOrders": 38,
+    "outstandingMillionVnd": 498.40000000000003,
+    "tradeInCreditVnd": 72000000
+  },
+  "payments": {
+    "count": 105,
+    "netMillionVnd": 992.9
+  },
+  "documents": {
+    "invoices": 5
+  },
+  "afterSales": {
+    "warrantyCases": 4,
+    "warrantyByStatus": {
+      "received": 1,
+      "done": 3
+    }
+  },
+  "salesOperations": {
+    "reservationByStatus": {
+      "CANCELLED": 8
+    },
+    "tradeInByStatus": {
+      "DRAFT": 1,
+      "CONVERTED_TO_INVENTORY": 6,
+      "INSPECTING": 2
+    },
+    "commissionByStatus": {
+      "PAID": 1,
+      "APPROVED": 2
+    },
+    "commissionVnd": 700000
+  },
+  "cashAccounts": {
+    "count": 4,
+    "byCurrency": {
+      "VND": 2,
+      "CNY": 2
+    },
+    "recordedBalanceByCurrency": {
+      "VND": 27500000,
+      "CNY": 0
+    },
+    "accountsWithDifference": []
+  }
+}

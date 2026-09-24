@@ -1,10 +1,11 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   fetchLaptopsFromCloud, saveLaptopToCloud,
   fetchOrdersFromCloud, saveOrderToCloud,
   fetchWarrantyCasesFromCloud, saveWarrantyCaseToCloud,
-  fetchStockMovementsFromCloud, saveStockMovementToCloud,
+  saveStockMovementToCloud,
   fetchCustomersFromCloud, saveCustomerToCloud,
   fetchAllSettings, saveSetting,
   fetchAppOptionsFromCloud,
@@ -101,7 +102,6 @@ export const SHIPPING_METHOD_OPTIONS   = getOptionLabels('shippingMethod', _cfg(
 export const ORDER_STATUS_OPTIONS      = getOptionLabels('orderStatus', _cfg());
 export const PAYMENT_STATUS_OPTIONS    = getOptionLabels('paymentStatus', _cfg());
 export const DELIVERY_STATUS_OPTIONS   = getOptionLabels('deliveryStatus', _cfg());
-export const GIFT_OPTIONS              = getOptionLabels('giftOptions', _cfg());
 export const ORDER_TYPES               = getOptionLabels('orderType', _cfg());
 export const PAYMENT_METHODS           = getOptionLabels('paymentMethod', _cfg());
 export const WARRANTY_CASE_STATUS_OPTIONS = getOptionLabels('warrantyCaseStatus', _cfg());
@@ -372,19 +372,10 @@ const initialLaptops = [
 ];
 
 const initialOrders = [
-  { id: 1001, createdDate: '02/08/2026', saleOnline: '1', laptopId: '#102', salePrice: 22.5, depositAmount: 0, depositNote: '', orderStatus: 'done', paymentStatus: 'paid', deliveryStatus: 'delivered', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'viettelpost', gifts: 'basic_gift', customerId: '', trackingCode: 'VT1001HV', shipDate: '03/08/2026', setupNote: 'Cài Win 11 Pro + Office', warranty: '12 tháng', laptopLocked: true },
-  { id: 1002, createdDate: '05/08/2026', saleOnline: '2', laptopId: '#105', salePrice: 27.5, depositAmount: 0, depositNote: '', orderStatus: 'done', paymentStatus: 'paid', deliveryStatus: 'delivered', orderType: 'retail', paymentMethod: 'card', shippingMethod: 'direct_store', gifts: 'basic_gift', customerId: '', trackingCode: 'STORE-1002', shipDate: '05/08/2026', setupNote: 'Cài bộ Adobe Full', warranty: '12 tháng', laptopLocked: true },
-  { id: 1003, createdDate: '08/08/2026', saleOnline: '3', laptopId: '#109', salePrice: 19.8, depositAmount: 0, depositNote: '', orderStatus: 'done', paymentStatus: 'paid', deliveryStatus: 'delivered', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'shopee_spx', gifts: 'basic_gift', customerId: '', trackingCode: 'SPX901003', shipDate: '09/08/2026', setupNote: 'Cài phím cơ bản', warranty: '12 tháng', laptopLocked: true },
-  { id: 1004, createdDate: '10/08/2026', saleOnline: '4', laptopId: '#115', salePrice: 18.0, depositAmount: 0, depositNote: '', orderStatus: 'done', paymentStatus: 'paid', deliveryStatus: 'delivered', orderType: 'retail', paymentMethod: 'installment', shippingMethod: 'viettelpost', gifts: 'basic_gift', customerId: '', trackingCode: 'VT1004DN', shipDate: '11/08/2026', setupNote: 'Trả góp HomeCredit', warranty: '12 tháng', laptopLocked: true },
-  { id: 1005, createdDate: '12/08/2026', saleOnline: '5', laptopId: '#103', salePrice: 18.5, depositAmount: 2.0, depositNote: 'Cọc 2tr VCB 12/08', orderStatus: 'deposited', paymentStatus: 'deposited', deliveryStatus: 'preparing', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'direct_store', gifts: 'basic_gift', customerId: '', trackingCode: '', shipDate: '', setupNote: 'Hẹn lấy máy thứ 7', warranty: '12 tháng', laptopLocked: false },
-  { id: 1006, createdDate: '13/08/2026', saleOnline: '6', laptopId: '#110', salePrice: 21.5, depositAmount: 3.0, depositNote: 'Cọc 3tr Techcombank', orderStatus: 'deposited', paymentStatus: 'deposited', deliveryStatus: 'preparing', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'viettelpost', gifts: 'basic_gift', customerId: '', trackingCode: '', shipDate: '', setupNote: 'Chờ giao tận nơi', warranty: '12 tháng', laptopLocked: false },
-  { id: 1007, createdDate: '14/08/2026', saleOnline: '7', laptopId: '#111', salePrice: 23.8, codAmount: 21.8, depositAmount: 2.0, depositNote: 'Cọc 2tr MB', orderStatus: 'shipping', paymentStatus: 'cod', deliveryStatus: 'shipped', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'viettelpost', gifts: 'basic_gift', customerId: '', trackingCode: 'VT1007HN', shipDate: '14/08/2026', setupNote: 'Đã gửi COD', warranty: '12 tháng', laptopLocked: true },
-  { id: 1008, createdDate: '15/08/2026', saleOnline: '8', laptopId: '#112', salePrice: 25.9, codAmount: 23.9, depositAmount: 2.0, depositNote: 'Cọc 2tr BIDV', orderStatus: 'prepared', paymentStatus: 'deposited', deliveryStatus: 'preparing', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'hai_an', gifts: 'basic_gift', customerId: '', trackingCode: 'HA1008TH', shipDate: '15/08/2026', setupNote: 'Gửi nhà xe Hải An', warranty: '12 tháng', laptopLocked: false },
-  { id: 1009, createdDate: '16/08/2026', saleOnline: '1', laptopId: '#114', salePrice: 24.5, depositAmount: 0, depositNote: '', orderStatus: 'new', paymentStatus: 'unpaid', deliveryStatus: 'preparing', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'direct_store', gifts: 'basic_gift', customerId: '', trackingCode: '', shipDate: '', setupNote: 'Tạo đơn chờ tư vấn', warranty: '12 tháng', laptopLocked: false },
-  { id: 1010, createdDate: '16/08/2026', saleOnline: '2', laptopId: '#120', salePrice: 16.2, depositAmount: 0, depositNote: '', orderStatus: 'cancelled', paymentStatus: 'unpaid', deliveryStatus: 'returned', orderType: 'retail', paymentMethod: 'transfer_cash', shippingMethod: 'viettelpost', gifts: 'no_gift', customerId: '', trackingCode: '', shipDate: '', setupNote: 'Khách đổi ý hủy đơn', warranty: '12 tháng', laptopLocked: false }
 ];
 
 export const InventoryProvider = ({ children }) => {
+  const pathname = usePathname();
   const { user } = useAuth();
   const userId = user?.id;
   const isAdmin = user?.role === 'ADMIN';
@@ -397,6 +388,8 @@ export const InventoryProvider = ({ children }) => {
   const [customers, setCustomers] = useState([]);
 
   const [cloudStatus, setCloudStatus] = useState('checking'); // 'checking', 'connected', 'error', 'disconnected'
+  const [dataLoading, setDataLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState('Đang chuẩn bị dữ liệu…');
   const ordersRef = React.useRef(orders);
   const orderMutationVersions = React.useRef(new Map());
 
@@ -464,7 +457,6 @@ export const InventoryProvider = ({ children }) => {
     ORDER_STATUS_OPTIONS:       getOptionLabels('orderStatus', appOptions),
     PAYMENT_STATUS_OPTIONS:     getOptionLabels('paymentStatus', appOptions),
     DELIVERY_STATUS_OPTIONS:    getOptionLabels('deliveryStatus', appOptions),
-    GIFT_OPTIONS:               getOptionLabels('giftOptions', appOptions),
     ORDER_TYPES:                getOptionLabels('orderType', appOptions),
     PAYMENT_METHODS:            getOptionLabels('paymentMethod', appOptions),
     WARRANTY_CASE_STATUS_OPTIONS: getOptions('warrantyCaseStatus', appOptions),
@@ -489,10 +481,9 @@ export const InventoryProvider = ({ children }) => {
   }, [selectedMonth]);
 
   useEffect(() => {
-    // KHÔNG fetch nếu: chưa login, hoặc đang ở màn login
-    // Chỉ tải dữ liệu khi đã có user. Không dựa vào pathname vì router có thể
-    // vẫn đang ở /login trong lúc chuyển hướng sau đăng nhập.
-    if (!userId) {
+    // Hồ sơ có thể sẵn sàng trước khi router rời /login. Chờ đúng route vận
+    // hành để tránh tải options/months rồi lập tức tải lại sau chuyển hướng.
+    if (!userId || pathname === '/login') {
       return;
     }
 
@@ -501,11 +492,16 @@ export const InventoryProvider = ({ children }) => {
     const monthQuery = selectedMonth === 'ALL'
       ? { all: true }
       : { monthKey: selectedMonth };
-    const loadCloudData = async () => {
+    const loadCloudData = async ({ background = false } = {}) => {
+      if (!background) {
+        setDataLoading(true);
+        setLoadingStage('Đang kiểm tra phiên đăng nhập…');
+      }
       setCloudStatus('checking');
       const { url, anonKey } = getSupabaseCredentials();
       if (!url || !anonKey) {
         setCloudStatus('disconnected');
+        if (!background) setDataLoading(false);
         return;
       }
 
@@ -513,24 +509,69 @@ export const InventoryProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         const { data: { session } } = await client.auth.getSession();
-        if (!session || cancelled) return;
+        if (!session || cancelled) {
+          if (!background) setDataLoading(false);
+          return;
+        }
       }
 
       const safeFetch = (fn) => fn().catch(() => null);
-      const [cloudLaptops, cloudOrders, cloudWarranty, cloudStock, cloudCustomers, cloudSettings, cloudOptions, cloudPayments] = await Promise.all([
-        safeFetch(() => fetchLaptopsFromCloud(monthQuery)),
-        safeFetch(() => fetchOrdersFromCloud(monthQuery)),
-        safeFetch(() => fetchWarrantyCasesFromCloud()),
-        safeFetch(() => fetchStockMovementsFromCloud()),
-        safeFetch(() => fetchCustomersFromCloud()),
-        safeFetch(() => fetchAllSettings()),
-        safeFetch(() => fetchAppOptionsFromCloud()),
-        safeFetch(() => fetchPaymentsFromCloud())
+      const needsWarranty = pathname === '/' || pathname.startsWith('/warranty');
+      const needsCustomers = pathname === '/' || ['/orders', '/warranty', '/customers'].some(route => pathname.startsWith(route));
+      const needsSettings = pathname.startsWith('/inventory');
+      const needsPayments = pathname.startsWith('/payments');
+      const needsLaptops = pathname === '/' || ['/inventory', '/orders', '/warranty', '/settings'].some(route => pathname.startsWith(route));
+      const needsOrders = pathname === '/' || ['/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route));
+      // Tải theo hai lớp ưu tiên, mỗi lớp tối đa hai request đồng thời.
+      // Cách này tránh dồn 5–7 response vào main thread nhưng không kéo dài
+      // thời gian chờ như chạy từng request tuyệt đối.
+      let cloudLaptops = null;
+      let cloudOrders = null;
+      let cloudWarranty = null;
+      let cloudCustomers = null;
+      let cloudSettings = null;
+      let cloudOptions = null;
+      let cloudPayments = null;
+      let cloudMonths = null;
+      if (!background) setLoadingStage('Đang tải dữ liệu chính…');
+      [cloudLaptops, cloudOrders] = await Promise.all([
+        needsLaptops ? safeFetch(() => fetchLaptopsFromCloud(monthQuery)) : null,
+        needsOrders ? safeFetch(() => fetchOrdersFromCloud(monthQuery)) : null
       ]);
+      if (!background) setLoadingStage('Đang tải danh mục và dữ liệu bổ sung…');
+      const secondaryTasks = [
+        ['options', () => safeFetch(() => fetchAppOptionsFromCloud())],
+        ['months', async () => {
+          try {
+            const headers = await getAuthHeaders();
+            const response = await fetch('/api/months', { headers });
+            return response.ok ? response.json() : null;
+          } catch {
+            return null;
+          }
+        }],
+        ...(needsPayments ? [['payments', () => safeFetch(() => fetchPaymentsFromCloud())]] : []),
+        ...(needsWarranty ? [['warranty', () => safeFetch(() => fetchWarrantyCasesFromCloud())]] : []),
+        ...(needsCustomers ? [['customers', () => safeFetch(() => fetchCustomersFromCloud())]] : []),
+        ...(needsSettings ? [['settings', () => safeFetch(() => fetchAllSettings())]] : [])
+      ];
+      const secondaryResults = {};
+      for (let index = 0; index < secondaryTasks.length; index += 2) {
+        const batch = secondaryTasks.slice(index, index + 2);
+        const values = await Promise.all(batch.map(([, task]) => task()));
+        batch.forEach(([key], resultIndex) => { secondaryResults[key] = values[resultIndex]; });
+      }
+      cloudOptions = secondaryResults.options ?? null;
+      cloudPayments = secondaryResults.payments ?? null;
+      cloudWarranty = secondaryResults.warranty ?? null;
+      cloudCustomers = secondaryResults.customers ?? null;
+      cloudSettings = secondaryResults.settings ?? null;
+      cloudMonths = secondaryResults.months ?? null;
 
       if (cancelled) return;
 
       const observedMonths = [
+        ...(Array.isArray(cloudMonths) ? cloudMonths : []),
         ...(Array.isArray(cloudLaptops) ? cloudLaptops.map(laptop => laptop.monthKey || parseMonthYear(laptop.importDate, laptop.created_at || laptop.createdAt)) : []),
         ...(Array.isArray(cloudOrders) ? cloudOrders.map(order => order.monthKey || parseMonthYear(order.createdDate, order.created_at || order.createdAt)) : []),
         selectedMonth !== 'ALL' ? selectedMonth : null
@@ -540,14 +581,13 @@ export const InventoryProvider = ({ children }) => {
         return next.length === prev.length ? prev : next;
       });
 
-      if (cloudLaptops === null && cloudOrders === null) {
+      if ((needsLaptops && cloudLaptops === null) || (needsOrders && cloudOrders === null)) {
         setCloudStatus('error');
       } else {
         setCloudStatus('connected');
         if (cloudLaptops !== null) setLaptops(cloudLaptops);
         if (cloudOrders !== null) setOrders(cloudOrders);
         if (cloudWarranty !== null) setWarrantyCases(cloudWarranty);
-        if (cloudStock !== null) setStockMovements(cloudStock);
         if (cloudCustomers !== null) setCustomers(cloudCustomers);
         if (cloudPayments !== null) setPayments(cloudPayments);
 
@@ -579,10 +619,11 @@ export const InventoryProvider = ({ children }) => {
           }
         }
       }
+      if (!background && !cancelled) setDataLoading(false);
     };
 
     loadCloudData();
-    const refreshIntervalId = window.setInterval(loadCloudData, 60 * 1000);
+    const refreshIntervalId = window.setInterval(() => loadCloudData({ background: true }), 60 * 1000);
 
     // Realtime: patch trực tiếp từ payload thay vì refetch toàn bộ
     // Cross-fetch (laptop↔orders) cần throttle để tránh chain reaction
@@ -659,21 +700,7 @@ export const InventoryProvider = ({ children }) => {
     );
 
     return () => { cancelled = true; window.clearInterval(refreshIntervalId); unsubscribe(); };
-  }, [userId, selectedMonth]);
-
-  // Discover historical periods independently of the currently filtered dataset.
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    getAuthHeaders().then(headers => fetch('/api/months', { headers }))
-      .then(response => response.ok ? response.json() : [])
-      .then(months => {
-        if (!cancelled && Array.isArray(months)) {
-          setKnownMonths(prev => [...new Set([...prev, ...months])]);
-        }
-      }).catch(error => console.error('Không thể tải danh sách tháng:', error));
-    return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, selectedMonth, pathname]);
 
   // Trích xuất danh sách tất cả các tháng có dữ liệu
   const availableMonths = useMemo(() => {
@@ -825,20 +852,21 @@ export const InventoryProvider = ({ children }) => {
       && (labelToKey('laptopStatus', laptop.status, _cfg()) !== 'sold'
         || String(laptop.id) === String(currentRequestedId)));
 
-  // Bất biến tiền tệ: amountPaid >= depositAmount; debtAmount = salePrice - amountPaid.
+  // Bất biến tiền tệ: công nợ trừ cả tiền đã thu và credit thu cũ phi tiền mặt.
   // Chỉ tính lại khi các trường tiền tệ thay đổi, tránh ghi đè giá trị thủ công hợp lệ.
   const MONEY_FIELDS = ['salePrice', 'depositAmount', 'amountPaid', 'debtAmount'];
   const normalizeMoney = (order) => {
     const salePrice = parseFlexibleFloat(order.salePrice);
     const depositAmount = Math.min(salePrice, Math.max(parseFlexibleFloat(order.depositAmount), 0));
     const amountPaid = Math.min(salePrice, Math.max(parseFlexibleFloat(order.amountPaid), depositAmount));
-    const debtAmount = Math.max(0, salePrice - amountPaid);
+    const tradeInCredit = Math.max(parseFlexibleFloat(order.tradeInCreditVnd) / 1000000, 0);
+    const debtAmount = Math.max(0, salePrice - amountPaid - tradeInCredit);
     const codAmount = Math.min(debtAmount, Math.max(parseFlexibleFloat(order.codAmount), 0));
     return { ...order, salePrice, depositAmount, amountPaid, debtAmount, codAmount };
   };
 
   const normalizeOrderNumbers = (fields) => {
-    const numericFields = ['salePrice', 'depositAmount', 'codAmount', 'amountPaid', 'debtAmount', 'creditCardFee'];
+    const numericFields = ['salePrice', 'depositAmount', 'codAmount', 'amountPaid', 'debtAmount', 'creditCardFee', 'tradeInCreditVnd'];
     return Object.fromEntries(Object.entries(fields).map(([key, value]) => (
       numericFields.includes(key) ? [key, parseFlexibleFloat(value)] : [key, value]
     )));
@@ -879,7 +907,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
     paymentMethod: 'paymentMethod',
     saleOnline: 'saleOnline',
     saleOffline: 'saleOffline',
-    gifts: 'giftOptions'
   };
   for (const [field, group] of Object.entries(mapping)) {
     if (result[field]) {
@@ -922,7 +949,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
       codAmount: normalizedInput.codAmount || 0,
       setupNote: orderData.setupNote || 'Cài cơ bản',
       warranty: orderData.warranty || '6 tháng',
-      gifts: orderData.gifts || 'basic_gift',
       branchId: orderData.branchId || null,
       giftPreset: orderData.giftPreset || '',
       giftAccessoryIds: Array.isArray(orderData.giftAccessoryIds) ? orderData.giftAccessoryIds : [],
@@ -1584,6 +1610,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       filteredOrders: viewFilteredOrders,
       isAdmin,
       cloudStatus,
+      dataLoading,
+      loadingStage,
       selectedMonth,
       setSelectedMonth,
       availableMonths,

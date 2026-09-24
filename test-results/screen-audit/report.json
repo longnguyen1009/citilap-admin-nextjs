@@ -1,0 +1,964 @@
+[
+  {
+    "route": "/",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/inventory",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-3xl modal-shell max-h-[90dvh]",
+          "left": 336,
+          "right": 1104,
+          "top": 45,
+          "bottom": 855,
+          "scrollHeight": 808,
+          "clientHeight": 808
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/orders",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-5xl modal-shell max-h-[90dvh]",
+          "left": 208,
+          "right": 1232,
+          "top": 45,
+          "bottom": 855,
+          "scrollHeight": 808,
+          "clientHeight": 808
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/customers",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-md modal-shell max-h-[90dvh]",
+          "left": 496,
+          "right": 944,
+          "top": 269,
+          "bottom": 631,
+          "scrollHeight": 360,
+          "clientHeight": 360
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/payments",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-xl modal-shell max-h-[90dvh]",
+          "left": 432,
+          "right": 1008,
+          "top": 90,
+          "bottom": 810,
+          "scrollHeight": 718,
+          "clientHeight": 718
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/invoices",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/warranty",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "modal-box glass",
+          "left": 340,
+          "right": 1100,
+          "top": 98,
+          "bottom": 802,
+          "scrollHeight": 702,
+          "clientHeight": 702
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/accessories",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/qc",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/repairs",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "repair-modal repair-create",
+          "left": 340,
+          "right": 1100,
+          "top": 199,
+          "bottom": 701,
+          "scrollHeight": 502,
+          "clientHeight": 502
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/suppliers",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/purchases",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/supplier-payments",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/shipments",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/receiving",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/supplier-returns",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "supplier-return-modal create",
+          "left": 340,
+          "right": 1100,
+          "top": 126,
+          "bottom": 774,
+          "scrollHeight": 648,
+          "clientHeight": 648
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/costs",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/reservations",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 380,
+          "right": 1060,
+          "top": 198,
+          "bottom": 702,
+          "scrollHeight": 505,
+          "clientHeight": 505
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/trade-ins",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 380,
+          "right": 1060,
+          "top": 239,
+          "bottom": 661,
+          "scrollHeight": 423,
+          "clientHeight": 423
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/commissions",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 380,
+          "right": 1060,
+          "top": 288,
+          "bottom": 612,
+          "scrollHeight": 323,
+          "clientHeight": 323
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/accounts",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "finance-dialog",
+          "left": 360,
+          "right": 1080,
+          "top": 241,
+          "bottom": 659,
+          "scrollHeight": 411,
+          "clientHeight": 411
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance/cod",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": [
+        {
+          "className": "finance-dialog",
+          "left": 360,
+          "right": 1080,
+          "top": 234,
+          "bottom": 666,
+          "scrollHeight": 425,
+          "clientHeight": 425
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance/receivables",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/payables",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/transactions",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/settings",
+    "width": 1440,
+    "screen": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/inventory",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-3xl modal-shell max-h-[90dvh]",
+          "left": 16,
+          "right": 374,
+          "top": 12,
+          "bottom": 832,
+          "scrollHeight": 818,
+          "clientHeight": 818
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/orders",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-5xl modal-shell max-h-[90dvh]",
+          "left": 16,
+          "right": 374,
+          "top": 12,
+          "bottom": 832,
+          "scrollHeight": 818,
+          "clientHeight": 818
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/customers",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-md modal-shell max-h-[90dvh]",
+          "left": 16,
+          "right": 374,
+          "top": 241,
+          "bottom": 603,
+          "scrollHeight": 360,
+          "clientHeight": 360
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/payments",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "app-dialog fixed left-[50%] top-[50%] z-[10001] grid w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-xl max-w-xl modal-shell max-h-[90dvh]",
+          "left": 16,
+          "right": 374,
+          "top": 21,
+          "bottom": 823,
+          "scrollHeight": 800,
+          "clientHeight": 800
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/invoices",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/warranty",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "modal-box glass",
+          "left": 16,
+          "right": 374,
+          "top": 42,
+          "bottom": 802,
+          "scrollHeight": 1038,
+          "clientHeight": 758
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/accessories",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/qc",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/repairs",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "repair-modal repair-create",
+          "left": 12,
+          "right": 378,
+          "top": 101,
+          "bottom": 743,
+          "scrollHeight": 641,
+          "clientHeight": 641
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/suppliers",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/purchases",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/supplier-payments",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/shipments",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "errors": []
+  },
+  {
+    "route": "/receiving",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/supplier-returns",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "supplier-return-modal create",
+          "left": 12,
+          "right": 378,
+          "top": 57,
+          "bottom": 788,
+          "scrollHeight": 731,
+          "clientHeight": 731
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/costs",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/reservations",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 16,
+          "right": 374,
+          "top": 89,
+          "bottom": 755,
+          "scrollHeight": 665,
+          "clientHeight": 665
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/trade-ins",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 16,
+          "right": 374,
+          "top": 90,
+          "bottom": 754,
+          "scrollHeight": 663,
+          "clientHeight": 663
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/commissions",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "salesops-dialog",
+          "left": 16,
+          "right": 374,
+          "top": 180,
+          "bottom": 664,
+          "scrollHeight": 484,
+          "clientHeight": 484
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/accounts",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "finance-dialog",
+          "left": 14,
+          "right": 376,
+          "top": 95,
+          "bottom": 749,
+          "scrollHeight": 647,
+          "clientHeight": 647
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance/cod",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": [
+        {
+          "className": "finance-dialog",
+          "left": 14,
+          "right": 376,
+          "top": 127,
+          "bottom": 717,
+          "scrollHeight": 583,
+          "clientHeight": 583
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "/finance/receivables",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/payables",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/finance/transactions",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  },
+  {
+    "route": "/settings",
+    "width": 390,
+    "screen": {
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": []
+    },
+    "form": null,
+    "errors": []
+  }
+]

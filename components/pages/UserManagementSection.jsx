@@ -3,6 +3,7 @@ import { Plus, Edit3, Lock, Trash2, Check, X, UserX, Shield } from 'lucide-react
 import toast from 'react-hot-toast';
 import UserModal from './UserModal';
 import { fetchUsersFromCloud, saveUserToCloud } from '../../lib/apiFetchers';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 export default function UserManagementSection() {
   const [users, setUsers] = useState([]);
@@ -11,6 +12,7 @@ export default function UserManagementSection() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const userPages = useListPagination(users);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -130,7 +132,7 @@ export default function UserManagementSection() {
                     <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>Không có dữ liệu</td>
                   </tr>
                 ) : (
-                  users.map(u => (
+                  userPages.pageRows.map(u => (
                     <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '0.875rem' }}>
                       <td style={{ padding: '12px', fontWeight: 500, color: '#1e293b' }}>{u.name}</td>
                       <td style={{ padding: '12px', color: '#475569' }}>{u.email}</td>
@@ -191,6 +193,7 @@ export default function UserManagementSection() {
                 )}
               </tbody>
             </table>
+            <ListPagination {...userPages} />
           </div>
         )}
       </div>

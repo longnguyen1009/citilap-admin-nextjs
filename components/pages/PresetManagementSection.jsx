@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePresetConfigs } from '../../lib/useFieldOptions';
 import { Type, Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 export default function PresetManagementSection() {
   const { presets, addPreset, removePreset } = usePresetConfigs();
@@ -37,6 +38,7 @@ export default function PresetManagementSection() {
   };
 
   const entries = Object.entries(presets || {});
+  const presetPages = useListPagination(entries);
 
   return (
     <div style={{
@@ -164,7 +166,7 @@ export default function PresetManagementSection() {
                   <td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>Chưa có cấu hình gợi ý nào</td>
                 </tr>
               ) : (
-                entries.map(([k, v]) => (
+                presetPages.pageRows.map(([k, v]) => (
                   <tr key={k} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '0.875rem' }}>
                     <td style={{ padding: '12px', fontWeight: 600, color: '#334155' }}>{k}</td>
                     <td style={{ padding: '12px', color: '#475569' }}>{v}</td>
@@ -187,6 +189,7 @@ export default function PresetManagementSection() {
               )}
             </tbody>
           </table>
+          <ListPagination {...presetPages} />
         </div>
       </div>
     </div>

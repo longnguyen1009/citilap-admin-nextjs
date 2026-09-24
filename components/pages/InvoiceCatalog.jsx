@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { invoiceRequest, invoiceMoney } from '@/lib/invoiceClient';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 const empty = { name: '', sku: '', kind: 'other', price: 0, note: '', address: '', active: true };
 export default function InvoiceCatalog({ type = 'accessories' }) {
@@ -14,6 +15,8 @@ export default function InvoiceCatalog({ type = 'accessories' }) {
   const [busy,setBusy] = useState(false);
   const [search,setSearch] = useState('');
   const branches = type === 'branches';
+  const filteredRows = rows.filter(r=>String(r.name || '').toLowerCase().includes(search.toLowerCase()));
+  const catalogPages = useListPagination(filteredRows, `${type}|${search}`);
   useEffect(() => { let active=true; invoiceRequest('/api/invoice-catalog').then(data => { if(active) setRows(data[type]); }).catch(e => { if(active) setError(e.message); }).finally(() => { if(active) setLoading(false); }); return () => { active=false; }; }, [type]);
   async function save(e) {
     e.preventDefault(); if(busy) return; setBusy(true);
@@ -28,6 +31,6 @@ export default function InvoiceCatalog({ type = 'accessories' }) {
     <label>Giá bán (triệu đồng)<input type="number" min="0" step="0.001" value={draft.price} onChange={e=>setDraft({...draft,price:e.target.value})} /></label><label>Ghi chú<input maxLength={2000} value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} /></label></>}
     <label><input type="checkbox" checked={draft.active} onChange={e=>setDraft({...draft,active:e.target.checked})} /> Đang sử dụng</label><div><button type="submit" className="btn btn-primary" disabled={busy}>{busy?'Đang lưu…':'Lưu'}</button> <button type="button" className="btn btn-outline" disabled={busy} onClick={()=>setDraft(null)}>Hủy</button></div></form>}
     <input aria-label="Tìm danh mục" placeholder="Tìm theo tên…" value={search} onChange={e=>setSearch(e.target.value)} />
-    <div className="invoice-paper invoice-table-scroll"><table className="invoice-table"><thead><tr><th>ID</th><th>Tên</th><th>{branches?'Địa chỉ':'Giá bán'}</th><th>Trạng thái</th><th /></tr></thead><tbody>{rows.filter(r=>String(r.name || '').toLowerCase().includes(search.toLowerCase())).map(r=><tr key={r.id}><td>#{r.id}</td><td>{r.name}</td><td>{branches?r.address:invoiceMoney(r.price)}</td><td>{r.active?'Đang sử dụng':'Ngừng sử dụng'}</td><td>{user?.role==='ADMIN' && <button className="btn btn-sm btn-outline" onClick={()=>setDraft({...empty,...r})}>Sửa</button>}</td></tr>)}</tbody></table>{loading ? <p className="invoice-empty">Đang tải…</p> : !rows.length && <p className="invoice-empty">Chưa có dữ liệu.</p>}</div>
+    <div className="invoice-paper invoice-table-scroll"><table className="invoice-table"><thead><tr><th>ID</th><th>Tên</th><th>{branches?'Địa chỉ':'Giá bán'}</th><th>Trạng thái</th><th /></tr></thead><tbody>{catalogPages.pageRows.map(r=><tr key={r.id}><td>#{r.id}</td><td>{r.name}</td><td>{branches?r.address:invoiceMoney(r.price)}</td><td>{r.active?'Đang sử dụng':'Ngừng sử dụng'}</td><td>{user?.role==='ADMIN' && <button className="btn btn-sm btn-outline" onClick={()=>setDraft({...empty,...r})}>Sửa</button>}</td></tr>)}</tbody></table>{loading ? <p className="invoice-empty">Đang tải…</p> : !filteredRows.length && <p className="invoice-empty">Chưa có dữ liệu.</p>}<ListPagination {...catalogPages}/></div>
   </section>;
 }

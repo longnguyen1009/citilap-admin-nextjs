@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useInventory, parseFlexibleFloat, isReservationActive, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
@@ -10,7 +11,6 @@ import {
   Search,
   Calendar,
   Download,
-  Trash2,
   X,
   Check,
   History,
@@ -134,17 +134,14 @@ export default function Orders() {
     availableMonths,
     addOrder,
     updateOrder, 
-    cancelOrder,
     SALE_ONLINE_OPTIONS,
     SALE_OFFLINE_OPTIONS,
     SHIPPING_METHOD_OPTIONS,
     ORDER_STATUS_OPTIONS,
     PAYMENT_STATUS_OPTIONS,
     DELIVERY_STATUS_OPTIONS,
-    GIFT_OPTIONS,
     ORDER_TYPES,
     PAYMENT_METHODS,
-    addLaptop,
     createCustomer,
     getSelectableLaptops,
     getDepositReferenceLaptops,
@@ -232,7 +229,6 @@ export default function Orders() {
     codAmount: '',
     setupNote: 'Cài cơ bản',
     warranty: '6 tháng',
-    gifts: GIFT_OPTIONS[0],
     branchId: '',
     giftPreset: '',
     giftAccessoryIds: [],
@@ -269,7 +265,6 @@ export default function Orders() {
     customerAddress: 170,
     setupNote: 120,
     warranty: 80,
-    gifts: 145
   });
 
   const orderColumnKeys = useMemo(() => {
@@ -297,7 +292,6 @@ export default function Orders() {
       'customerAddress',
       'setupNote',
       'warranty',
-      'gifts'
     );
 
     return keys;
@@ -391,7 +385,6 @@ export default function Orders() {
       codAmount: '',
       setupNote: 'Cài cơ bản',
       warranty: '6 tháng',
-      gifts: GIFT_OPTIONS[0],
       branchId: '',
       giftPreset: '',
       giftAccessoryIds: [],
@@ -436,7 +429,6 @@ export default function Orders() {
       codAmount: order.codAmount ?? '',
       setupNote: order.setupNote || '',
       warranty: order.warranty || '',
-      gifts: getFormOptionLabel('giftOptions', order.gifts, GIFT_OPTIONS[0]),
       branchId: order.branchId || '',
       giftPreset: order.giftPreset || '',
       giftAccessoryIds: Array.isArray(order.giftAccessoryIds) ? order.giftAccessoryIds : [],
@@ -537,30 +529,10 @@ export default function Orders() {
     const finalSalePrice = parseFlexibleFloat(formData.salePrice);
     const finalCodAmount = parseFlexibleFloat(formData.codAmount);
     
-    // Xử lý Thu cũ đổi mới
-    let tradeInLaptopId = formData.tradeInLaptopId || '';
-    if (getFormOptionKey('orderType', formData.orderType) === 'trade_in' && !tradeInLaptopId && formData.tradeInLaptopName && formData.tradeInPrice) {
-      const result = await addLaptop({
-        name: formData.tradeInLaptopName,
-        serial: formData.tradeInSerial,
-        category: 'Thu Cũ',
-        status: 'available',
-        importPriceVnd: parseFlexibleFloat(formData.tradeInPrice),
-        conditionNote: 'Hàng thu lại từ khách (Trade-in)',
-        location: 'store'
-      });
-      if (!result.ok) {
-        setSaveError(`Không tạo được máy thu cũ: ${result.message}`);
-        return;
-      }
-      tradeInLaptopId = result.laptop.id;
-    }
-
     const orderPayload = {
       ...formData,
       salePrice: finalSalePrice,
-      codAmount: finalCodAmount,
-      tradeInLaptopId
+      codAmount: finalCodAmount
     };
     const result = formData.id
       ? await updateOrder(formData.id, orderPayload, { awaitPersistence: true })
@@ -578,14 +550,6 @@ export default function Orders() {
     } finally {
       savingRef.current = false;
       setIsSaving(false);
-    }
-  };
-
-  // Hủy đơn nhưng vẫn giữ lịch sử để đối soát.
-  const handleDeleteOrder = (ordId) => {
-    if (window.confirm(`Bạn có chắc chắn muốn hủy Đơn hàng #${ordId}? Lịch sử đơn vẫn được giữ để đối soát.`)) {
-      const result = cancelOrder(ordId);
-      if (!result.ok) toast.error(result.message);
     }
   };
 
@@ -679,7 +643,6 @@ export default function Orders() {
         `"${o.trackingCode || ''}"`,
         `"${o.setupNote || ''}"`,
         `"${o.warranty || ''}"`,
-        `"${o.gifts || ''}"`,
         `"${o.shipDate || ''}"`
       ];
       return [...base, ...profit, ...rest];
@@ -1031,10 +994,6 @@ export default function Orders() {
                   Bảo Hành
                   <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'warranty')} title="Kéo để chỉnh rộng hẹp cột Bảo Hành" />
                 </th>
-                <th style={{ width: `${colWidths.gifts}px`, minWidth: `${colWidths.gifts}px`, position: 'relative' }}>
-                  Quà Tặng
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'gifts')} title="Kéo để chỉnh rộng hẹp cột Quà Tặng" />
-                </th>
                 <th style={{ width: '108px', minWidth: '108px' }}>Thao tác</th>
               </tr>
             </thead>
@@ -1092,7 +1051,6 @@ export default function Orders() {
                           style={{ color: '#111827', fontWeight: 700, fontSize: '0.84rem' }}
                           value={noteValue || ''} 
                           onChange={(val) => updateOrder(ord.id, { note: val })} 
-                          placeholder="Ghi chú đơn hàng..."
                         />
                       </td>
 
@@ -1168,6 +1126,8 @@ export default function Orders() {
                               Giữ tới: {new Date(ord.reservationExpiresAt).toLocaleString('vi-VN')}
                             </div>
                           )}
+                          {ord.reservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(ord.reservation.reservationCode)}`}>{ord.reservation.reservationCode} · {ord.reservation.status}</a>}
+                          {ord.tradeIn && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(ord.tradeIn.tradeInCode)}`}>Thu cũ {ord.tradeIn.tradeInCode} · {(Number(ord.tradeIn.agreedValueVnd || 0) / 1000000).toFixed(2)}tr (phi tiền mặt)</a>}
                           {(() => {
                             // Đơn vẫn ở trạng thái cọc nhưng đã hết hạn -> máy đã bị nhả về kho
                             const oKey = labelToKey('orderStatus', ord.orderStatus);
@@ -1202,18 +1162,18 @@ export default function Orders() {
                       </td>
 
                       {/* 7. THANH TOÁN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
-                      <td style={{ width: `${colWidths.paymentStatus}px`, minWidth: `${colWidths.paymentStatus}px` }}>
-                        <select
+                      <td className="order-payment-cell" style={{ width: `${colWidths.paymentStatus}px`, minWidth: `${colWidths.paymentStatus}px` }}>
+                        <span
                           data-testid={`order-payment-cell-${ord.id}`}
-                          className={`sheet-cell-select ${getPaymentStatusBadgeClass(ord.paymentStatus)}`}
-                          style={{ fontWeight: 700, borderRadius: '4px' }}
-                          value={selectValue(getLabel('paymentStatus', ord.paymentStatus))}
-                          onChange={(e) => updateOrder(ord.id, { paymentStatus: toKey('paymentStatus', e.target.value) })}
+                          className={`status-badge ${getPaymentStatusBadgeClass(ord.paymentStatus)}`}
+                          title="Trạng thái được cập nhật từ lịch sử thu tiền"
                         >
-                          {PAYMENT_STATUS_OPTIONS.map(p => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
+                          {getLabel('paymentStatus', ord.paymentStatus)}
+                        </span>
+                        <div className="phase9-cell-meta">Đã thu {Number(ord.amountPaid || 0).toFixed(2)} triệu · COD {Number(ord.codAmount || 0).toFixed(2)} triệu · Còn {Number(ord.debtAmount || 0).toFixed(2)} triệu</div>
+                        {ord.isActive !== false && Number(ord.debtAmount || 0) > 0 && (
+                          <a className="phase9-inline-link" href={`/payments?orderId=${ord.id}`}>Mở thu tiền</a>
+                        )}
                       </td>
 
                       {/* PHƯƠNG THỨC THANH TOÁN */}
@@ -1263,7 +1223,6 @@ export default function Orders() {
                             className="sheet-cell-input"
                             value={ord.shipDate || ''} 
                             onChange={(val) => updateOrder(ord.id, { shipDate: val })} 
-                            placeholder="Ngày gửi..."
                           />
                           {(['viettelpost', 'shopee_spx'].includes(labelToKey('shippingMethod', ord.shippingMethod))) && (
                             <EditableCell 
@@ -1272,7 +1231,6 @@ export default function Orders() {
                               style={{ fontFamily: 'monospace', fontSize: '0.75rem', marginTop: '2px', border: '1px dashed #cbd5e1' }}
                               value={ord.trackingCode || ''} 
                               onChange={(val) => updateOrder(ord.id, { trackingCode: val })} 
-                              placeholder="Nhập mã vận đơn..."
                             />
                           )}
                         </div>
@@ -1293,9 +1251,11 @@ export default function Orders() {
                       {/* 10b. LỢI NHUẬN (TR) — chỉ ADMIN: giá bán - giá nhập của máy */}
                       {user?.role === 'ADMIN' && (
                         <td style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, fontWeight: 800, color: '#059669', textAlign: 'center' }}>
-                          {laptopObj && ord.salePrice
-                            ? Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2))
-                            : '-'}
+                          {ord.salesOperationsSummary?.netContributionAfterCommissionVnd != null
+                            ? <><div>{(Number(ord.salesOperationsSummary.netContributionAfterCommissionVnd) / 1000000).toFixed(2)}tr</div>{ord.commissions?.map((commission, index) => <div className="phase9-cell-meta" key={`${commission.beneficiaryName}-${index}`}>{commission.beneficiaryName || commission.beneficiaryType}: {(Number(commission.amountVnd) / 1000000).toFixed(2)}tr · {commission.status}</div>)}</>
+                            : laptopObj && ord.salePrice
+                              ? Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2))
+                              : '-'}
                         </td>
                       )}
 
@@ -1308,7 +1268,6 @@ export default function Orders() {
                           style={{ fontWeight: 600, color: '#d97706' }}
                           value={ord.depositNote || ''} 
                           onChange={(val) => updateOrder(ord.id, { depositNote: val })} 
-                          placeholder="500k VCB 08/08..."
                         />
                       </td>
 
@@ -1333,7 +1292,6 @@ export default function Orders() {
                           style={{ fontWeight: 600 }}
                           value={ord.customerInfo || customers.find(customer => String(customer.id) === String(ord.customerId))?.name || ''}
                           onChange={(val) => updateOrder(ord.id, { customerInfo: val })}
-                          placeholder="Tên - SĐT..."
                         />
                       </td>
 
@@ -1346,7 +1304,6 @@ export default function Orders() {
                           style={{ color: 'var(--text-muted)' }}
                           value={ord.customerAddress || ''}
                           onChange={(val) => updateOrder(ord.id, { customerAddress: val })}
-                          placeholder="Địa chỉ..."
                         />
                       </td>
 
@@ -1359,7 +1316,6 @@ export default function Orders() {
                           className="sheet-cell-textarea"
                           value={ord.setupNote || ''} 
                           onChange={(val) => updateOrder(ord.id, { setupNote: val })} 
-                          placeholder="Cài đặt..."
                         />
                       </td>
 
@@ -1370,20 +1326,9 @@ export default function Orders() {
                           className="sheet-cell-textarea"
                           value={ord.warranty || ''} 
                           onChange={(val) => updateOrder(ord.id, { warranty: val })} 
-                          placeholder="6 tháng..."
                         />
                       </td>
 
-                      {/* Quà Tặng */}
-                      <td style={{ width: `${colWidths.gifts}px`, minWidth: `${colWidths.gifts}px` }}>
-                        {Array.isArray(ord.giftAccessoryIds) && ord.giftAccessoryIds.length > 0 ? (
-                          <span className="order-gift-summary">{ord.giftPreset === 'full' ? 'Full combo' : ord.giftPreset === 'basic' ? 'Chuột + balo' : `${ord.giftAccessoryIds.length} phụ kiện`}</span>
-                        ) : (
-                          <select className="sheet-cell-select" value={selectValue(getLabel('giftOptions', ord.gifts))} onChange={(e) => updateOrder(ord.id, { gifts: e.target.value })}>
-                            {GIFT_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                        )}
-                      </td>
                       {/* Mở form sửa chi tiết */}
                       <td className="order-actions-cell" style={{ width: '108px', minWidth: '108px', textAlign: 'center' }}>
                         <div className="order-row-actions">
@@ -1398,19 +1343,10 @@ export default function Orders() {
                         </button>
                         <InvoiceLink
                           orderId={ord.id}
+                          invoiceId={ord.invoiceId}
                           issue
                           eligible={['shipping', 'done'].includes(labelToKey('orderStatus', ord.orderStatus, appOptions))}
                         />
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          style={{ color: '#dc2626', borderColor: '#fca5a5' }}
-                          data-testid={`order-cancel-button-${ord.id}`}
-                          onClick={() => handleDeleteOrder(ord.id)}
-                          title="Hủy đơn hàng"
-                        >
-                          <Trash2 size={14} />
-                        </button>
                         </div>
                       </td>
                     </tr>
@@ -1488,14 +1424,27 @@ export default function Orders() {
                     className="form-control" 
                     value={formData.orderType} 
                     onChange={e => setFormData({ ...formData, orderType: e.target.value })}
+                    disabled={Boolean(formData.id) && getFormOptionKey('orderType', formData.orderType) === 'trade_in'}
                   >
-                    {ORDER_TYPES.map(t => (
+                    {ORDER_TYPES.filter(t => (
+                      getFormOptionKey('orderType', formData.orderType) === 'trade_in'
+                      || getFormOptionKey('orderType', t) !== 'trade_in'
+                    )).map(t => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
+                  {!formData.id && (
+                    <Link
+                      href="/trade-ins"
+                      data-testid="order-trade-in-workflow-link"
+                      style={{ display: 'inline-block', marginTop: '0.45rem', fontSize: '0.78rem', color: '#2563eb', fontWeight: 600 }}
+                    >
+                      Thu cũ đổi mới được tạo tại mục Thu cũ
+                    </Link>
+                  )}
                 </div>
                 
-                {getFormOptionKey('orderType', formData.orderType) === 'trade_in' && (
+                {formData.id && getFormOptionKey('orderType', formData.orderType) === 'trade_in' && (
                   <>
                     {formData.tradeInLaptopId && <div className="order-linked-trade-in" style={{ gridColumn: 'span 2' }}>
                       Máy thu cũ đã liên kết: <strong>#{formData.tradeInLaptopId} · {formData.tradeInLaptopName || 'Chưa có tên'}</strong>
@@ -1508,13 +1457,12 @@ export default function Orders() {
                         value={formData.tradeInLaptopName} 
                         onChange={e => setFormData({ ...formData, tradeInLaptopName: e.target.value })} 
                         placeholder="VD: Thinkpad T480s i5..."
-                        required={!formData.tradeInLaptopId}
-                        disabled={Boolean(formData.tradeInLaptopId)}
+                        disabled
                       />
                     </div>
                     <div className="form-group">
                       <label htmlFor="order-trade-in-serial" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Serial Máy Thu Cũ</label>
-                      <input id="order-trade-in-serial" type="text" className="form-control" value={formData.tradeInSerial} onChange={e => setFormData({ ...formData, tradeInSerial: e.target.value })} required={!formData.tradeInLaptopId} disabled={Boolean(formData.tradeInLaptopId)} placeholder="Nhập serial để tránh trùng máy" />
+                      <input id="order-trade-in-serial" type="text" className="form-control" value={formData.tradeInSerial} disabled placeholder="Nhập serial để tránh trùng máy" />
                     </div>
                     <div className="form-group">
                       <label htmlFor="order-field-11" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#10b981' }}>Giá Thu Lại (tr VNĐ)</label>
@@ -1525,8 +1473,7 @@ export default function Orders() {
                         onChange={e => setFormData({ ...formData, tradeInPrice: e.target.value })} 
                         placeholder="VD: 5.5"
                         min="0.01"
-                        required={!formData.tradeInLaptopId}
-                        disabled={Boolean(formData.tradeInLaptopId)}
+                        disabled
                       />
                     </div>
                   </>
@@ -1584,7 +1531,7 @@ export default function Orders() {
                     value={formData.orderStatus} 
                     onChange={e => handleDraftDepositFieldChange('orderStatus', e.target.value)}
                   >
-                    {ORDER_STATUS_OPTIONS.map(st => (
+                    {ORDER_STATUS_OPTIONS.filter(st => formData.id || getFormOptionKey('orderStatus', st) !== 'deposited').map(st => (
                       <option key={st} value={st}>{st}</option>
                     ))}
                   </select>
@@ -1593,16 +1540,10 @@ export default function Orders() {
                 {/* 8. TRẠNG THÁI Thanh toán */}
                 <div className="form-group">
                   <label htmlFor="order-field-15" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Trạng Thái Thanh Toán</label>
-                  <select id="order-field-15"
-                    data-testid="order-payment-status-select"
-                    className="form-control" 
-                    value={formData.paymentStatus} 
-                    onChange={e => handleDraftDepositFieldChange('paymentStatus', e.target.value)}
-                  >
-                    {PAYMENT_STATUS_OPTIONS.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
+                  <div id="order-field-15" data-testid="order-payment-status-readonly" className={`form-control ${getPaymentStatusBadgeClass(formData.id ? formData.paymentStatus : PAYMENT_STATUS_OPTIONS[0])}`} aria-readonly="true">
+                    {formData.id ? formData.paymentStatus : PAYMENT_STATUS_OPTIONS[0]}
+                  </div>
+                  <small className="form-hint">{formData.id ? 'Trạng thái được cập nhật từ lịch sử thu tiền.' : 'Lưu đơn trước, sau đó dùng mục Thu tiền để ghi cọc hoặc thanh toán vào đúng tài khoản.'}</small>
                 </div>
 
                 {/* Phương thức thanh toán (Phase 2) */}
@@ -1668,9 +1609,9 @@ export default function Orders() {
                   <label htmlFor="order-field-20" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#2563eb' }}>Giá Bán Thực Tế (triệu VNĐ)</label>
                   <input id="order-field-20"
                     type="number" 
-                    min="0"
+                    min="0.01"
                         data-testid="order-sale-price-input"
-                    step="any" 
+                    step="0.01"
                     className="form-control" 
                     value={formData.salePrice} 
                     onChange={e => setFormData({ ...formData, salePrice: e.target.value })} 
@@ -1679,34 +1620,11 @@ export default function Orders() {
                   />
                 </div>
 
-                {/* 12. CỌC */}
-                <div className="form-group">
-                  <label htmlFor="order-field-21" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Thông Tin Cọc</label>
-                  <input id="order-field-21"
-                    type="text" 
-                    data-testid="order-deposit-note-input"
-                    className="form-control" 
-                    value={formData.depositNote} 
-                    onChange={e => setFormData({ ...formData, depositNote: e.target.value })} 
-                    placeholder="VD: 500k VCB 08/08"
-                  />
-                </div>
-
-                {getFormOptionKey('paymentStatus', formData.paymentStatus) === 'deposited' && (
+                {formData.id && getFormOptionKey('paymentStatus', formData.paymentStatus) === 'deposited' && (
                   <>
                     <div className="form-group">
-                      <label htmlFor="order-field-22" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Số Tiền Cọc (triệu VNĐ)</label>
-                      <input id="order-field-22"
-                        type="number"
-                        data-testid="order-deposit-amount-input"
-                        step="any"
-                        min="0.01"
-                        className="form-control"
-                        value={formData.depositAmount}
-                        onChange={e => setFormData({ ...formData, depositAmount: e.target.value })}
-                        placeholder="VD: 1"
-                        required
-                      />
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Tiền Cọc Đã Ghi Nhận</label>
+                      <div className="form-control" aria-readonly="true">{Number(formData.depositAmount || 0).toFixed(2)} triệu VNĐ</div>
                     </div>
                     <div className="form-group">
                       <label htmlFor="order-field-23" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Giữ Máy Đến</label>
@@ -1845,21 +1763,6 @@ export default function Orders() {
                     onChange={e => setFormData({ ...formData, warranty: e.target.value })} 
                     placeholder="VD: 6 tháng, 12 tháng..."
                   />
-                </div>
-
-                {/* 16. QUÀ TẶNG */}
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label htmlFor="order-field-31" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>Quà Tặng Kèm</label>
-                  <select id="order-field-31"
-                    data-testid="order-gift-select"
-                    className="form-control" 
-                    value={formData.gifts} 
-                    onChange={e => setFormData({ ...formData, gifts: e.target.value })}
-                  >
-                    {GIFT_OPTIONS.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
                 </div>
 
                 <InvoiceOrderFields value={formData} onChange={setFormData} />

@@ -113,16 +113,6 @@ async function updateOrderStatus(page, order, optionIndex, expectedKey) {
   return result.body.order || result.body;
 }
 
-async function updatePaymentStatus(page, order, optionIndex, expectedKey) {
-  const row = page.locator(`[data-testid="order-row-${order.id}"]`);
-  const selector = row.locator(`[data-testid="order-payment-cell-${order.id}"]`);
-  const result = await waitApi(page, '/api/orders', () => selector.selectOption({ index: optionIndex }));
-  expect(result.status).toBe(200);
-  const body = result.body.order || result.body;
-  expect(body.paymentStatus).toBe(expectedKey);
-  return body;
-}
-
 async function addSettingOption(page, groupKey, optionKey) {
   await page.goto('http://localhost:3000/settings', { waitUntil: 'networkidle' });
   await page.locator(`[data-testid="option-collapse-toggle-${groupKey}"]`).click();
@@ -179,15 +169,10 @@ test('run CitiLap full flow iteration', async ({ page }) => {
 
     const prepared = await updateOrderStatus(page, order, 2, 'prepared');
     expect(prepared.laptopLocked).toBe(true);
-    const paid = await updatePaymentStatus(page, prepared, 3, 'paid');
-    // Payment status is user-selected; changing it does not fabricate a payment.
-    expect(paid.paymentStatus).toBe('paid');
-    expect(paid.amountPaid).toBe(prepared.amountPaid ?? 0);
-    expect(paid.debtAmount).toBe(prepared.debtAmount ?? paid.salePrice);
-
     await page.goto('http://localhost:3000/orders', { waitUntil: 'networkidle' });
     await expect(page.locator(`[data-testid="order-row-${order.id}"]`)).toBeVisible();
-    await expect(page.locator(`[data-testid="order-payment-cell-${order.id}"]`)).toHaveValue('\u0110\u00c3 THANH TO\u00c1N');
+    await expect(page.locator(`[data-testid="order-payment-cell-${order.id}"]`)).toContainText(/CHƯA THANH TOÁN/i);
+    await expect(page.locator(`[data-testid="order-row-${order.id}"] a[href="/payments?orderId=${order.id}"]`)).toBeVisible();
     expect(failures).toEqual([]);
   } finally {
     await cleanupIteration(prefix, optionKey);

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, User, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, User, LogIn, AlertCircle, LoaderCircle } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -35,7 +35,6 @@ export default function Login() {
       setError(result.message || 'Sai email hoặc mật khẩu');
       setIsSubmitting(false);
     } else {
-      setIsSubmitting(false);
       router.replace('/');
     }
   };
@@ -75,7 +74,7 @@ export default function Login() {
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="off" aria-busy={isSubmitting}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'block', marginBottom: '6px' }}>
               Email
@@ -87,6 +86,9 @@ export default function Login() {
               }} />
               <input
                 type="email"
+                name="citilap-login-email"
+                autoComplete="off"
+                disabled={isSubmitting}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="admin@citilap.com"
@@ -114,6 +116,9 @@ export default function Login() {
               }} />
               <input
                 type="password"
+                name="citilap-login-password"
+                autoComplete="new-password"
+                disabled={isSubmitting}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -156,9 +161,10 @@ export default function Login() {
               transition: 'all 0.2s',
             }}
           >
-            <LogIn size={16} />
-            {isSubmitting ? 'Đang đăng nhập...' : 'Đăng Nhập'}
+            {isSubmitting ? <LoaderCircle className="app-spinner" size={17} /> : <LogIn size={16} />}
+            {isSubmitting ? 'Đang xác thực và tải hồ sơ…' : 'Đăng Nhập'}
           </button>
+          {isSubmitting && <p className="login-progress" role="status">Đang chuẩn bị dữ liệu vận hành, vui lòng chờ…</p>}
         </form>
 
         {/* Mock login toggle */}

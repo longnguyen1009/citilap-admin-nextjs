@@ -9,7 +9,7 @@ const ORDER_AUDIT_FIELDS = [
   'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId', 'requestedLaptopId',
   'salePrice', 'depositAmount', 'depositNote', 'codAmount', 'creditCardFee',
   'tradeInLaptopId', 'customerId', 'customerInfo', 'customerNote', 'customerAddress', 'trackingCode',
-  'shipDate', 'setupNote', 'warranty', 'gifts', 'branchId', 'giftPreset', 'giftAccessoryIds', 'reservationExpiresAt'
+  'shipDate', 'setupNote', 'warranty', 'branchId', 'giftPreset', 'giftAccessoryIds', 'reservationExpiresAt'
 ];
 
 export async function GET(request) {
@@ -25,8 +25,36 @@ export async function GET(request) {
 
   if (!data) return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
 
-  const filteredData = isAdmin ? data : filterSensitiveFields(data, SENSITIVE_ORDER_KEYS);
-  return NextResponse.json(filteredData);
+  const db = getSupabaseAdminClient();
+  const orderIds = data.map(item => Number(item.id)).filter(Number.isFinite);
+  const [{ data: reservations }, { data: tradeIns }, summaryResult, commissionsResult, { data: invoices }] = orderIds.length ? await Promise.all([
+    db.from('reservations').select('reservation_code,order_id,status,reserved_at,expires_at,converted_at').in('order_id', orderIds),
+    db.from('trade_ins').select('trade_in_code,order_id,status,agreed_value_vnd').in('order_id', orderIds),
+    isAdmin ? db.from('order_sales_operations_summary').select('*').in('order_id', orderIds) : Promise.resolve({ data: [] }),
+    isAdmin ? db.from('commissions').select('order_id,beneficiary_type,beneficiary_name,commission_type,amount_vnd,status').in('order_id', orderIds).neq('status', 'CANCELLED') : Promise.resolve({ data: [] }),
+    db.from('invoices').select('id,order_id').in('order_id', orderIds)
+  ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  const byOrder = rows => new Map((rows || []).map(item => [String(item.order_id), keysToCamel(item)]));
+  const reservationByOrder = byOrder(reservations);
+  const tradeInByOrder = byOrder(tradeIns);
+  const summaryByOrder = byOrder(summaryResult.data);
+  const invoiceByOrder = new Map((invoices || []).map(item => [String(item.order_id), item.id]));
+  const commissionsByOrder = new Map();
+  for (const item of commissionsResult.data || []) {
+    const key = String(item.order_id);
+    commissionsByOrder.set(key, [...(commissionsByOrder.get(key) || []), keysToCamel(item)]);
+  }
+  const base = isAdmin ? data : filterSensitiveFields(data, SENSITIVE_ORDER_KEYS);
+  return NextResponse.json(base.map(item => ({
+    ...item,
+    reservation: reservationByOrder.get(String(item.id)) || null,
+    tradeIn: tradeInByOrder.get(String(item.id)) || null,
+    invoiceId: invoiceByOrder.get(String(item.id)) || null,
+    ...(isAdmin ? {
+      salesOperationsSummary: summaryByOrder.get(String(item.id)) || null,
+      commissions: commissionsByOrder.get(String(item.id)) || []
+    } : {})
+  })));
 }
 
 export async function POST(request) {
@@ -37,13 +65,79 @@ export async function POST(request) {
 
   try {
     const rawPayload = await request.json();
-    const protectedCostFields = ['costSnapshotVnd', 'grossProfitSnapshotVnd', 'directCostSnapshotVnd', 'netContributionSnapshotVnd', 'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt'];
+    const protectedCostFields = ['costSnapshotVnd', 'grossProfitSnapshotVnd', 'directCostSnapshotVnd', 'netContributionSnapshotVnd', 'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt', 'tradeInCreditVnd'];
     const isNewOrder = !(rawPayload?.id && /^\d+$/.test(String(rawPayload.id)) && Number(rawPayload.id) > 0);
     if (isNewOrder && protectedCostFields.some((key) => rawPayload?.[key] !== undefined && rawPayload?.[key] !== null && rawPayload?.[key] !== '')) {
       return NextResponse.json({ error: 'Snapshot giá vốn chỉ được hệ thống tạo khi chốt bán.' }, { status: 400 });
     }
     for (const key of protectedCostFields) delete rawPayload[key];
     const body = sanitizePayload(rawPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
+    const isLegacyTradeInType = value => {
+      const normalized = String(value || '').trim().toLowerCase();
+      return normalized === 'trade_in' || normalized.includes('trade-in') || normalized.includes('thu cũ');
+    };
+
+    if (isNewOrder) {
+      if (isLegacyTradeInType(body.orderType) || body.tradeInLaptopId) {
+        return NextResponse.json({
+          error: 'Hãy tạo hồ sơ tại mục Thu cũ để thực hiện kiểm tra, báo giá và QC đúng quy trình.'
+        }, { status: 400 });
+      }
+      const openingCash = Math.max(Number(body.amountPaid || 0), Number(body.depositAmount || 0));
+      const requestedPaymentStatus = String(body.paymentStatus || 'unpaid').toLowerCase();
+      if (!(Number(body.salePrice) > 0)) {
+        return NextResponse.json({ error: 'Giá bán phải lớn hơn 0.' }, { status: 400 });
+      }
+      if (String(body.orderStatus || '').toLowerCase() === 'deposited') {
+        return NextResponse.json({
+          error: 'Không đặt trạng thái Đã cọc khi tạo đơn. Hãy lưu đơn rồi ghi nhận tiền tại mục Thu tiền.'
+        }, { status: 400 });
+      }
+      if (openingCash > 0 || ['paid', 'deposited', 'refunded'].includes(requestedPaymentStatus)) {
+        return NextResponse.json({
+          error: 'Hãy tạo đơn trước, sau đó ghi nhận tiền cọc hoặc thanh toán tại mục Thu tiền để chọn đúng tài khoản nhận.'
+        }, { status: 400 });
+      }
+      body.amountPaid = 0;
+      body.depositAmount = 0;
+      body.debtAmount = Number(body.salePrice || 0);
+      body.paymentStatus = requestedPaymentStatus === 'cod' ? 'cod' : 'unpaid';
+    }
+
+    const persistedId = body.id && /^\d+$/.test(String(body.id)) && Number(body.id) > 0;
+    let oldData = null;
+    let action = 'CREATE';
+    if (persistedId) {
+      const adminClient = getSupabaseAdminClient();
+      const { data } = await adminClient.from('orders').select('*').eq('id', body.id).single();
+      if (data) {
+        oldData = data;
+        action = 'UPDATE';
+        if (!isAdmin) {
+          const now = new Date();
+          const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+          if (oldData.month_key && oldData.month_key !== currentMonth) {
+            return NextResponse.json({ error: 'Bạn chỉ được sửa đơn hàng trong tháng hiện tại.' }, { status: 403 });
+          }
+        }
+      }
+    }
+    // This value can only originate from the accepted trade-in workflow.
+    body.tradeInCreditVnd = Number(oldData?.trade_in_credit_vnd || 0);
+    // Once an order exists, payment status is derived from the payment ledger,
+    // refunds, COD workflow, and trade-in credit. Editing ordinary order fields
+    // must never rewrite that financial state.
+    if (persistedId && oldData) {
+      if (isLegacyTradeInType(body.orderType) && !isLegacyTradeInType(oldData.order_type)) {
+        return NextResponse.json({ error: 'Không thể chuyển đơn thường sang loại thu cũ. Hãy dùng mục Thu cũ.' }, { status: 400 });
+      }
+      if (isLegacyTradeInType(oldData.order_type)) body.orderType = oldData.order_type;
+      body.tradeInLaptopId = oldData.trade_in_laptop_id || null;
+      body.paymentStatus = oldData.payment_status;
+      body.amountPaid = Number(oldData.amount_paid || 0);
+      body.depositAmount = Number(oldData.deposit_amount || 0);
+      body.debtAmount = Number(oldData.debt_amount || 0);
+    }
 
     // P0.4: Trả lỗi nếu non-admin gửi profitVnd
     if (!isAdmin && rawPayload?.profitVnd !== undefined && rawPayload.profitVnd !== null && rawPayload.profitVnd !== '') {
@@ -65,26 +159,6 @@ export async function POST(request) {
       }
     } else if (!body.laptopId || Number(body.salePrice) <= 0) {
       body.profitVnd = 0;
-    }
-
-    const persistedId = body.id && /^\d+$/.test(String(body.id)) && Number(body.id) > 0;
-    let oldData = null;
-    let action = 'CREATE';
-    if (persistedId) {
-      const adminClient = getSupabaseAdminClient();
-      const { data } = await adminClient.from('orders').select('*').eq('id', body.id).single();
-      if (data) {
-        oldData = data;
-        action = 'UPDATE';
-        // FIX-03: SALES chỉ được sửa order trong tháng hiện tại
-        if (!isAdmin && oldData) {
-          const now = new Date();
-          const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-          if (oldData.month_key && oldData.month_key !== currentMonth) {
-            return NextResponse.json({ error: 'Bạn chỉ được sửa đơn hàng trong tháng hiện tại.' }, { status: 403 });
-          }
-        }
-      }
     }
 
     // FIX: Kiểm tra laptop có đang bị đơn hàng khác giữ/bán không
@@ -133,6 +207,24 @@ export async function POST(request) {
         if (!requestedLaptop || requestedLaptop.is_active !== true || !['available', 'deposited'].includes(requestedLaptop.status)) {
           return NextResponse.json({ error: `Laptop chưa sẵn sàng để giữ/bán (trạng thái: ${requestedLaptop?.status || 'không xác định'}).` }, { status: 409 });
         }
+      }
+    }
+
+    const reservationTargets = [...new Set([body.laptopId, body.requestedLaptopId]
+      .filter(value => /^\d+$/.test(String(value)))
+      .map(Number))];
+    if (reservationTargets.length) {
+      const adminClient = getSupabaseAdminClient();
+      const { data: activeReservations, error: reservationError } = await adminClient
+        .from('reservations')
+        .select('reservation_code,order_id,laptop_id')
+        .in('laptop_id', reservationTargets)
+        .eq('status', 'ACTIVE')
+        .gt('expires_at', new Date().toISOString());
+      if (reservationError) throw new Error(reservationError.message);
+      const conflict = activeReservations?.find(item => String(item.order_id || '') !== String(body.id || ''));
+      if (conflict) {
+        return NextResponse.json({ error: `Laptop đang được giữ bởi ${conflict.reservation_code}.` }, { status: 409 });
       }
     }
 

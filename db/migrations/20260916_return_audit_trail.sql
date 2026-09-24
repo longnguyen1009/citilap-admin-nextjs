@@ -44,7 +44,7 @@ BEGIN
     payment_status, payment_method, delivery_status, shipping_method, laptop_id,
     sale_price, deposit_amount, deposit_note, cod_amount, amount_paid, debt_amount,
     credit_card_fee, profit_vnd, trade_in_laptop_id, customer_id, customer_info,
-    customer_address, tracking_code, ship_date, setup_note, warranty, gifts,
+    customer_address, tracking_code, ship_date, setup_note, warranty,
     laptop_locked, reservation_expires_at, cancel_reason, cancelled_at,
     returned_at, return_reason, is_active, month_key, created_at, updated_at
   ) VALUES (
@@ -55,7 +55,7 @@ BEGIN
     v_input.cod_amount, v_input.amount_paid, v_input.debt_amount, v_input.credit_card_fee,
     v_input.profit_vnd, v_input.trade_in_laptop_id, v_input.customer_id,
     v_input.customer_info, v_input.customer_address, v_input.tracking_code,
-    v_input.ship_date, v_input.setup_note, v_input.warranty, v_input.gifts,
+    v_input.ship_date, v_input.setup_note, v_input.warranty,
     v_input.laptop_locked, v_input.reservation_expires_at, v_input.cancel_reason,
     v_input.cancelled_at, v_input.returned_at, v_input.return_reason,
     v_input.is_active, v_input.month_key, v_input.created_at, v_input.updated_at
@@ -229,7 +229,6 @@ BEGIN
     ship_date = v_next.ship_date,
     setup_note = v_next.setup_note,
     warranty = v_next.warranty,
-    gifts = v_next.gifts,
     laptop_locked = v_next.laptop_locked,
     reservation_expires_at = v_next.reservation_expires_at,
     cancel_reason = v_next.cancel_reason,

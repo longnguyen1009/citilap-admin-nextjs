@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { requireUser } from '@/lib/apiAuth';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
+import { ALLOWED_OPTION_GROUPS, isExtensibleOptionGroup, isSystemOptionGroup } from '@/lib/optionPolicy';
 
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
@@ -28,6 +29,15 @@ export async function POST(request) {
   if (!groupKey || !optionKey || !label) {
     return NextResponse.json({ error: 'group_key, option_key và label là bắt buộc' }, { status: 400 });
   }
+  if (!ALLOWED_OPTION_GROUPS.includes(groupKey)) {
+    return NextResponse.json({ error: 'Nhóm tùy chọn không được hỗ trợ' }, { status: 400 });
+  }
+  if (!isExtensibleOptionGroup(groupKey)) {
+    return NextResponse.json({ error: 'Nhóm trạng thái hệ thống chỉ cho phép đổi tên hiển thị và thứ tự.' }, { status: 400 });
+  }
+  if (!/^[a-z0-9][a-z0-9_-]{0,79}$/i.test(optionKey)) {
+    return NextResponse.json({ error: 'option_key chỉ gồm chữ, số, gạch dưới hoặc gạch ngang và tối đa 80 ký tự' }, { status: 400 });
+  }
   if (label.length > 120) {
     return NextResponse.json({ error: 'label không được quá 120 ký tự' }, { status: 400 });
   }
@@ -48,7 +58,7 @@ export async function POST(request) {
       group_key: groupKey,
       option_key: optionKey,
       label,
-      is_active: payload.is_active ?? true,
+      is_active: payload.is_active === undefined ? true : payload.is_active === true || payload.is_active === 'true',
       sort_order: payload.sort_order ?? 0
     }])
     .select()
@@ -84,6 +94,14 @@ export async function PUT(request) {
     .maybeSingle();
   if (previousError) return NextResponse.json({ error: previousError.message }, { status: 500 });
   if (!previous) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
+  if (isSystemOptionGroup(previous.group_key)) {
+    if (payload.option_key !== undefined && String(payload.option_key).trim() !== previous.option_key) {
+      return NextResponse.json({ error: 'Không thể đổi mã của tùy chọn hệ thống.' }, { status: 400 });
+    }
+    if (payload.is_active !== undefined && !(payload.is_active === true || payload.is_active === 'true')) {
+      return NextResponse.json({ error: 'Không thể vô hiệu hóa tùy chọn hệ thống.' }, { status: 400 });
+    }
+  }
 
   const updates = { updated_at: new Date().toISOString() };
   if (payload.option_key !== undefined) {
@@ -163,6 +181,9 @@ export async function DELETE(request) {
     .maybeSingle();
   if (previousError) return NextResponse.json({ error: previousError.message }, { status: 500 });
   if (!previous) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
+  if (isSystemOptionGroup(previous.group_key)) {
+    return NextResponse.json({ error: 'Không thể xóa tùy chọn hệ thống.' }, { status: 400 });
+  }
   const { error } = await supabase
     .from('app_options')
     .delete()

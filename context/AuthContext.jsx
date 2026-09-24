@@ -25,8 +25,15 @@ export const AuthProvider = ({ children }) => {
   const loadingProfileRef = React.useRef(false);
 
   const loadUserProfile = async (client, authUser) => {
-    // Nếu đang load cho cùng user → bỏ qua (tránh race condition login + onAuthStateChange)
-    if (loadingProfileRef.current === authUser.id) return;
+    // signInWithPassword và onAuthStateChange có thể đến gần như cùng lúc.
+    // Lời gọi sau phải chờ profile đang tải thay vì điều hướng khi user còn null.
+    if (loadingProfileRef.current === authUser.id) {
+      const startedAt = Date.now();
+      while (loadingProfileRef.current === authUser.id && Date.now() - startedAt < 15000) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      return Boolean(lastUserRef.current?.id === authUser.id);
+    }
     loadingProfileRef.current = authUser.id;
 
     try {
@@ -44,14 +51,14 @@ export const AuthProvider = ({ children }) => {
         loadingProfileRef.current = false;
         setUser(null);
         setLoading(false);
-        return;
+        return false;
       } else if (!profile.is_active) {
         await client.auth.signOut();
         lastUserRef.current = null;
         loadingProfileRef.current = false;
         setUser(null);
         setLoading(false);
-        return;
+        return false;
       } else {
         newUser = {
           id: authUser.id,
@@ -67,14 +74,17 @@ export const AuthProvider = ({ children }) => {
         lastUserRef.current = newUser;
         setUser(newUser);
       }
+      return true;
     } catch (err) {
       console.error('Lỗi load user profile:', err);
       await client.auth.signOut().catch(() => {});
       lastUserRef.current = null;
       setUser(null);
+      return false;
+    } finally {
+      loadingProfileRef.current = false;
+      setLoading(false);
     }
-    loadingProfileRef.current = false;
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -129,11 +139,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await client.auth.signInWithPassword({ email, password });
       if (error) {
+        setLoading(false);
         return { ok: false, message: error.message };
       }
       // Chờ profile load xong để user có giá trị trước khi navigate
       if (data.session?.user) {
-        await loadUserProfile(client, data.session.user);
+        const profileReady = await loadUserProfile(client, data.session.user);
+        if (!profileReady) return { ok: false, message: 'Không thể tải hồ sơ người dùng hoặc tài khoản đã bị khóa.' };
       }
       return { ok: true };
     } catch (err) {
@@ -235,7 +247,15 @@ export const AuthProvider = ({ children }) => {
       activateUser,
       changeUserPassword,
     }}>
-      {!loading && children}
+      {loading ? (
+        <div className="auth-loading-screen" role="status" aria-live="polite">
+          <div className="auth-loading-card">
+            <span className="route-loading-mark"><span /></span>
+            <strong>Đang khôi phục phiên làm việc</strong>
+            <p>Đang xác thực tài khoản CitiLap…</p>
+          </div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   );
 };

@@ -6,12 +6,15 @@ import toast from 'react-hot-toast';
 import { Modal } from '../ui/modal';
 import { Button } from '@/components/ui/button';
 import InvoiceLink from '../InvoiceLink';
+import ListPagination, { useListPagination } from '../ui/ListPagination';
+import { useSubmission } from '@/lib/useSubmission';
 
 export default function Customers() {
   const { customers, createCustomer, updateCustomer } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', phone: '', address: '' });
+  const submission = useSubmission();
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) return customers;
@@ -28,6 +31,7 @@ export default function Customers() {
     withPhone: customers.filter(c => c.phone).length,
     withAddress: customers.filter(c => c.address).length,
   }), [customers]);
+  const customerPages = useListPagination(filteredCustomers, searchTerm);
 
   const openAdd = () => {
     setFormData({ id: null, name: '', phone: '', address: '' });
@@ -41,6 +45,8 @@ export default function Customers() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    return submission.run(async () => {
+    try {
     let result;
     if (formData.id) {
       result = await updateCustomer(formData.id, { name: formData.name, phone: formData.phone, address: formData.address });
@@ -52,6 +58,10 @@ export default function Customers() {
       return;
     }
     setIsModalOpen(false);
+    } catch (error) {
+      toast.error(error.message || 'Không thể lưu khách hàng. Vui lòng thử lại.');
+    }
+    });
   };
 
   return (
@@ -141,7 +151,7 @@ export default function Customers() {
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map(c => (
+                customerPages.pageRows.map(c => (
                   <tr key={c.id} data-testid={`customer-row-${c.id}`}>
                     <td style={{ textAlign: 'center', fontWeight: 700, color: '#2563eb' }}>{c.id}</td>
                     <td><strong style={{ fontSize: '0.9rem' }}>{c.name}</strong></td>
@@ -167,10 +177,11 @@ export default function Customers() {
             </tbody>
           </table>
         </div>
+        <ListPagination {...customerPages} />
       </div>
 
       {/* MODAL */}
-      <Modal open={isModalOpen} onOpenChange={setIsModalOpen} title={formData.id ? 'Cập Nhật Khách Hàng' : 'Thêm Khách Hàng Mới'} maxWidth="max-w-md">
+      <Modal open={isModalOpen} onOpenChange={open => { if (!submission.pending) setIsModalOpen(open); }} title={formData.id ? 'Cập Nhật Khách Hàng' : 'Thêm Khách Hàng Mới'} maxWidth="max-w-md">
         <form onSubmit={handleSave} style={{ display: 'grid', gap: '14px' }}>
           <div className="form-group">
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>
@@ -214,8 +225,8 @@ export default function Customers() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
             <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>Hủy</Button>
-            <Button type="submit" data-testid="customer-save-button" variant="default" size="sm">
-              {formData.id ? <><Edit2 size={14}/> Lưu</> : <><UserPlus size={14}/> Thêm mới</>}
+            <Button type="submit" disabled={submission.pending} data-testid="customer-save-button" variant="default" size="sm">
+              {submission.pending ? 'Đang lưu…' : formData.id ? <><Edit2 size={14}/> Lưu</> : <><UserPlus size={14}/> Thêm mới</>}
             </Button>
           </div>
         </form>

@@ -35,9 +35,10 @@ Chụp ảnh thông báo lỗi.
 ## Kịch bản 4 — Thêm order (đơn hàng)
 ```
 Điều hướng đến trang Orders (Đơn hàng). Click "Thêm đơn".
-Chọn 1 laptop vừa tạo, điền salePrice = 25000000, depositAmount = 5000000,
-khách hàng = tạo mới hoặc chọn có sẵn, orderStatus = "new".
-Lưu. Chụp ảnh. Xác nhận đơn tạo thành công, profitVnd được tính tự động.
+Chọn 1 laptop vừa tạo, điền giá bán theo đơn vị triệu VNĐ, khách hàng = tạo mới
+hoặc chọn có sẵn, orderStatus = "new". Lưu đơn, sau đó mở liên kết "Mở thu tiền"
+và ghi nhận 5.000.000 VND vào đúng tài khoản nhận. Chụp ảnh. Xác nhận đơn tạo
+thành công, trạng thái/công nợ chỉ thay đổi sau khi khoản thu được ghi sổ.
 ```
 
 ## Kịch bản 5 — Settings / Formula
@@ -73,7 +74,7 @@ Chụp ảnh hành vi.
 ## Kịch bản 9 — Error / Edge cases
 ```
 - Reload trang khi đang ở giữa form → dữ liệu có bị mất không?
-- Tạo order với depositAmount > salePrice → kỳ vọng lỗi validation.
+- Gửi payload tạo order có opening cash/depositAmount → kỳ vọng API từ chối và hướng dẫn dùng mục Thu tiền.
 - Tạo laptop với batteryHealth = 150 → kỳ vọng lỗi (0-100).
 - Click logout → có về được trang Login không?
 ```

@@ -16,7 +16,7 @@ export default function InvoiceOrderFields({ value, onChange }) {
   return <fieldset className="invoice-order-fields">
     <legend>Chi nhánh & phụ kiện trên hóa đơn</legend>
     {error && <p role="alert" className="invoice-error">{error}</p>}
-    <label>Chi nhánh bán hàng<select value={value.branchId || ''} onChange={e => onChange({ ...value, branchId: e.target.value })}>
+    <label>Chi nhánh bán hàng *<select required value={value.branchId || ''} onChange={e => onChange({ ...value, branchId: e.target.value })}>
       <option value="">Chọn chi nhánh</option>{catalog.branches.filter(b => b.active || String(b.id) === String(value.branchId)).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
     </select></label>
     <label>Combo quà tặng<select value={value.giftPreset || ''} onChange={e => choose(e.target.value)}>

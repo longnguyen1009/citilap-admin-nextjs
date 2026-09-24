@@ -1,5 +1,7 @@
 # CitiLap Admin — Operations Expansion Specification
 
+> **Định hướng hiện hành — 2026-09-22:** Tạm hoãn CRM. Sau 9 phase đã phát triển, ưu tiên chạy thử vận hành thực tế, đơn giản hóa quy trình và cải tiến UI theo [kế hoạch chạy thử](docs/operations-pilot-plan.md). Kế hoạch này được ưu tiên hơn các chỉ dẫn bắt đầu Phase 1 và roadmap CRM bên dưới. Kết quả hoàn tất Phase 8–9 được ghi ở mục 109–110; lịch sử spec được giữ để tra cứu, không phải yêu cầu triển khai thêm ngay.
+
 > Tài liệu yêu cầu cải tiến hệ thống dựa trên hiện trạng CitiLap Admin ngày 2026-09-17.
 > Mục tiêu: mở rộng từ hệ thống quản lý tồn kho/đơn hàng thành hệ thống quản trị vận hành toàn diện cho mô hình kinh doanh laptop cũ nhập từ Trung Quốc.
 
@@ -3927,3 +3929,252 @@ Final validation on 2026-09-22: local finance DB verification 11/11, live Phase 
 transactional E2E 186/186, ESLint pass, production build pass, and QA accounts
 deactivated. TEST data is intentionally retained for auditability. Phase 8 is
 complete and the repository is ready to begin Phase 9 in a separate batch.
+
+---
+
+# 110. Phase 9 Sales Operations Completion — 2026-09-22
+
+Phase 9 adds authoritative reservation, trade-in and commission workflows using
+the additive migrations below. All three were applied successfully to Dev
+Supabase:
+
+```text
+db/migrations/20261010_phase9_sales_operations.sql
+db/migrations/20261011_phase9_sales_operations_hardening.sql
+db/migrations/20261012_phase9_commission_ledger_constraint_repair.sql
+```
+
+Reservations enforce one active hold per laptop, expiry and conversion rules,
+idempotency, row locking, and a database gate that prevents competing order
+assignment. Trade-ins require an immutable inspection snapshot before valuation,
+reduce customer obligation as non-cash credit, and create exactly one locked
+waiting-QC inventory asset, acquisition cost and stock movement. Commissions are
+generated from committed order snapshots, become immutable after approval, and
+post exactly one VND cash-ledger outflow when paid. Commission expense does not
+mutate laptop landed cost or the order's pre-commission snapshot.
+
+Active operational routes are `/reservations`, `/trade-ins` and `/commissions`,
+served through the role-checked `/api/sales-operations` endpoint. Inventory now
+shows active reservation metadata and ADMIN-only trade-in lineage. Orders show
+reservation/trade-in links and payment composition; ADMIN additionally receives
+commission details and authoritative net contribution after commission. SALES,
+TECH, TECHNICAL and STAFF responses do not receive ADMIN financial summaries.
+
+The ADMIN management dashboard includes deterministic Phase 9 alerts for active
+reservations expiring within two hours, draft trade-ins awaiting inspection and
+pending commissions. Drill-down targets preserve the relevant status filter.
+`qa/live-phase9-action-center-e2e.mjs` verifies appearance, resolution,
+ADMIN-only visibility and drill-down targets in 10/10 checks.
+
+Final live verification passed `qa/live-phase9-e2e.mjs` 57/57 and
+`qa/sales-operations-db-verification.mjs` 20/20. The repaired legacy PGlite
+regression harness now applies `20260907_payments_finance_ledger.sql`; procurement
+and landed-cost regressions both pass without a synthetic payments table. Phase
+7 remains 27/27, Phase 8 Action Center remains 11/11 and Phase 8 transactional
+E2E remains 186/186.
+
+Browser role verification used real Supabase sessions. ADMIN sees the Sales
+Operations Action Center and all three modules. SALES can access reservations and
+trade-ins but not commissions. TECH and TECHNICAL can access trade-ins without
+valuation fields and are denied reservations/commissions. STAFF has no Phase 9
+navigation and direct URLs render access denied. Finance navigation remains
+hidden for every non-ADMIN role. All temporary browser QA accounts were
+deactivated after verification.
+
+Final static gates: ESLint pass, production build pass and `git diff --check`
+pass (line-ending warnings only). Phase 9 is complete; Phase 10 has not started.
+
+---
+
+# 111. Operations Pilot — 2026-09-22
+
+CRM is deferred while the owner runs the current seed data through real operating
+flows. The active plan and first audit are in:
+
+```text
+docs/operations-pilot-plan.md
+docs/pilot-core-flow-audit.md
+```
+
+The first core-flow audit found that legacy order normalization, payment UI and
+invoice snapshots did not include Phase 9 `trade_in_credit_vnd` when calculating
+customer debt. The application fix and additive repair migration are:
+
+```text
+db/migrations/20261013_phase9_trade_in_obligation_repair.sql
+qa/trade-in-obligation-db-verification.mjs
+```
+
+The migration enforces `sale price - cash paid - trade-in credit` at the database
+boundary and resynchronizes affected invoice payment snapshots. The owner applied
+it to Dev Supabase on 2026-09-22. The extended Phase 9 live suite then passed
+64/64, including an ordinary order edit followed by a customer payment on an
+accepted trade-in order.
+
+PILOT-04 now treats payment status and monetary totals on an existing order as
+ledger-owned fields. The order table and edit form display payment status as
+read-only, the Orders API preserves the existing financial fields during ordinary
+edits, and the order row links directly to a preselected payment form. New-order
+cash entry is also removed: a new order starts unpaid, then deposits and balances
+are recorded through the Payments workflow with an explicit VND cash account.
+The API rejects opening cash, paid/deposited/refunded status, deposited order
+status, and zero sale price on creation. Inventory labels now distinguish RMB,
+VND/RMB exchange rate, and million-VND selling/import prices. Pilot browser smoke
+passes 20/20 checks for these form guards and the core navigation.
+
+PILOT-05 added `qa/pilot-data-load-measure.mjs`. On the development server,
+the `/orders` baseline was 62 API requests / 171,852 response bytes because
+each eligible order queried its invoice separately and the global context loaded
+unrelated payments, stock movements, warranty and settings. Orders now include
+`invoiceId` in their list response and the context loads route-specific datasets.
+The same measurement is 6 requests / 85,741 bytes: 90.3% fewer requests and
+50.1% fewer response bytes. Development Strict Mode accounts for the remaining
+duplicate `/api/months` request; production runs that effect once.
+
+Route-aware loading retains the datasets each page consumes. `/warranty` measures
+7 requests / 86,160 bytes. `/payments` measures 9 requests / 172,384 bytes and no
+longer downloads inventory; its development-only duplicate financial-record and
+cash-account effects remain visible for later production comparison. Inventory
+status/category/location/charger and order branch selection are now marked as
+required in the UI, matching downstream operational and invoice requirements.
+
+PILOT-06 removed the legacy trade-in shortcut from new orders. That shortcut
+created an immediately available laptop without a trade-in dossier, inspection,
+receiving or QC. New trade-ins must use `/trade-ins`; the Orders API rejects new
+legacy trade-in payloads and preserves any historical `trade_in_laptop_id` during
+ordinary edits. Existing legacy orders remain readable. The obsolete
+`preserveExplicitPaymentStatus` post-RPC update was also removed so the payment
+ledger, order RPCs and `enforce_order_customer_obligation()` remain authoritative.
+
+The second PILOT-06 pass found that the active-reservation trigger did not
+actually compare `requested_laptop_id`, allowing a requested-only order to bypass
+an ACTIVE reservation. `20261014_phase9_reservation_integrity_repair.sql` covers
+both order laptop references, rejects reservation conflicts with another order,
+and requires any linked deposit payment to be a positive non-refund payment from
+the same order. The Orders and Sales Operations APIs apply the same guards.
+Commission has no parallel legacy write path: Phase 9 `commissions` plus its
+account transaction is authoritative. Legacy browser scenarios now treat payment
+status as read-only and direct users to `/payments`.
+
+Migration `20261014` was applied to Dev Supabase on 2026-09-22. The extended
+Phase 9 live suite passed 70/70, including requested-only reservation conflicts
+and cross-order deposit-payment rejection. PILOT-07 is now active. The original
+54 active `TEST-*` cash accounts were made inactive without deleting history;
+four zero-balance PILOT accounts now provide clean VND/CNY choices. The current
+aggregate snapshot is `docs/pilot-baseline-latest.json` and the operator checklist
+is `docs/pilot-run-log.md`.
+
+The first controlled PILOT-07 core rehearsal passed 17/17 using isolated fixture
+`PILOT-CORE-MUCVKQH9`: order 129, laptop 173 and invoice 5. A 2m deposit plus
+10.5m balance produced a paid order with zero debt, a sold/locked laptop, two
+ledger payments, a settled invoice snapshot and exactly 12.5m VND in the pilot
+bank account. The first attempt exposed an opening-balance timestamp later than
+the payment date's start of day; `qa/prepare-pilot-seed.mjs` now uses a stable
+2026-01-01 opening boundary for pilot accounts.
+
+The PILOT-07 cancellation/refund rehearsal found that payment and inventory
+behavior was correct, but a cancelled/refunded order remained in customer
+receivables because the Phase 8 view only checked `is_active` and positive debt.
+`20261015_cancelled_receivable_repair.sql` excludes cancelled, returned and
+refunded orders from both the receivable list and financial summary. The owner
+applied it on 2026-09-22; the isolated rerun passed 16/16 on order 131 and the
+financial DB verification passed 14/14.
+
+The controlled COD rehearsal in `qa/pilot-cod-live.mjs` passed 27/27 on order
+133. Delivery moved the 15m obligation from customer receivables to the carrier
+without posting cash. Concurrent retry of the 10m partial settlement produced
+one settlement and one cash transaction, over-settlement was rejected, and the
+final 5m settlement moved COD to `SETTLED`. The pilot bank balance increased
+exactly 15m from 12.5m to 27.5m with no reconciliation difference. A first
+script attempt stopped after delivery because it queried a nonexistent test-only
+ledger column; its seed fixture remains order 132 for audit visibility.
+
+The warranty pilot on order 133 passed 21/21 application checks. It exposed that
+the prior API validated order and laptop existence independently, allowing a
+warranty to reference an order for another physical device and allowing parallel
+open cases. The Warranty API now enforces the order/device relationship,
+immutable source device, known statuses, resolved-date semantics and one open
+case. `20261016_warranty_integrity_repair.sql` added the equivalent trigger and a
+partial unique index at the database boundary and was applied on 2026-09-22.
+Direct verification then found a PostgreSQL null-semantics defect in its order
+link check: `NOT IN` became unknown when one order laptop reference was null.
+The test-only invalid row was removed. The additive
+`20261017_warranty_order_link_null_repair.sql` replaces that comparison with
+null-safe `IS DISTINCT FROM`.
+
+The owner applied `20261017` on 2026-09-23. The final warranty suite passed
+26/26, including direct database rejection and a concurrent open-case race where
+exactly one request succeeded. The winning race fixture was closed afterward.
+
+The Settings pilot passed 21/21. System option groups used by application and
+database semantics can now change labels and ordering but cannot add arbitrary
+keys, rename keys, deactivate or delete them. Extensible catalog groups retain
+normal create/update/deactivate behavior. The formula API returns and stores only
+the three consumed fields (`shippingVnd`, `divisor`, `defaultRate`); the unused
+legacy `currencyUnit` seed property was removed without changing calculations.
+
+The first UI pilot pass inspected the live ADMIN dashboard at desktop and mobile
+sizes. User-facing management labels now use Vietnamese operational language
+instead of internal codes such as `COD_DISPUTED`, `QC exposure`, `cost complete`
+and `legacy`. The sidebar names Shipments as `Vận chuyển TQ–VN`. The extended
+browser smoke suite passed 23/23 across the core routes and both navigation
+layouts; browser console inspection showed no errors.
+
+The second UI pilot pass inspected Inventory and Orders at desktop and mobile
+sizes. Status rows now use light background tints with a stronger left accent,
+keeping workflow state visible while improving the readability of dense inputs
+and financial values. Inventory table and CSV headers explicitly distinguish RMB,
+VND/RMB and million VND. Duplicate filter label IDs were removed so category and
+warehouse location have separate accessible names. Browser smoke passed 25/25;
+lint, the 66-page production build and diff validation also passed.
+
+The third UI pilot pass removed the legacy `financial_records` write path from
+the Payments screen. Operational cash adjustments now direct ADMIN users to the
+Phase 8 account transaction ledger, which is the source used for recorded cash
+balances. Payment tables state their million-VND unit, and Finance translates
+account types, COD states, aging buckets, payable states, directions and
+transaction/reference types into Vietnamese operator labels. Lint, the 66-page
+production build and diff validation passed. The expanded browser smoke could
+not pass its login gate because the Supabase Auth session did not navigate away
+from `/login` within 30 seconds, including after a local dev-server restart; no
+new UI assertion was reached or failed.
+
+The fourth UI pilot pass repaired the login/profile race and added visible
+loading states for sign-in, session recovery and operational route data. Initial
+route APIs are now scheduled in batches of at most two, `/login` no longer
+starts an unnecessary options/month load, and the management dashboard waits
+for the core dataset. A live browser measurement recorded 814 ms to navigation,
+2.37 seconds to dashboard readiness and a maximum of two concurrent local API
+requests. Browser smoke passed 27/27, targeted lint passed, and the 66-page
+production build completed successfully. Chrome's compromised-password dialog
+is owned by Google Password Manager; autocomplete hints reduce accidental
+credential reuse prompts but the seed password must be changed if Chrome still
+flags that credential.
+
+The fifth UI pilot pass compacted shared page headers so operational content
+starts higher in the viewport. The sidebar now identifies the application as
+`KHO CITILAP`, displays the signed-in employee name beneath it and replaces the
+separate Supabase Cloud card with a live database-status icon beside that name.
+A shared 50-record paginator now covers operational and administration lists;
+inventory and orders remain intentionally unpaginated. Finance server pagination
+also uses 50 records per page. Browser smoke passed 30/30, including the new
+sidebar identity and database-state assertions; targeted lint and the 66-page
+production build passed.
+
+
+## Screen audit follow-up (2026-09-23)
+See docs/pilot-screen-audit.md for fixes and evidence: 54 route/viewport checks, 32 create-form openings, 6 UI feedback checks (mocked mutation), targeted lint and production build passed. Detailed edit dialogs, role matrix and persistence checks remain explicitly outstanding.
+
+## Database reset package (2026-09-24)
+
+The owner requested a fresh seed database for June through September 2026.
+`init_full_db.sql` is now generated by `qa/build-db-init.mjs` from the historical
+core plus all 41 migrations through 20261017. It rebuilds public transactionally
+and preserves existing auth users/profile roles. `reseed_data.sql` creates 480
+laptops, 320 orders, 416 payments with matching cash ledger entries and 32 COD
+receivables, evenly distributed across the four months. Known opening inventory
+costs are recorded; procurement lineage intentionally remains LEGACY.
+PGlite validation passed seven groups including repeated reset/seed, profile
+preservation, ledger/debt/stock/cost consistency and dashboard functions.
+Remote Supabase reset has NOT been performed by the agent. Apply init then seed
+as postgres in SQL Editor; see `docs/database-reset-2026.md` for exact scope.

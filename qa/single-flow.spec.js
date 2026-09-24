@@ -100,16 +100,13 @@ test('single CitiLap product and order flow', async ({ page }) => {
   const preparedResult = await waitApi(page, '/api/orders', 'POST', () => row.locator('[data-testid="order-status-cell-' + order.id + '"]').selectOption({ index: 2 }));
   console.log('PREPARED_RESULT=', JSON.stringify(preparedResult));
   await page.waitForTimeout(1200);
-  const paidResult = await waitApi(page, '/api/orders', 'POST', () => row.locator('[data-testid="order-payment-cell-' + order.id + '"]').selectOption({ label: '\u0110\u00c3 THANH TO\u00c1N' }));
-  console.log('PAID_RESULT=', JSON.stringify(paidResult));
-  await page.waitForTimeout(1500);
-
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(700);
   const persistedRow = page.locator('[data-testid="order-row-' + order.id + '"]');
   console.log('PERSISTED_ROW=', JSON.stringify(await persistedRow.innerText().catch(() => 'missing')));
   await expect(persistedRow).toContainText(product.name);
-  await expect(persistedRow.locator('[data-testid="order-payment-cell-' + order.id + '"]')).toHaveValue('\u0110\u00c3 THANH TO\u00c1N');
+  await expect(persistedRow.locator('[data-testid="order-payment-cell-' + order.id + '"]')).toContainText(/CHƯA THANH TOÁN/i);
+  await expect(persistedRow.locator('a[href="/payments?orderId=' + order.id + '"]')).toBeVisible();
   console.log('DIALOGS=', JSON.stringify(dialogs));
   console.log('FAILURES=', JSON.stringify(failures));
 });

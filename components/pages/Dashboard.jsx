@@ -25,14 +25,16 @@ export default function Dashboard() {
     warrantyCases,
     dynamicOptions,
     appOptions,
-    customers
+    customers,
+    dataLoading,
+    cloudStatus
   } = useInventory();
   const { user } = useAuth();
   const [management, setManagement] = useState(null);
   const [managementError, setManagementError] = useState('');
 
   useEffect(() => {
-    if (user?.role !== 'ADMIN') return;
+    if (user?.role !== 'ADMIN' || dataLoading || cloudStatus !== 'connected') return;
     let active = true;
     (async () => {
       try {
@@ -43,7 +45,7 @@ export default function Dashboard() {
       } catch (error) { if (active) setManagementError(error.message); }
     })();
     return () => { active = false; };
-  }, [user?.role]);
+  }, [user?.role, dataLoading, cloudStatus]);
 
   const statusLabels = dynamicOptions?.STATUS_OPTIONS || [];
 
@@ -147,32 +149,37 @@ export default function Dashboard() {
 
       {user?.role === 'ADMIN' && <section className="management-command-center">
         <div className="management-heading">
-          <div><span className="management-kicker">OPERATIONAL CAPITAL VIEW</span><h2>Nhịp vận hành toàn kho</h2><p>Góc nhìn toàn thời gian · không phụ thuộc kỳ đang chọn · không phải số dư tiền mặt</p></div>
+          <div><span className="management-kicker">TOÀN CẢNH VẬN HÀNH</span><h2>Nhịp vận hành toàn kho</h2><p>Góc nhìn toàn thời gian · không phụ thuộc kỳ đang chọn · không phải số dư tiền mặt</p></div>
           {management?.generated_at && <time>Cập nhật {new Date(management.generated_at).toLocaleString('vi-VN')}</time>}
         </div>
         {managementError ? <div className="management-error"><AlertTriangle size={18}/>{managementError}. Hãy áp dụng migration Phase 7.</div> : !management ? <div className="management-loading">Đang tổng hợp dòng vốn và tuổi tồn…</div> : <>
           {management.financial_operations && <section className="management-finance-strip"><div><span>Khách còn nợ</span><strong>{vnd(management.financial_operations.customer_receivable_vnd)} ₫</strong></div><div><span>COD chưa về</span><strong>{vnd(management.financial_operations.cod?.outstanding_vnd)} ₫</strong></div><div><span>Phải trả NCC</span><strong>¥{count(management.financial_operations.supplier_payable_cny)}</strong></div><div><span>NCC phải hoàn</span><strong>¥{count(management.financial_operations.supplier_refund_pending_cny)}</strong></div>{(Number(management.financial_operations.cod?.overdue_vnd)>0||Number(management.financial_operations.cod?.disputed)>0||Number(management.financial_operations.reconciliation_differences)>0)&&<div className="warn"><AlertTriangle size={16}/><span>{Number(management.financial_operations.cod?.overdue_vnd)>0?'COD quá hạn · ':''}{Number(management.financial_operations.cod?.disputed)>0?`${management.financial_operations.cod.disputed} COD tranh chấp · `:''}{Number(management.financial_operations.reconciliation_differences)>0?`${management.financial_operations.reconciliation_differences} tài khoản lệch`:''}</span></div>}</section>}
           {management.financial_operations && <section className="management-finance-strip" aria-label="Financial Action Center">
-            {Object.entries(management.financial_operations.receivable_aging || {}).filter(([key]) => key.startsWith('OVERDUE_')).reduce((sum, [, value]) => sum + Number(value.orders || 0), 0) > 0 && <Link className="warn" href="/finance/receivables"><AlertTriangle size={16}/><span>OVERDUE_CUSTOMER_RECEIVABLE</span></Link>}
-            {Number(management.financial_operations.cod?.overdue_vnd) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>OVERDUE_COD</span></Link>}
-            {Number(management.financial_operations.cod?.disputed) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>COD_DISPUTED</span></Link>}
-            {Number(management.financial_operations.reconciliation_differences) > 0 && <Link className="warn" href="/finance/accounts"><AlertTriangle size={16}/><span>ACCOUNT_RECONCILIATION_DIFFERENCE</span></Link>}
+            {Object.entries(management.financial_operations.receivable_aging || {}).filter(([key]) => key.startsWith('OVERDUE_')).reduce((sum, [, value]) => sum + Number(value.orders || 0), 0) > 0 && <Link className="warn" href="/finance/receivables"><AlertTriangle size={16}/><span>Công nợ khách đã quá hạn</span></Link>}
+            {Number(management.financial_operations.cod?.overdue_vnd) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>COD đã quá hạn đối soát</span></Link>}
+            {Number(management.financial_operations.cod?.disputed) > 0 && <Link className="warn" href="/finance/cod"><AlertTriangle size={16}/><span>{count(management.financial_operations.cod.disputed)} COD đang tranh chấp</span></Link>}
+            {Number(management.financial_operations.reconciliation_differences) > 0 && <Link className="warn" href="/finance/accounts"><AlertTriangle size={16}/><span>Tài khoản có chênh lệch đối soát</span></Link>}
+          </section>}
+          {management.sales_operations_actions && <section className="management-finance-strip" aria-label="Sales Operations Action Center">
+            {Number(management.sales_operations_actions.reservations_expiring_2h) > 0 && <Link className="warn" href="/reservations?status=ACTIVE&expiring=1"><AlertTriangle size={16}/><span>{count(management.sales_operations_actions.reservations_expiring_2h)} lượt giữ máy sắp hết hạn</span></Link>}
+            {Number(management.sales_operations_actions.trade_ins_waiting_inspection) > 0 && <Link className="warn" href="/trade-ins?status=DRAFT"><AlertTriangle size={16}/><span>{count(management.sales_operations_actions.trade_ins_waiting_inspection)} hồ sơ thu cũ chờ kiểm tra</span></Link>}
+            {Number(management.sales_operations_actions.commissions_pending) > 0 && <Link className="warn" href="/commissions?status=PENDING"><AlertTriangle size={16}/><span>{count(management.sales_operations_actions.commissions_pending)} khoản hoa hồng chờ duyệt</span></Link>}
           </section>}
           <div className="management-stats">
-            <ExposureCard icon={WalletCards} label="Vốn tồn sẵn sàng" value={`${vnd(management.available.known_inventory_cost_vnd)} ₫`} meta={`${count(management.available.units)} máy · ${management.available.cost_complete} cost complete`} tone="emerald"/>
-            <ExposureCard icon={Truck} label="Hàng đang luân chuyển" value={`${count(management.transit.units)} máy`} meta={`Purchase value ${vnd(management.transit.purchase_value_vnd)} ₫`} tone="blue"/>
-            <ExposureCard icon={ShieldCheck} label="QC exposure" value={`${count((management.qc.waiting_qc?.units||0)+(management.qc.qc_in_progress?.units||0)+(management.qc.qc_failed?.units||0))} máy`} meta={`Known cost ${vnd(management.qc.known_cost_vnd)} ₫`} tone="amber"/>
-            <ExposureCard icon={Wrench} label="Repair đang mở" value={`${count(management.repairs.active_jobs)} phiếu`} meta={`${management.repairs.waiting_parts} chờ linh kiện · ${vnd(management.repairs.accumulated_cost_vnd)} ₫`} tone="rose"/>
+            <ExposureCard icon={WalletCards} label="Vốn tồn sẵn sàng" value={`${vnd(management.available.known_inventory_cost_vnd)} ₫`} meta={`${count(management.available.units)} máy · ${management.available.cost_complete} máy đủ giá vốn`} tone="emerald"/>
+            <ExposureCard icon={Truck} label="Hàng đang luân chuyển" value={`${count(management.transit.units)} máy`} meta={`Giá trị mua ${vnd(management.transit.purchase_value_vnd)} ₫`} tone="blue"/>
+            <ExposureCard icon={ShieldCheck} label="Máy cần QC" value={`${count((management.qc.waiting_qc?.units||0)+(management.qc.qc_in_progress?.units||0)+(management.qc.qc_failed?.units||0))} máy`} meta={`Giá vốn đã biết ${vnd(management.qc.known_cost_vnd)} ₫`} tone="amber"/>
+            <ExposureCard icon={Wrench} label="Phiếu sửa đang mở" value={`${count(management.repairs.active_jobs)} phiếu`} meta={`${management.repairs.waiting_parts} chờ linh kiện · ${vnd(management.repairs.accumulated_cost_vnd)} ₫`} tone="rose"/>
             <ExposureCard icon={RotateCcw} label="Nghĩa vụ nhà cung cấp" value={`${count(management.supplier_returns.pending)} phiếu`} meta={`Chờ hoàn ¥${count(management.supplier_returns.refund_pending_rmb)}`} tone="violet"/>
           </div>
 
           <div className="management-grid">
-            <article className="management-panel aging-panel"><header><div><h3><Timer size={18}/> Tuổi tồn bán hàng</h3><p>Chỉ máy available, tính từ thời điểm QC PASS</p></div><div className="cost-quality"><b>{management.available.cost_complete}</b> đủ cost <span>·</span> <b>{management.available.cost_incomplete}</b> thiếu <span>·</span> <b>{management.available.legacy}</b> legacy</div></header><div className="aging-bars">{management.aging.map(bucket=>{const max=Math.max(...management.aging.map(x=>Number(x.units)),1);return <div className="aging-row" key={bucket.bucket_key}><span>{bucket.bucket_label}</span><div><i style={{width:`${Math.max(4,Number(bucket.units)/max*100)}%`}}/></div><strong>{bucket.units} máy</strong><small>{vnd(bucket.landed_cost_value)} ₫ · TB {bucket.average_age||0} ngày</small></div>})}{management.aging.length===0&&<p className="management-empty">Chưa có máy available có timestamp hợp lệ.</p>}</div>{management.available.missing_aging_timestamp>0&&<div className="data-caveat"><AlertTriangle size={15}/>{management.available.missing_aging_timestamp} máy available chưa có available_for_sale_at nên không được đoán tuổi tồn.</div>}</article>
+            <article className="management-panel aging-panel"><header><div><h3><Timer size={18}/> Tuổi tồn bán hàng</h3><p>Chỉ tính máy sẵn sàng bán, từ thời điểm QC đạt</p></div><div className="cost-quality"><b>{management.available.cost_complete}</b> đủ giá vốn <span>·</span> <b>{management.available.cost_incomplete}</b> thiếu <span>·</span> <b>{management.available.legacy}</b> dữ liệu cũ</div></header><div className="aging-bars">{management.aging.map(bucket=>{const max=Math.max(...management.aging.map(x=>Number(x.units)),1);return <div className="aging-row" key={bucket.bucket_key}><span>{bucket.bucket_label}</span><div><i style={{width:`${Math.max(4,Number(bucket.units)/max*100)}%`}}/></div><strong>{bucket.units} máy</strong><small>{vnd(bucket.landed_cost_value)} ₫ · TB {bucket.average_age||0} ngày</small></div>})}{management.aging.length===0&&<p className="management-empty">Chưa có máy sẵn sàng bán có mốc thời gian hợp lệ.</p>}</div>{management.available.missing_aging_timestamp>0&&<div className="data-caveat"><AlertTriangle size={15}/>{management.available.missing_aging_timestamp} máy sẵn sàng bán chưa có ngày bắt đầu bán nên chưa tính tuổi tồn.</div>}</article>
 
-            <article className="management-panel"><header><div><h3><Box size={18}/> Trạng thái vận hành</h3><p>Reserved được derive từ order đang khóa máy</p></div></header><div className="state-ledger">{[['available','Available'],['reserved','Reserved'],['waiting_qc','Waiting QC'],['qc_in_progress','QC in progress'],['qc_failed','QC failed'],['repair','Repair'],['supplier_return_pending','Return pending'],['supplier_returned','Returned'],['sold','Sold']].map(([key,label])=><div key={key}><span>{label}</span><strong>{count(management.state_summary[key])}</strong></div>)}</div><div className="operations-strip"><div><span>QC lâu nhất</span><b>{Math.max(management.qc.waiting_qc?.oldest_age||0,management.qc.qc_in_progress?.oldest_age||0,management.qc.qc_failed?.oldest_age||0)} ngày</b></div><div><span>Repair lâu nhất</span><b>{management.repairs.oldest_age||0} ngày</b></div><div><span>Chờ replacement</span><b>{management.supplier_returns.waiting_replacement||0}</b></div></div></article>
+            <article className="management-panel"><header><div><h3><Box size={18}/> Trạng thái vận hành</h3><p>Máy đang giữ được tính từ đơn hàng còn khóa máy</p></div></header><div className="state-ledger">{[['available','Sẵn sàng bán'],['reserved','Đang giữ'],['waiting_qc','Chờ QC'],['qc_in_progress','Đang QC'],['qc_failed','QC không đạt'],['repair','Đang sửa'],['supplier_return_pending','Chờ trả NCC'],['supplier_returned','Đã trả NCC'],['sold','Đã bán']].map(([key,label])=><div key={key}><span>{label}</span><strong>{count(management.state_summary[key])}</strong></div>)}</div><div className="operations-strip"><div><span>QC lâu nhất</span><b>{Math.max(management.qc.waiting_qc?.oldest_age||0,management.qc.qc_in_progress?.oldest_age||0,management.qc.qc_failed?.oldest_age||0)} ngày</b></div><div><span>Sửa lâu nhất</span><b>{management.repairs.oldest_age||0} ngày</b></div><div><span>Chờ máy thay thế</span><b>{management.supplier_returns.waiting_replacement||0}</b></div></div></article>
           </div>
 
-          <article className="management-panel slow-panel"><header><div><h3><AlertTriangle size={18}/> Action Center · máy chậm bán</h3><p>Warning từ {management.thresholds.warning_days} ngày · Critical từ {management.thresholds.critical_days} ngày</p></div><b>{management.slow_moving.length} ưu tiên</b></header><div className="table-responsive"><table className="management-table"><thead><tr><th>Serial / Model</th><th>Tuổi available</th><th>Landed cost</th><th>Giá bán</th><th>Biên tiềm năng</th><th>Vị trí</th></tr></thead><tbody>{management.slow_moving.map(row=><tr key={row.laptop_id} className={row.age_days>=management.thresholds.critical_days?'critical':'warning'}><td><b>{row.serial||`#${row.laptop_id}`}</b><span>{row.model}</span></td><td><strong>{row.age_days} ngày</strong></td><td>{row.cost_status==='COMPLETE'?`${vnd(row.landed_cost_vnd)} ₫`:row.cost_status}</td><td>{vnd(row.selling_price_vnd)} ₫</td><td>{row.gross_margin_potential_vnd==null?'—':`${vnd(row.gross_margin_potential_vnd)} ₫`}</td><td>{row.location||'—'}</td></tr>)}</tbody></table>{management.slow_moving.length===0&&<p className="management-empty">Không có máy available quá ngưỡng cảnh báo.</p>}</div></article>
+          <article className="management-panel slow-panel"><header><div><h3><AlertTriangle size={18}/> Máy chậm bán cần xử lý</h3><p>Cảnh báo từ {management.thresholds.warning_days} ngày · nghiêm trọng từ {management.thresholds.critical_days} ngày</p></div><b>{management.slow_moving.length} ưu tiên</b></header><div className="table-responsive"><table className="management-table"><thead><tr><th>Serial / Model</th><th>Tuổi tồn</th><th>Giá vốn thực tế</th><th>Giá bán</th><th>Biên tiềm năng</th><th>Vị trí</th></tr></thead><tbody>{management.slow_moving.map(row=><tr key={row.laptop_id} className={row.age_days>=management.thresholds.critical_days?'critical':'warning'}><td><b>{row.serial||`#${row.laptop_id}`}</b><span>{row.model}</span></td><td><strong>{row.age_days} ngày</strong></td><td>{row.cost_status==='COMPLETE'?`${vnd(row.landed_cost_vnd)} ₫`:'Chưa đủ giá vốn'}</td><td>{vnd(row.selling_price_vnd)} ₫</td><td>{row.gross_margin_potential_vnd==null?'—':`${vnd(row.gross_margin_potential_vnd)} ₫`}</td><td>{row.location||'—'}</td></tr>)}</tbody></table>{management.slow_moving.length===0&&<p className="management-empty">Không có máy sẵn sàng bán quá ngưỡng cảnh báo.</p>}</div></article>
         </>}
       </section>}
 

@@ -1,15 +1,20 @@
--- DEV/TEST ONLY: reset business data; preserve auth.users, user_profiles and app_options.
--- Run init_full_db.sql first, or apply all db/migrations to an existing database.
--- 34 laptops (17/17), 20 orders (10/10) for July/August 2026.
--- September 2026 starts empty so month-roll behavior can be tested explicitly.
--- VND monetary columns use MILLION VND; price_rmb/shipping_rmb use RMB.
+-- DESTRUCTIVE TEST RESET: 480 laptops, 320 orders, 416 payments across June-September 2026.
+-- Requires init_full_db.sql or all migrations through 20261017. Preserves auth/profiles and catalogs.
+-- Run as postgres. Monetary order/payment fields are MILLION VND; cash ledger is VND.
 BEGIN;
 SET LOCAL search_path = public, pg_temp;
 TRUNCATE TABLE financial_records, payments, stock_movements, warranty_cases,
-  orders, laptops, customers, activity_logs, app_settings RESTART IDENTITY;
+ orders, laptops, customers, activity_logs, app_settings, cash_accounts,
+ suppliers, purchase_batches, shipments, receiving_sessions, supplier_returns,
+ cost_allocations, trade_ins RESTART IDENTITY CASCADE;
+ALTER SEQUENCE public.laptop_sku_seq RESTART WITH 1;
+INSERT INTO cash_accounts(code,name,account_type,currency,opening_balance,opening_balance_at,created_by) VALUES
+ ('SEED_CASH','Tien mat','CASH','VND',50000000,'2026-06-01T00:00:00+07','Seed'),
+ ('SEED_BANK','Ngan hang','BANK','VND',200000000,'2026-06-01T00:00:00+07','Seed'),
+ ('SEED_CNY','WeChat CNY','WECHAT','CNY',100000,'2026-06-01T00:00:00+07','Seed');
 
 INSERT INTO app_settings (key, value) VALUES
-  ('formula', '{"shippingVnd":400000,"divisor":1000000,"defaultRate":3550,"currencyUnit":"million_vnd"}'::jsonb);
+  ('formula', '{"shippingVnd":400000,"divisor":1000000,"defaultRate":3550}'::jsonb);
 INSERT INTO app_options (group_key, option_key, label, sort_order) VALUES
   ('saleOffline', '1', 'Thắng', 0), ('saleOffline', '2', 'Vương', 1), ('saleOffline', 'other', 'Khác', 2)
 ON CONFLICT (group_key, option_key) DO UPDATE
@@ -18,6 +23,10 @@ SET label = EXCLUDED.label, sort_order = EXCLUDED.sort_order, is_active = true;
 DO $$
 DECLARE
   m INTEGER;
+  k INTEGER;
+  order_id bigint;
+  account uuid;
+  result jsonb;
   n INTEGER;
   model INTEGER;
   month TEXT;
@@ -45,10 +54,11 @@ DECLARE
     'Phạm Quốc Dũng', 'Hoàng Thu Hà', 'Vũ Gia Huy', 'Đặng Ngọc Lan',
     'Bùi Đức Minh', 'Đỗ Phương Nam', 'Ngô Hải Yến'];
 BEGIN
-  FOR m IN 7..8 LOOP
+  FOR m IN 6..9 LOOP
     month := to_char(make_date(2026, m, 1), 'MM/YYYY');
-    FOR n IN 1..17 LOOP
-      model := 1 + (n + m - 8) % 10;
+    FOR n IN 1..120 LOOP
+      k := 1 + (n - 1) % 10;
+      model := 1 + (n + m) % 10;
       imported := make_date(2026, m, 1 + (n - 1) % 5);
       stamp := (imported + TIME '09:00') AT TIME ZONE 'Asia/Ho_Chi_Minh';
       cost := round(((3000 + model * 300 + n * 20 + 50) * 3550 + 400000)::numeric / 1000000, 2);
@@ -67,25 +77,29 @@ BEGIN
         85 + n % 16, 'ok', 'ok', 'ok', 'Máy đã kiểm tra, hoạt động tốt',
         'Bảo hành nhà cung cấp 3 tháng', true, false, stamp, stamp
       ) RETURNING * INTO laptop;
+      -- Direct-import opening inventory has no procurement lineage. Record its
+      -- known landed cost without fabricating purchase/shipment/QC history.
+      PERFORM add_manual_laptop_cost(laptop.id,'OTHER',cost*1000000,
+        'Opening inventory landed cost',stamp,'Seed','seed-opening-cost-'||m||'-'||n);
       INSERT INTO stock_movements (laptop_id, movement_type, from_location, to_location,
         note, performed_by, created_at)
       VALUES (laptop.id, 'NHẬP KHO', 'KHO TQ', 'CH',
         'Nhập kho mẫu tháng ' || month, 'Seed', stamp + INTERVAL '2 days');
 
-      IF n > 10 THEN CONTINUE; END IF;
-      ordered := make_date(2026, m, 6 + n);
+      IF n > 80 THEN CONTINUE; END IF;
+      ordered := make_date(2026, m, 7 + (n - 1) % 14);
       stamp := (ordered + TIME '10:00') AT TIME ZONE 'Asia/Ho_Chi_Minh';
       INSERT INTO customers (name, phone, address, created_at, updated_at)
-      VALUES (buyers[n], '090' || lpad((m * 100 + n)::text, 7, '0'),
+      VALUES (buyers[k], '090' || lpad((m * 100 + n)::text, 7, '0'),
         format('%s Nguyễn Trãi, Hà Nội', 10 + n), stamp, stamp)
       RETURNING * INTO customer;
 
       -- No time-dependent reservations: reruns give the same inventory state.
-      status := CASE WHEN n <= 5 THEN 'done' WHEN n = 6 THEN 'deposited' WHEN n = 7 THEN 'prepared'
-        WHEN n = 8 THEN 'shipping' WHEN n = 9 THEN 'new' ELSE 'cancelled' END;
+      status := CASE WHEN k <= 5 THEN 'done' WHEN k = 6 THEN 'deposited' WHEN k = 7 THEN 'prepared'
+        WHEN k = 8 THEN 'shipping' WHEN k = 9 THEN 'new' ELSE 'cancelled' END;
       sale := CASE WHEN n % 3 = 0 THEN laptop.wholesale_price_vnd ELSE laptop.retail_price_vnd END;
-      paid := CASE WHEN n <= 5 THEN sale WHEN n BETWEEN 6 AND 8 THEN 2 ELSE 0 END;
-      PERFORM public.create_order_with_inventory(jsonb_build_object(
+      paid := CASE WHEN k <= 5 THEN sale WHEN k BETWEEN 6 AND 8 THEN 2 ELSE 0 END;
+      result := public.create_order_with_inventory(jsonb_build_object(
         'created_date', ordered, 'month_key', month,
         'laptop_id', laptop.id, 'customer_id', customer.id,
         'customer_info', customer.name || ' - ' || customer.phone,
@@ -94,56 +108,65 @@ BEGIN
         'note', 'Đơn mẫu tháng ' || month,
         'order_type', CASE WHEN n % 3 = 0 THEN 'wholesale' ELSE 'retail' END,
         'order_status', status,
-        'payment_status', CASE WHEN n <= 5 THEN 'paid' WHEN n IN (6, 7) THEN 'deposited' WHEN n = 8 THEN 'cod' ELSE 'unpaid' END,
+        'payment_status', 'unpaid',
         'payment_method', 'transfer_cash',
-        'delivery_status', CASE WHEN n <= 5 THEN 'delivered' WHEN n = 8 THEN 'shipped' ELSE 'at_store' END,
-        'shipping_method', CASE WHEN n = 8 THEN 'viettelpost' ELSE 'direct_store' END,
-        'sale_price', sale, 'amount_paid', paid,
-        'deposit_amount', CASE WHEN n BETWEEN 6 AND 8 THEN 2 ELSE 0 END,
-        'deposit_note', CASE WHEN n BETWEEN 6 AND 8 THEN 'Cọc chuyển khoản' ELSE NULL END,
-        'cod_amount', CASE WHEN n = 8 THEN sale - paid ELSE 0 END,
-        'profit_vnd', CASE WHEN n = 10 THEN 0 ELSE sale - cost END,
-        'ship_date', CASE WHEN n <= 5 OR n = 8 THEN ordered ELSE NULL END,
-        'tracking_code', CASE WHEN n = 8 THEN 'VTP-' || laptop.serial ELSE NULL END,
-        'setup_note', 'Cài đặt Windows và kiểm tra máy', 'warranty', '6 tháng', 'gifts', 'basic_gift',
-        'cancel_reason', CASE WHEN n = 10 THEN 'Khách đổi nhu cầu' ELSE NULL END,
-        'cancelled_at', CASE WHEN n = 10 THEN stamp ELSE NULL END,
+        'delivery_status', CASE WHEN k <= 5 THEN 'delivered' WHEN k = 8 THEN 'shipped' ELSE 'at_store' END,
+        'shipping_method', CASE WHEN k = 8 THEN 'viettelpost' ELSE 'direct_store' END,
+        'sale_price', sale, 'amount_paid', 0,
+        'deposit_amount', 0,
+        'deposit_note', CASE WHEN k BETWEEN 6 AND 8 THEN 'Cọc chuyển khoản' ELSE NULL END,
+        'cod_amount', CASE WHEN k = 8 THEN sale - paid ELSE 0 END,
+        'profit_vnd', CASE WHEN k = 10 THEN 0 ELSE sale - cost END,
+        'ship_date', CASE WHEN k <= 5 OR k = 8 THEN ordered ELSE NULL END,
+        'tracking_code', CASE WHEN k = 8 THEN 'VTP-' || laptop.serial ELSE NULL END,
+        'setup_note', 'Cài đặt Windows và kiểm tra máy', 'warranty',
+        'cancel_reason', CASE WHEN k = 10 THEN 'Khách đổi nhu cầu' ELSE NULL END,
+        'cancelled_at', CASE WHEN k = 10 THEN stamp ELSE NULL END,
         'is_active', true, 'created_at', stamp, 'updated_at', stamp
       ), 'Seed');
+      order_id := (result->'order'->>'id')::bigint;
+      SELECT id INTO account FROM cash_accounts WHERE code=CASE WHEN n%2=0 THEN 'SEED_BANK' ELSE 'SEED_CASH' END;
+      IF paid > 0 THEN
+        PERFORM record_order_payment_with_account(order_id,2,'deposit','transfer_cash',ordered,
+          'SEED-'||m||'-'||n||'-D','Initial deposit','Seed',account,'seed-'||m||'-'||n||'-deposit');
+        IF paid > 2 THEN
+          PERFORM record_order_payment_with_account(order_id,paid-2,'balance','transfer_cash',ordered+1,
+            'SEED-'||m||'-'||n||'-B','Remaining balance','Seed',account,'seed-'||m||'-'||n||'-balance');
+        END IF;
+      END IF;
+      UPDATE orders SET payment_due_at=(ordered+7)::timestamptz WHERE id=order_id;
+      IF k=8 THEN
+        PERFORM create_cod_receivable(order_id,'Viettel Post','VTP-'||laptop.serial,
+          (ordered+5)::timestamptz,'Sample COD','Seed','seed-cod-'||m||'-'||n);
+      END IF;
     END LOOP;
   END LOOP;
 END;
 $$;
 
--- RPC-generated history belongs to the sample month, not the day this script runs.
-UPDATE payments SET created_at = (payment_date + TIME '10:00') AT TIME ZONE 'Asia/Ho_Chi_Minh';
-UPDATE financial_records SET created_at = (occurred_on + TIME '10:00') AT TIME ZONE 'Asia/Ho_Chi_Minh';
-UPDATE stock_movements s SET created_at = o.created_at FROM orders o WHERE s.order_id = o.id;
-
--- Abort the entire reset if counts, links, or payment history are inconsistent.
+-- Timestamps of append-only ledgers are not rewritten. Business dates are historical.
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM laptops) <> 34 OR (SELECT count(*) FROM orders) <> 20
-    OR EXISTS (
-      SELECT 1 FROM (VALUES ('07/2026', 17), ('08/2026', 17)) expected(month_key, total)
-      WHERE (SELECT count(*) FROM laptops l WHERE l.month_key = expected.month_key) <> expected.total
-         OR (SELECT count(*) FROM orders o WHERE o.month_key = expected.month_key) <> 10
-    ) THEN RAISE EXCEPTION 'Seed counts do not match the requested monthly distribution'; END IF;
-  IF EXISTS (
-    SELECT 1 FROM orders o JOIN laptops l ON l.id = o.laptop_id
-    WHERE o.month_key IS DISTINCT FROM l.month_key
-      OR o.month_key IS DISTINCT FROM to_char(o.created_date, 'MM/YYYY')
-      OR l.month_key IS DISTINCT FROM to_char(l.import_date, 'MM/YYYY')
-      OR o.amount_paid <> COALESCE((SELECT sum(p.amount) FROM payments p WHERE p.order_id = o.id), 0)
-      OR o.amount_paid <> COALESCE((SELECT sum(f.amount) FROM financial_records f WHERE f.order_id = o.id), 0)
-      OR o.debt_amount <> o.sale_price - o.amount_paid
-      OR l.is_locked IS DISTINCT FROM o.laptop_locked
-  ) THEN RAISE EXCEPTION 'Seed relationships or financial totals are inconsistent'; END IF;
-END;
-$$;
+ IF (SELECT count(*) FROM laptops)<>480 OR (SELECT count(*) FROM orders)<>320
+   OR (SELECT count(*) FROM payments)<>416 OR (SELECT count(*) FROM account_transactions)<>416 THEN
+   RAISE EXCEPTION 'Seed counts mismatch';
+ END IF;
+ IF EXISTS(SELECT 1 FROM orders o WHERE
+   o.amount_paid <> coalesce((SELECT sum(CASE WHEN p.payment_type='refund' THEN -p.amount ELSE p.amount END) FROM payments p WHERE p.order_id=o.id),0)
+   OR o.debt_amount <> greatest(o.sale_price-o.amount_paid,0)
+   OR o.month_key <> to_char(o.created_date,'MM/YYYY')) THEN
+   RAISE EXCEPTION 'Payment/debt/month inconsistency';
+ END IF;
+ IF EXISTS(SELECT 1 FROM payments p LEFT JOIN account_transactions t ON t.reference_type='PAYMENT' AND t.reference_id=p.id::text
+   WHERE t.id IS NULL OR t.amount<>p.amount*1000000 OR t.account_id IS DISTINCT FROM p.account_id) THEN
+   RAISE EXCEPTION 'Cash ledger mismatch';
+ END IF;
+ IF EXISTS(SELECT 1 FROM generate_series(6,9) m WHERE
+   (SELECT count(*) FROM laptops WHERE month_key=lpad(m::text,2,'0')||'/2026')<>120 OR
+   (SELECT count(*) FROM orders WHERE month_key=lpad(m::text,2,'0')||'/2026')<>80) THEN
+   RAISE EXCEPTION 'Monthly distribution mismatch';
+ END IF;
+END $$;
 COMMIT;
-
-SELECT l.month_key, l.laptops, o.orders
-FROM (SELECT month_key, count(*) AS laptops FROM laptops GROUP BY month_key) l
-JOIN (SELECT month_key, count(*) AS orders FROM orders GROUP BY month_key) o USING (month_key)
-ORDER BY l.month_key;
+SELECT month_key,count(*) orders,sum(sale_price) sale_million_vnd,sum(amount_paid) paid_million_vnd
+FROM orders GROUP BY month_key ORDER BY month_key;
