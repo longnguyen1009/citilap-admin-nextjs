@@ -1,253 +1,323 @@
 # CitiLap Admin — Toàn bộ logic hệ thống
 
-Ngày rà soát: 2026-09-24. Tài liệu này mô tả code hiện tại trong workspace để onboarding, vận hành và lập kế hoạch tối ưu. Phần cần Supabase/browser live được đánh dấu ở cuối.
+Ngày cập nhật: 25/09/2026
 
-## 1. Kiến trúc và luồng request
+Tài liệu này mô tả kiến trúc, dữ liệu, luồng thao tác và quy tắc nghiệp vụ sau khi đơn giản hóa quy trình nhập hàng.
 
-CitiLap Admin dùng Next.js 16, React 19, Supabase Auth/PostgreSQL và route handler server-side.
+## 1. Nguyên tắc dữ liệu
 
-    Component → apiFetchers → /api/module → requireUser
-      → sanitize/validate → Supabase/RPC → filter dữ liệu nhạy cảm
-      → JSON → page state hoặc InventoryContext
+CitiLap Admin quản lý vòng đời laptop từ mua hàng, nhận hàng, QC, bán, thanh toán đến sau bán hàng.
 
-Các lớp chính:
+> Một máy dự kiến hoặc máy vật lý chỉ có một `laptops.id` từ lúc tạo lô mua đến khi kết thúc vòng đời.
 
-- `app/(dashboard)`: route pages và layout dashboard.
-- `app/api`: auth, validation, query/RPC và response.
-- `components/pages`: màn hình nghiệp vụ, form, modal, bảng.
-- `context/AuthContext`: session, profile, role, login/logout.
-- `context/InventoryContext`: laptops, orders, options, months, customers, payments.
-- `lib/apiFetchers.js`: gọi API từ browser.
-- `lib/apiAuth.js`: `requireUser`, sanitize, validators, sensitive field policy.
-- `lib/services/dbService.js`: mapping camelCase/snake_case và Supabase server operations.
-- `db/migrations`: schema, constraints, trigger, RPC, hardening.
+Hệ thống không tạo thực thể máy trung gian và không tạo laptop mới khi nhận hàng. Mọi module liên kết trực tiếp đến laptop.
 
-Luồng nghiệp vụ tổng quát:
+## 2. Kiến trúc ứng dụng
 
-    Supplier → Purchase batch → Shipment → Receiving → QC
-      → Available inventory → Reservation/Deposit → Order
-      → Delivery → Payment/COD → Completed/Invoice
+```text
+Component/page
+  → Next.js Route Handler /api/*
+  → requireUser + kiểm tra role + validate
+  → Supabase query hoặc PostgreSQL RPC
+  → response đã lọc
+  → state trang / InventoryContext
+```
 
-Nhánh lỗi: QC FAIL → Repair hoặc Supplier Return → Replacement/Refund → QC lại.
+- `app/(dashboard)`: route giao diện.
+- `components/pages`: bảng, form và modal nghiệp vụ.
+- `app/api`: xác thực, phân quyền, validate và gọi database.
+- `context/AuthContext.jsx`: session, profile và role.
+- `context/InventoryContext.jsx`: tháng, laptop, order, option, khách hàng và tải song song.
+- `lib/apiAuth.js`: biên bảo mật API.
+- `lib/apiClient.js`, `lib/services/dbService.js`: chuyển đổi API/DB.
+- `db/migrations/20260925_clean_baseline.sql`: schema chuẩn duy nhất.
 
-## 2. Auth và quyền
+Ứng dụng dùng Next.js App Router, React và Supabase Auth/PostgreSQL.
 
-`AuthContext` khôi phục session Supabase, đọc `user_profiles` theo auth user id, kiểm tra `is_active`, rồi mới cho dashboard hiển thị. Thiếu profile hoặc user bị khóa sẽ bị sign out. Logout xóa state CitiLap trước rồi sign out Supabase.
+## 3. Xác thực và phân quyền
 
-Role được server tin cậy:
+`user_profiles` lưu tên, role và trạng thái hoạt động. Các role chính gồm ADMIN, SALES, TECH/TECHNICAL và STAFF.
 
-| Role | Quyền chính |
-|---|---|
-| `ADMIN` | Toàn hệ thống, tài chính, giá vốn/lợi nhuận, users, cấu hình |
-| `SALES` | Khách hàng, laptop, order, bán hàng trong policy |
-| `TECH` | QC, repair, dữ liệu kỹ thuật |
-| `TECHNICAL` | Quyền kỹ thuật theo allowlist API |
-| `STAFF` | Các route vận hành được allowlist |
+Browser chỉ đọc profile của chính phiên đăng nhập. Dữ liệu nghiệp vụ đi qua Route Handler. Service role chỉ tồn tại phía server và chỉ được dùng sau khi request đã được xác thực, phân quyền và kiểm tra payload.
 
-`requireUser` xác minh Bearer token bằng server client, đọc role từ DB và trả 401/403. Ẩn menu chỉ là UX, không phải security boundary.
+## 4. Trạng thái laptop
 
-`sanitizePayload` chỉ giữ field allowlist, đổi key, strip HTML và chặn field nhạy cảm với non-admin. Validator kiểm tra ID, text length, số không âm, month key, payment totals và phụ kiện.
+| Mã | Hiển thị | Ý nghĩa |
+|---|---|---|
+| `in_transit` | Chưa về hàng | Đã mua, chưa nhận tại Việt Nam |
+| `waiting_qc` | Chờ QC | Đã nhận, chờ hoặc đang QC |
+| `available` | Sẵn hàng | Đạt QC và có thể bán |
+| `reserved` | Đã cọc | Đang được order giữ |
+| `sold` | Đã bán | Đã cam kết bán/giao |
+| `repair` | Đang sửa chữa | Đang có quy trình sửa |
+| `supplier_return` | Back lại NCC | Đang xử lý trả nhà cung cấp |
+| `ignored` | Bỏ qua | Không tham gia vận hành |
 
-## 3. Mô hình dữ liệu
+Tiến trình QC nằm trong `qc_inspections`, không tạo thêm trạng thái laptop. Không còn `laptops.is_locked`; khả năng bán được xác định bằng status, order và guard trong database.
 
-### Danh mục
+Nguồn laptop:
 
-- `user_profiles`: profile Auth, role, active.
-- `app_options`: status, location, nguồn sale, phương thức giao/thu tiền, category, seller.
-- `app_settings`: công thức và cấu hình JSON.
-- `customers`: tên, điện thoại, địa chỉ.
-- `branches`: chi nhánh bán.
-- `accessories`: phụ kiện tặng trên hóa đơn.
+- `SUPPLIER_PURCHASE`: máy mua trực tiếp trong một lô.
+- `SUPPLIER_REPLACEMENT`: máy nhà cung cấp gửi thay thế.
+- `UNKNOWN`: đã nhận nhưng chưa rõ lô hoặc nhà cung cấp.
+- `TRADE_IN`: máy thu cũ đổi mới.
 
-### Laptop
+## 5. Tháng nghiệp vụ
 
-`laptops` là tài sản vật lý: sku, serial, cấu hình, ngày nhập, `month_key`, vị trí, seller, status, lock, giá RMB/VND, battery, charger/component, condition, supplier và `purchase_item_id`.
+`month_key` có dạng `MM/YYYY`.
 
-Serial có unique index không phân biệt hoa thường sau trim. Giá không âm, battery từ 0 đến 100.
+- Máy mới trong lô thuộc tháng mua.
+- Khi nhận, máy giữ tháng mua; ngày nhận thực tế nằm trong `received_at`.
+- Inventory và Orders mặc định tải tháng đang chọn.
+- `ALL` là lựa chọn chủ động.
+- Chuyển tháng dùng nghiệp vụ roll-forward, không sửa tùy tiện lịch sử.
 
-Trạng thái quan trọng:
+## 6. Nhà cung cấp và lô mua
 
-    waiting_qc → qc_in_progress → available hoặc qc_failed
-    qc_failed → repairing → qc_in_progress
-    available → deposited → sold
-    available/deposited → returned_cn hoặc skipped
+Trang `/suppliers` quản lý thông tin nhà cung cấp. Lô mới chỉ chọn nhà cung cấp hoạt động.
 
-Laptop nhận từ shipment bắt đầu `waiting_qc`; chỉ QC PASS mới thành `available`.
+Tại `/purchases`, người dùng nhập nhà cung cấp, ngày mua, tỷ giá, ghi chú và một hoặc nhiều máy. Mỗi máy có tên, phân loại máy, giá RMB, serial tùy chọn, mã vận chuyển Trung Quốc, phí vận chuyển RMB và ghi chú. Tên máy dùng chung `preset_configs` với modal thêm/sửa laptop và mục **Gợi ý Cấu hình Sản phẩm** trong Settings; phân loại máy được chọn từ nhóm `category`.
 
-### Order và ledger
+`POST /api/intake` action `create_batch` gọi `create_direct_purchase_batch`. Trong một transaction, RPC:
 
-`orders` lưu thông tin bán, order/payment/delivery status, laptop vật lý, `requested_laptop_id`, khách hàng, COD, aggregate thanh toán và snapshot bán. `payments` là từng khoản deposit/balance/cod/refund/other. `financial_records` là sổ thu/chi. `cash_accounts` và `account_transactions` là ledger theo tài khoản tiền.
+1. Kiểm tra nhà cung cấp, tỷ giá và các dòng máy.
+2. Tạo `purchase_batches`.
+3. Tạo trực tiếp một `laptops` cho từng máy với trạng thái `in_transit`.
+4. Lưu nguồn, giá và mã vận chuyển ngay trên laptop.
+5. Ghi audit log.
 
-`amount_paid`, `debt_amount`, `deposit_amount`, `cod_amount` được guard/normalize ở DB. COD là số tiền giao đơn vị vận chuyển thu, không mặc định là số đã thu.
+Idempotency key ngăn retry tạo trùng. Chi tiết lô là danh sách laptop thật; không còn `purchase_items`.
 
-### Nhập hàng/logistics
+## 7. Nhận hàng
 
-- `suppliers`: nhà cung cấp.
-- `purchase_batches`: lô mua, tỷ giá, chi phí, destination, status.
-- `purchase_items`: từng máy trong lô, model, serial dự kiến, giá RMB.
-- `supplier_payments`: ledger thanh toán NCC append-only.
-- `shipments`/`shipment_items`: vận chuyển.
-- `receiving_sessions`/`receiving_items`/`receiving_exceptions`: nhận hàng và sai lệch.
+Tại `/receiving`, người dùng tìm bằng mã vận chuyển, serial, model hoặc ID và có thể chọn nhiều máy thuộc nhiều lô.
 
-### QC/hậu mãi
+Action `receive` gọi `receive_direct_laptops`:
 
-- `qc_inspections`/`qc_check_items`: phiên QC và checklist.
-- `repair_jobs`/`repair_parts`/`repair_actions`: sửa chữa.
-- `supplier_returns`: trả NCC, refund/replacement.
-- `warranty_cases`: bảo hành khách hàng.
-- `stock_movements`: lịch sử kho.
-- `activity_logs`: audit append-only.
-- `reservations`, `trade_ins`, `commissions`: bán hàng mở rộng.
-- `invoices`: snapshot order/customer/branch/items/payment.
+1. Khóa các laptop đã chọn.
+2. Chỉ nhận laptop `in_transit`.
+3. Cập nhật thông tin thực nhận trên đúng ID.
+4. Ghi người nhận và ngày nhận do người dùng chọn; giữ nguyên tháng mua của laptop.
+5. Chuyển sang `waiting_qc`.
+6. Ghi stock movement và audit log.
 
-## 4. Inventory và chống bán trùng
+Không còn shipment, shipment item hoặc receiving session.
 
-`order_uses_laptop` xem order đang chiếm laptop khi có laptop id, còn active, chưa refund/cancel/return và status là `prepared`, `shipping`, `done`, hoặc deposit còn hạn.
+### Máy chưa rõ nguồn
 
-`prevent_laptop_double_reservation` khóa advisory theo laptop rồi kiểm tra order khác đang giữ cùng máy. `guard_order_sellable_laptop` chặn laptop `waiting_qc`, `qc_in_progress`, `qc_failed`, inactive hoặc status không bán được.
+Action `create_unknown` tạo laptop nguồn `UNKNOWN` ở `waiting_qc`. Máy có thể QC ngay.
 
-`refresh_laptop_inventory` lock laptop, đồng bộ `orders.laptop_locked`, kiểm tra order committed/locked và requested deposit, rồi đặt laptop về `sold`, `deposited`, `available` hoặc giữ status kỹ thuật.
+Khi xác định được nguồn, action `reconcile` chọn máy UNKNOWN và placeholder `SUPPLIER_PURCHASE` tương ứng. RPC giữ ID của máy đã nhận, gắn dữ liệu nguồn/lô/giá, chuyển các liên kết cần thiết và xóa placeholder. Sau thao tác chỉ còn một laptop cho máy vật lý.
 
-## 5. Logic order và payment
+## 8. Danh sách laptop
 
-### Tạo order
+Trang `/inventory` hiển thị cả máy chưa về, chờ QC, sẵn hàng và các trạng thái sau đó. Người dùng lọc theo tháng, trạng thái, nguồn và từ khóa; xem tên máy, serial, giá, vị trí và lịch sử.
 
-API buộc `salePrice` và `orderType`, không cho client tự mở payment bất hợp lệ. RPC normalize financial fields, set `month_key`, kiểm tra laptop, chống trùng, insert order, tạo payment opening nếu hợp lệ, refresh inventory, ghi stock movement và trả state mới.
+Nút thêm máy điều hướng sang quy trình nhập hàng. Form kỹ thuật không cho sửa status. API inventory cũng chặn tạo laptop tùy ý và chặn đổi trạng thái trực tiếp.
 
-### Sửa order
+## 9. QC
 
-API đọc bản cũ để kiểm tra quyền/tháng và diff audit. RPC lock order/laptop cũ-mới theo thứ tự ổn định, normalize, cập nhật metadata, refresh inventory, ghi movement và trả order/laptop.
+Trang `/qc` lấy laptop `waiting_qc` và lịch sử inspection.
 
-Sau khi bỏ field legacy `gifts`, order chỉ dùng `giftPreset` và `giftAccessoryIds`. Hai migration `20260926_remove_legacy_gifts.sql` và `20260927_patch_order_rpc_after_gifts_removal.sql` phải được apply trên Supabase live.
+- Chỉ máy `waiting_qc` được bắt đầu QC.
+- Mỗi laptop chỉ có một phiên `IN_PROGRESS`.
+- Checklist không được trùng key.
+- PASS không được còn mục FAIL hoặc mục bắt buộc chưa test.
+- PASS chuyển máy sang `available` và ghi `available_for_sale_at`.
+- FAIL giữ máy ở `waiting_qc`; lỗi nằm trong lịch sử QC.
 
-### Ghi payment
+## 10. Sửa chữa
 
-`record_order_payment` lock order/laptop, chặn amount không dương hoặc vượt giá bán, insert payment + financial record, cập nhật paid/debt/status, refresh laptop và movement. Refund không vượt số đã thu.
+Trang `/repairs` quản lý repair job.
 
-### State order
+- Tạo phiếu sửa chuyển laptop sang `repair`.
+- Phiếu lưu lỗi, chẩn đoán, linh kiện, chi phí và người xử lý.
+- Hoàn tất sửa đưa laptop về `waiting_qc` để QC lại.
+- Transition phải đi qua RPC chuyên biệt.
 
-    new → deposited → prepared → shipping → done
-                     ↘ cancelled
-    shipping/done → returned
+## 11. Trả nhà cung cấp
 
-Cancel và return tách bằng reason/timestamp riêng; mutation phải giải phóng inventory và ghi audit.
+`/supplier-returns` quản lý back NCC, hoàn tiền và đổi máy.
 
-## 6. Purchase, shipment, receiving
+- Phiếu liên kết trực tiếp laptop nguồn.
+- Nhà cung cấp được suy ra từ lô của laptop nguồn.
+- Tạo phiếu và chuyển laptop nguồn sang `supplier_return` diễn ra trong cùng transaction; hủy phiếu khôi phục trạng thái trước đó.
+- Máy thay thế là một laptop thật, không qua purchase item.
+- Máy thay thế nhận về đi qua `waiting_qc` và QC bình thường.
+- Kết quả tài chính được ghi vào ledger phù hợp.
 
-Purchase batch yêu cầu supplier active, 1–200 item, model hợp lệ, giá không âm, tỷ giá dương và idempotency key. Subtotal tính từ item. Chỉ DRAFT được sửa; CONFIRMED khóa field tài chính/item bằng trigger.
+## 12. Khách hàng và đơn hàng
 
-Supplier payment lock batch, giới hạn trong công nợ, ghi RMB/VND/tỷ giá/phương thức/reference/idempotency. Ledger append-only; điều chỉnh bằng transaction mới.
+`/customers` quản lý tên, số điện thoại và địa chỉ. Số điện thoại có ràng buộc duy nhất khi có giá trị.
 
-Shipment tạo từ purchase item đã xác nhận, không trùng shipment active. Transition chính:
+`/orders` quản lý đơn với luồng chính:
 
-    DRAFT → READY → IN_TRANSIT → AT_CHINA_WAREHOUSE → IN_TRANSIT_VN
-                                        → PARTIALLY_RECEIVED → RECEIVED
+```text
+new → deposited → prepared → shipping → done
+                    ↘ cancelled / returned
+```
 
-Receiving chỉ nhận shipment đúng trạng thái. Mỗi item đối chiếu serial/model/sạc; item nhận tạo/cập nhật laptop `waiting_qc`, receiving item, stock movement và exception nếu sai. Shipment và batch được cập nhật theo số item nhận. Idempotency chống submit lặp.
+- `laptop_id` là máy vật lý đã phân bổ.
+- `requested_laptop_id` là yêu cầu cọc chưa phân bổ độc quyền.
+- Đơn cọc hợp lệ làm laptop thành `reserved`.
+- Đơn prepared/shipping/done làm laptop thành `sold`.
+- Hủy, trả hoặc hết giữ giải phóng máy nếu không còn order khác.
+- Advisory lock và trigger ngăn hai request giữ cùng laptop.
 
-## 7. QC, repair, warranty
+Form đơn lưu trạng thái, thanh toán, giao hàng, giá, COD, khách hàng, mã vận đơn, cài đặt, bảo hành, chi nhánh và combo phụ kiện. Trường quà cũ `gifts` đã loại; quà dùng `gift_accessory_ids` và `gift_preset`.
 
-Start QC chỉ cho `waiting_qc` hoặc `qc_failed`; một laptop chỉ có một phiên active. Complete QC kiểm tra result, mainboard, charger, cosmetic, checklist không trùng, không PASS khi còn FAIL/NOT_TESTED, mainboard repaired hoặc charger missing. PASS chuyển available; FAIL chuyển qc_failed và giữ lock. Trigger chặn update trực tiếp ngoài RPC.
+## 13. Đặt cọc và Action Center
 
-Repair có thể mở trực tiếp từ QC FAIL. Khi hoàn tất, outcome dẫn đến `RE_QC`, `SUPPLIER_RETURN`, `NO_FURTHER_ACTION` hoặc `OTHER`. Warranty case lưu issue, status, diagnosis, resolution, parts, ngày và repair cost không âm.
+`/reservations` hiển thị giữ máy đang hoạt động, sắp hết hạn và quá hạn. Gia hạn, phân bổ hoặc giải phóng đều qua RPC để đồng bộ order/laptop.
 
-## 8. Finance, COD, invoice
+Action Center gom các ngoại lệ cần xử lý: giữ máy hết hạn, COD quá hạn, công nợ, trade-in và commission theo quyền.
 
-Finance gồm dashboard, accounts, account transactions, financial records, payables, receivables, reconciliation và COD. Mutation tiền ưu tiên RPC atomic + idempotency + actor.
+## 14. Thanh toán khách hàng
 
-COD tạo receivable với carrier/tracking/due date; chỉ khi thực nhận mới ghi payment/account transaction.
+`payments` là ledger append-only. RPC thanh toán:
 
-Issue invoice yêu cầu order active ở `shipping`/`done`, sale price, branch, laptop, customer hợp lệ và đã thu ít nhất một khoản. Invoice lưu snapshot bất biến; sau issue chỉ payment block được sync.
+1. Khóa order.
+2. Kiểm tra số tiền và loại giao dịch.
+3. Ghi payment.
+4. Ghi financial record.
+5. Ghi account transaction nếu có tài khoản.
+6. Đồng bộ đã thu, công nợ và payment status.
+7. Đồng bộ phần thanh toán của invoice đã phát hành.
 
-## 9. Màn hình và thao tác người dùng
+Order/payment dùng triệu VND; account ledger và thành phần giá vốn dùng VND.
 
-- Dashboard `/`: KPI tài sản, máy bán, máy đang giữ, lợi nhuận và việc chờ xử lý.
-- Inventory `/inventory`: chọn tháng, search/filter, resize cột, import/export, add/edit/delete, lịch sử, QC/action.
-- Orders `/orders`: list theo tháng, search/filter, inline edit/modal, tạo order, chọn laptop/khách, link reservation/trade-in/payment/invoice, hủy/trả có xác nhận.
-- Payments `/payments`: chọn order, loại payment, amount, account/method, reference; submit atomic.
-- Customers `/customers`: CRUD tên/phone/address.
-- QC `/qc`: máy chờ QC, checklist, PASS/FAIL, link tạo repair.
-- Repairs `/repairs`: tạo/detail/parts/actions/cancel/complete, link re-QC hoặc trả NCC.
-- Procurement `/purchases`, `/suppliers`, `/supplier-payments`: batch, supplier, confirm/cancel, item, payment.
-- Logistics `/shipments`, `/receiving`: shipment, transition, nhận hàng, exception.
-- Supplier returns `/supplier-returns`: detail, transition, refund/replacement.
-- Warranty `/warranty`: case và chi phí.
-- Finance: accounts, transactions, payables, receivables, COD, summary.
-- Invoices `/invoices`: list, detail, print/PDF.
-- Settings `/settings`: options, formula, presets, users, role.
+## 15. Tài chính
 
-## 10. InventoryContext
+- `/finance/accounts`: tiền mặt, ngân hàng và WeChat.
+- `/finance/transactions`: sổ giao dịch.
+- `/finance/cod`: khoản COD phải thu và đối soát.
+- `/finance/receivables`: phải thu.
+- `/finance/payables`: phải trả.
+- `/finance`: báo cáo tổng hợp.
 
-Context giữ laptops, orders, warrantyCases, payments, customers, appOptions, formulaConfig, selectedMonth, knownMonths, cloudStatus và loading state.
+Ledger có idempotency key và tham chiếu nguồn. Reconciliation tạo dấu vết đối soát thay vì viết lại lịch sử.
 
-Khi user/route/month đổi: kiểm tra session, tính dataset cần theo pathname, lấy auth headers một lần, chạy primary/secondary request song song, tắt loading khi laptops/orders sẵn sàng, gắn metadata khi hoàn tất, lưu localStorage và background refresh khoảng 60 giây. Cross-fetch laptop/order có throttle.
+## 16. Thanh toán nhà cung cấp và giá vốn
 
-## 11. API inventory
+`/supplier-payments` ghi thanh toán cho lô. Công nợ tiền hàng được suy ra từ tổng giá mua của laptop thuộc lô. `supplier_payments` là append-only và có idempotency key.
 
-Các route gồm inventory, orders, payments, customers, warranty, stock-movements, activity-logs, options, settings, users, management-dashboard, financial-operations, cash-accounts, account-transactions, account-reconciliations, financial-records, cod, payables, receivables, purchases, suppliers, supplier-payments, shipments, receiving, qc, repairs, supplier-returns, costs, cost-allocations, invoice-catalog, invoices, months, month-roll, sales-operations và presets.
+`/costs` trình bày giá vốn theo laptop:
 
-Orders/inventory enrichment dùng batch ID và `Promise.all`, tránh N+1 theo từng dòng. Các route detail procurement/logistics/finance cũng chạy query độc lập song song.
+- Giá mua quy đổi.
+- Phí vận chuyển nội địa Trung Quốc trực tiếp.
+- Nâng cấp/phụ kiện và chi phí trực tiếp hợp lệ.
+- Phí vận chuyển Việt Nam hoặc điều chỉnh thủ công hiện hành.
 
-## 12. Đề xuất tối ưu hệ thống và thao tác
+Không còn cost allocation theo shipment và không còn `/api/cost-allocations`. Phí vận chuyển được tách rõ để không cộng hai lần.
 
-### P0 — đo trước
+## 17. Hóa đơn và phụ kiện
 
-1. Thêm timing cho auth, query, enrichment, serialize ở inventory/orders/dashboard/payments.
-2. Đo request count, response bytes, query duration và time-to-primary-data.
-3. Kiểm tra query plan cho month_key, status, payment date, shipment item, activity log.
+Khi phát hành invoice:
 
-### P1 — dữ liệu lớn
+- Order ở trạng thái cho phép.
+- Có laptop, khách hàng, chi nhánh và khoản cọc/thanh toán hợp lệ.
+- Hệ thống lưu snapshot order, khách, laptop, chi nhánh và item.
+- Phần payment tiếp tục đồng bộ từ ledger.
+- Thông tin hàng hóa/khách hàng trong snapshot không đổi theo dữ liệu sau này.
 
-1. Thêm server pagination/cursor cho inventory/orders với limit, cursor, search, status, location, monthKey.
-2. Chỉ dùng `all=true` cho export/QC/repair đối soát.
-3. Trả total/nextCursor/hasMore.
-4. Tạo endpoint lightweight cho laptop/order picker.
+## 18. Bảo hành, trade-in và commission
 
-### P1 — request và payload
+`/warranty` theo dõi case bảo hành trực tiếp theo order/laptop. Trạng thái warranty là trạng thái case, độc lập với tám trạng thái laptop.
 
-1. Gộp options + months thành metadata endpoint có cache ngắn.
-2. Dashboard dùng aggregate RPC có owner duy nhất.
-3. Mutation trả updated state, tránh chuỗi GET refresh.
-4. Rà soát `select('*')`, thay bằng field list theo role sau khi đo.
+`/trade-ins` quản lý nghĩa vụ thu cũ đổi mới. Laptop nhận lại dùng nguồn `TRADE_IN`.
 
-### P1 — giảm click
+`/commissions` quản lý commission của sale và ledger chi trả. Thao tác tài chính đi qua RPC có guard.
 
-1. Receive xong có nút Mở QC.
-2. QC FAIL có nút Tạo phiếu sửa.
-3. Repair complete có Tái QC hoặc Trả NCC.
-4. Tạo reservation/order mở thẳng bước Thu tiền.
-5. Batch receive nhiều máy trong transaction; không batch payment khi thiếu reconciliation.
-6. Default current user/ngày/tỷ giá snapshot/phương thức phổ biến, không default số tiền nguy hiểm.
+## 19. Dashboard
 
-### P2 — React/render
+Dashboard tải song song các nguồn độc lập và dùng RPC tổng hợp phía server. Nội dung gồm:
 
-1. Đo React Profiler trước khi thêm memoization.
-2. Memoize row sau khi có bằng chứng rerender.
-3. Giảm object/array inline ở bảng lớn.
-4. Debounce server search 250–400ms.
-5. Ưu tiên pagination trước virtualization.
+- Số laptop theo tám trạng thái.
+- Máy chờ QC và phiên QC đang chạy.
+- Tuổi tồn kho và giá trị tồn.
+- Repair, supplier return và máy thay thế.
+- Doanh số, lợi nhuận, đã thu, COD, phải thu/phải trả.
+- Action Center.
 
-### P2 — tính đúng và bảo trì
+## 20. Cài đặt và audit
 
-1. Xác định owner cho payment ledger, order aggregate, invoice snapshot, landed cost, commission snapshot.
-2. Contract test cho order/payment/receiving/QC/supplier payment RPC.
-3. Live verification script cho migration, grants, RLS, function signature, trigger, constraint.
-4. Chuẩn hóa lỗi API thành error/code/details/requestId.
-5. Test replay idempotency và hai tab thao tác cùng laptop/order.
+`/settings` quản lý app options, công thức và người dùng theo quyền. Order/payment/warranty có namespace trạng thái riêng; các mã `deposited` hoặc `repairing` trong module con không phải trạng thái laptop cũ.
 
-## 13. Kiểm thử và giới hạn
+`activity_logs` là append-only. Các thao tác quan trọng dùng transaction, row/advisory lock, idempotency key, foreign key, unique index và RPC transition.
 
-## 14. Trạng thái tối ưu P0/P1/P2 đã thực hiện
+## 21. Tải dữ liệu và hiệu năng
 
-- P0: `InventoryContext` dùng chung auth headers, chạy request laptop/order và các request phụ song song, trả loading ngay khi primary data sẵn sàng. Các mutation order song song hóa kiểm tra foreign key và roll-forward song song hóa truy vấn/cập nhật độc lập.
-- P0: inventory, orders và management dashboard có `Server-Timing` (`query`, `queries`, `total`) để đo latency production mà không đổi response body.
-- P1: `GET /api/inventory` và `GET /api/orders` hỗ trợ tùy chọn `limit`/`offset`, trả `total`, `hasMore`; không truyền các tham số này thì contract cũ và dữ liệu đầy đủ được giữ nguyên.
-- P2: ô tìm kiếm ở inventory/orders dùng `useDeferredValue` để trì hoãn phép lọc nặng khi người dùng đang gõ; chưa ép memoization/virtualization vì cần đo React Profiler và payload thực tế trước khi can thiệp vào row rendering.
+- Request độc lập được tải đồng thời.
+- Mặc định chỉ tải cohort tháng hiện tại.
+- Dashboard tổng hợp trong database.
+- Index ưu tiên month, status, reference và ngày.
+- Sau mutation chỉ refresh nguồn liên quan.
+- Retry an toàn nhờ idempotency.
 
-Static: ESLint, `next build`, TypeScript/build routes, `git diff --check`.
+## 22. Schema sạch
 
-Database: apply migration trên clone, kiểm tra grants/RLS, duplicate serial/reservation/idempotency, payment/refund/debt, QC guard, receiving transition.
+Các bảng cũ đã loại:
 
-Browser/E2E: login từng role; Dashboard → Inventory → Order → Payment → Invoice; Purchase → Shipment → Receiving → QC → Available; QC FAIL → Repair → Re-QC/Return; reload sau mutation; hai tab cùng tài sản.
+- `purchase_items`.
+- `shipments`, `shipment_items`.
+- `receiving_sessions`, `receiving_items`, `receiving_exceptions`.
+- `intake_receipts`, `unmatched_received_items`.
+- `cost_allocations`, `cost_allocation_items`.
 
-Kiến trúc, route, mapper, validator, state flow và RPC trong tài liệu được đọc từ repository. Latency production, payload thực, query plan và migration state trên Supabase live vẫn cần chạy riêng.
+Migration lịch sử nằm tại `db/migrations_archive/legacy/`; bootstrap cũ tại `db/migrations_archive/legacy_core.sql`. Chúng không tham gia build reset.
+
+## 23. Reset và triển khai
+
+`qa/build-db-init.mjs` sinh `init_full_db.sql` từ migration đang hoạt động. File init sao lưu/khôi phục profile và thay toàn bộ schema public.
+
+Quy trình:
+
+1. Tạo lại init.
+2. Chạy PGlite kiểm tra schema và seed.
+3. Chạy init bằng quyền postgres trên Supabase.
+4. Chạy seed nếu cần.
+5. Chạy live E2E.
+6. Kiểm tra browser theo role.
+
+Vercel dùng biến môi trường Supabase hiện tại. Service role chỉ cấu hình ở server.
+
+## 24. Kiểm tra
+
+```powershell
+node qa/clean-schema-db-verification.mjs
+node qa/validate-db-reset.mjs
+npm.cmd run lint
+npm.cmd run build
+git diff --check
+```
+
+Sau khi áp dụng schema lên Supabase:
+
+```powershell
+node qa/live-procurement-inventory-e2e.mjs
+node qa/live-full-regression-e2e.mjs
+```
+
+Kết quả local/PGlite không thay thế bằng chứng Supabase live, RLS hoặc browser.
+
+## 25. Đề xuất tối ưu tiếp theo
+
+### P0 — độ đúng dữ liệu
+
+- Áp dụng baseline lên database mục tiêu và chạy live E2E.
+- Mở rộng live mutation test cho order, payment, QC, repair và supplier return.
+- Kiểm tra dữ liệu production trước khi reset để phát hiện constraint/index xung đột.
+
+### P1 — tốc độ thao tác
+
+- Nhận hàng bằng scanner/mã vận chuyển với focus tự động.
+- Bulk receive và báo lỗi theo từng dòng.
+- Cache theo tháng, invalidation theo module.
+- Chỉ refresh vùng dữ liệu bị ảnh hưởng sau mutation.
+
+### P2 — quan sát và báo cáo
+
+- Đo thời gian API/RPC và số query mỗi màn hình.
+- Cảnh báo máy `in_transit` quá lâu, UNKNOWN chưa đối soát và QC tồn.
+- Xuất báo cáo lô mua, chênh lệch nguồn và lịch sử hợp nhất.
+- Tự động hóa browser matrix theo role trên staging.

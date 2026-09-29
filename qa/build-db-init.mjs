@@ -4,6 +4,8 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 // removed so a failed rebuild rolls back the entire schema replacement.
 const body = text => text.replace(/^\uFEFF/, '').replace(/^\s*(BEGIN|COMMIT);\s*$/gm, '');
 const files = (await readdir('db/migrations')).filter(f => f.endsWith('.sql')).sort();
+// Frozen clean-baseline chain runs first; CLI-generated upgrades follow it.
+const upgrades = (await readdir('supabase/migrations')).filter(f => f.endsWith('.sql')).sort();
 const restore = `
 INSERT INTO public.user_profiles(id,name,role,is_active,created_at,updated_at)
 SELECT (data->>'id')::uuid,data->>'name',data->>'role',
@@ -28,8 +30,8 @@ DO $backup$ BEGIN
   END IF;
 END $backup$;
 `;
-sql += body(await readFile('db/bootstrap/legacy_core.sql','utf8'));
 for (const file of files) sql += `\n-- MIGRATION: ${file}\n${body(await readFile(`db/migrations/${file}`,'utf8'))}\n`;
+for (const file of upgrades) sql += `\n-- MIGRATION: ${file}\n${body(await readFile(`supabase/migrations/${file}`,'utf8'))}\n`;
 sql += restore;
 await writeFile('init_full_db.sql',sql);
-console.log(`Built init_full_db.sql with ${files.length} migrations.`);
+console.log(`Built init_full_db.sql with ${files.length + upgrades.length} migrations.`);

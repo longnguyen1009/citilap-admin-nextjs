@@ -1,122 +1,45 @@
 import React, { useState } from 'react';
-import { useInventory } from '../context/InventoryContext';
+import QCDetailsFields from './QCDetailsFields';
+import './pages/qc-quick.css';
 
 export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
-  const { dynamicOptions } = useInventory();
-  const componentOpts = dynamicOptions?.COMPONENT_STATUS_OPTIONS || [];
-  const statusOpts = dynamicOptions?.STATUS_OPTIONS || [];
-  const [status, setStatus] = useState(() => laptop?.status || '');
-  const [serial, setSerial] = useState(() => laptop?.serial || '');
-  const [screenStatus, setScreenStatus] = useState(() => laptop?.screenStatus || componentOpts[0]?.key || 'ok');
-  const [cameraMicStatus, setCameraMicStatus] = useState(() => laptop?.cameraMicStatus || componentOpts[0]?.key || 'ok');
-  const [mainboardStatus, setMainboardStatus] = useState(() => laptop?.mainboardStatus || componentOpts[0]?.key || 'ok');
   const [note, setNote] = useState(() => laptop?.conditionNote || '');
-  const [batteryHealth, setBatteryHealth] = useState(() => laptop?.batteryHealth || 100);
-  const [isLocked, setIsLocked] = useState(() => laptop?.isLocked || false);
   const [partsLog, setPartsLog] = useState('');
+  const [saving, setSaving] = useState(false), [error, setError] = useState('');
+  const [details, setDetails] = useState(() => ({ ...laptop?.qcDetails, serialNumber: laptop?.serial || '', batteryHealth: laptop?.batteryHealth ?? '' }));
 
   if (!isOpen || !laptop) return null;
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true); setError('');
     const updatedPartsHistory = partsLog.trim() 
       ? [...(laptop.partsHistory || []), { date: new Date().toLocaleDateString('vi-VN'), log: partsLog.trim() }]
       : laptop.partsHistory || [];
 
-    onSave(laptop.id, {
-      status,
-      serial,
-      screenStatus,
-      cameraMicStatus,
-      mainboardStatus,
+    try { await onSave(laptop.id, {
       conditionNote: note,
-      batteryHealth: parseFloat(batteryHealth),
-      isLocked,
-      partsHistory: updatedPartsHistory
-    });
+      partsHistory: updatedPartsHistory,
+      qcDetails: details
+    }); } catch (err) { setError(err.message); } finally { setSaving(false); }
   };
 
   return (
-    <div className="modal-backdrop active">
-      <div className="modal-box glass" style={{ maxWidth: '680px' }}>
-        <div className="modal-header">
+    <div className="modal-backdrop active tech-check-backdrop">
+      <div className="modal-box glass tech-check-modal" role="dialog" aria-modal="true">
+        <div className="modal-header tech-check-header">
           <h3>Kiểm Tra Kỹ Thuật (Tech Check) - {laptop.id}</h3>
           <button className="modal-close" type="button" onClick={onClose}>&times;</button>
         </div>
-        <form onSubmit={handleSave}>
-          <div className="modal-body">
+        <form className="tech-check-form" onSubmit={handleSave}>
+          <div className="modal-body tech-check-body">
+            {error && <p role="alert" style={{ color: '#b42318' }}>{error}</p>}
             <div style={{ marginBottom: '15px' }}>
               <strong>Mã máy:</strong> {laptop.name}
             </div>
 
-            {/* Row 1: Serial (1/2) & Trạng thái (1/2) */}
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Serial:</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={serial} 
-                  onChange={e => setSerial(e.target.value)} 
-                  placeholder="Nhập Serial máy..."
-                />
-              </div>
-
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Trạng thái Máy (Sau khi test):</label>
-                <select className="form-control" value={status} onChange={e => setStatus(e.target.value)}>
-                  {statusOpts.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Row 2: Pin, Màn hình, Cam/Mic, Mainboard (Mỗi cái 1/4) */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ margin: 0 }}>Pin (%) *</label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Mật khẩu BIOS / MDM (Máy bị Khóa)">
-                    <input 
-                      type="checkbox" 
-                      checked={isLocked}
-                      onChange={e => setIsLocked(e.target.checked)}
-                    />
-                    <span style={{ color: isLocked ? '#ef4444' : 'inherit', fontWeight: isLocked ? 'bold' : 'normal' }}>
-                      Khóa
-                    </span>
-                  </label>
-                </div>
-                <input 
-                  type="number" 
-                  className="form-control" 
-                  min="0" max="100" 
-                  value={batteryHealth} 
-                  onChange={e => setBatteryHealth(e.target.value)} 
-                  required 
-                />
-              </div>
-
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Màn Hình:</label>
-                <select className="form-control" value={screenStatus} onChange={e => setScreenStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Cam &amp; Mic:</label>
-                <select className="form-control" value={cameraMicStatus} onChange={e => setCameraMicStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Mainboard:</label>
-                <select className="form-control" value={mainboardStatus} onChange={e => setMainboardStatus(e.target.value)}>
-                  {componentOpts.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </div>
-            </div>
+            <QCDetailsFields value={details} onChange={setDetails} />
 
             <div className="form-group" style={{ marginBottom: '15px' }}>
               <label>Ghi chú chung tình trạng máy:</label>
@@ -151,9 +74,9 @@ export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
             </div>
 
           </div>
-          <div className="modal-footer" style={{ marginTop: '20px' }}>
+          <div className="modal-footer tech-check-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Hủy</button>
-            <button type="submit" className="btn btn-primary">Lưu Đánh Giá</button>
+            <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Đang lưu…' : 'Lưu Đánh Giá'}</button>
           </div>
         </form>
       </div>

@@ -250,7 +250,7 @@ export const isInactiveStatus = (status) => {
 export const normalizeLaptopStatus = (status) => {
   if (!status) return D.laptopAvailable;
   const s = String(status).trim();
-  if (s.toLowerCase() === 'bỏ qua' || s.toLowerCase() === 'skipped') return D.laptopSkipped;
+  if (s.toLowerCase() === 'bỏ qua' || s.toLowerCase() === 'ignored') return D.laptopSkipped;
   if (s.toLowerCase().includes('back') && s.toLowerCase().includes('tq')) return D.laptopReturnedCN;
   if (s.toLowerCase().includes('đang sửa') || s.toLowerCase().includes('vỡ') || s.toLowerCase().includes('móp') || s.toLowerCase().includes('bảo hành')) return D.laptopRepairing;
   if (s.toLowerCase().includes('thu hồi') || s.toLowerCase().includes('back tiền')) return D.laptopReturnedCN;
@@ -305,7 +305,7 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
       String(o.requestedLaptopId) === String(laptop.id) && isReservationActive(o, opts)
     ));
     if (hasPhysicalReservation || hasDepositReference) {
-      return { ...laptop, status: 'deposited', isLocked: hasPhysicalReservation };
+      return { ...laptop, status: 'reserved', isLocked: hasPhysicalReservation };
     }
 
     // Dữ liệu orders thường chỉ chứa tháng đang xem. Không tìm thấy order
@@ -317,7 +317,7 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
 
     // Chỉ trả máy về sẵn hàng khi thực sự có order liên kết trong tập dữ liệu
     // và tất cả các order đó đã hủy/trả/hết giữ chỗ.
-    if (['deposited', 'sold'].includes(statusKey)) {
+    if (['reserved', 'sold'].includes(statusKey)) {
       return { ...laptop, status: 'available', isLocked: false };
     }
     return { ...laptop, status: statusKey, isLocked: false };
@@ -341,31 +341,31 @@ export const filterOrdersByMonth = (orders, selectedMonth) => {
 const initialLaptops = [
   { importDate: '01/07/2026', id: '#101', serial: 'SN-LEG5-2023-1001', name: 'Legion 5 2023 R7-7735HS/16GB/512GB/RTX 4060 165Hz', location: 'store', category: '1', conditionNote: 'Máy mới đẹp 99%, test full chức năng OK', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'available', priceRmb: 4800, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 17.617,  profitVnd: 3.383, trackingCode: 'SF1428571001' },
   { importDate: '02/07/2026', id: '#102', serial: 'SN-LEG5-2023-1002', name: 'Legion 5 2023 R7-7840H/16GB/1TB/RTX 4060 2.5K 165Hz', location: 'store', category: '1', conditionNote: 'Đã xuất kho chốt đơn cho khách', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'sold', priceRmb: 5200, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 19.097,  profitVnd: 3.403, trackingCode: 'SF1428571002' },
-  { importDate: '03/07/2026', id: '#103', serial: 'SN-ROG-G513-2003', name: 'Asus ROG Strix G513 2022 R7-6800H/16GB/512GB/RTX 3060 300Hz', location: 'store', category: '2', conditionNote: 'Khách đã cọc 2tr giữ chỗ tại shop', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'deposited', priceRmb: 4300, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 15.842,  profitVnd: 2.658, trackingCode: 'YT9081273003' },
+  { importDate: '03/07/2026', id: '#103', serial: 'SN-ROG-G513-2003', name: 'Asus ROG Strix G513 2022 R7-6800H/16GB/512GB/RTX 3060 300Hz', location: 'store', category: '2', conditionNote: 'Khách đã cọc 2tr giữ chỗ tại shop', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'reserved', priceRmb: 4300, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 15.842,  profitVnd: 2.658, trackingCode: 'YT9081273003' },
   { importDate: '05/07/2026', id: '#104', serial: 'SN-ROG-G513-2004', name: 'Asus ROG Strix G513 2022 R9-6900HX/16GB/1TB/RTX 3070Ti 2K', location: 'wh', category: '2', conditionNote: 'Tồn kho tổng, ngoại hình rất đẹp', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'available', priceRmb: 5100, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 18.682,  profitVnd: 3.318, trackingCode: 'YT9081273004' },
   { importDate: '06/07/2026', id: '#105', serial: 'SN-SCAR-2022-3005', name: 'Asus ROG Strix Scar 15 2022 i9-12900H/32GB/1TB/RTX 307.5K', location: 'store', category: '3', conditionNote: 'Đã bán cho khách HN thanh toán quẹt thẻ', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'sold', priceRmb: 6500, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 23.712,  profitVnd: 3.788, trackingCode: 'ZTO88773005' },
   { importDate: '08/07/2026', id: '#106', serial: 'SN-SCAR-2022-3006', name: 'Asus ROG Strix Scar 17 2022 i9-12900H/32GB/1TB/RTX 3080 240Hz', location: 'wh', category: '3', conditionNote: 'Hàng VIP nguyên bản chưa qua sửa chữa', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'available', priceRmb: 7200, shippingRmb: 70, exchangeRate: 3550, importPriceVnd: 26.295,  profitVnd: 4.205, trackingCode: 'ZTO88773006' },
   { importDate: '10/07/2026', id: '#107', serial: 'SN-ZEP-G14-4007', name: 'Asus ROG Zephyrus G14 2022 R7-6800HS/16GB/512GB/RX 6700S', location: 'store', category: '4', conditionNote: 'Máy mỏng nhẹ cao cấp, pin 95%', chargerStatus: 'with_charger', seller: 'Shop TQ Xiao', status: 'available', priceRmb: 4100, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 15.114,  profitVnd: 2.686, trackingCode: 'SF99814007' },
-  { importDate: '12/07/2026', id: '#108', serial: 'SN-ZEP-G14-4008', name: 'Asus ROG Zephyrus G14 2023 R9-7940HS/16GB/1TB/RTX 4060 QHD+', location: 'wh_cn', category: '4', conditionNote: 'Đang vận chuyển từ kho Trung Quốc về', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'not_imported', priceRmb: 5900, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 21.522,  profitVnd: 3.478, trackingCode: 'SF99814008' },
+  { importDate: '12/07/2026', id: '#108', serial: 'SN-ZEP-G14-4008', name: 'Asus ROG Zephyrus G14 2023 R9-7940HS/16GB/1TB/RTX 4060 QHD+', location: 'wh_cn', category: '4', conditionNote: 'Đang vận chuyển từ kho Trung Quốc về', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'in_transit', priceRmb: 5900, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 21.522,  profitVnd: 3.478, trackingCode: 'SF99814008' },
   { importDate: '14/07/2026', id: '#109', serial: 'SN-LEG5PRO-5009', name: 'Legion 5 Pro 2022 R7-6800H/16GB/512GB/RTX 3060 2.5K 165Hz', location: 'store', category: '5', conditionNote: 'Đã bán thành công gửi COD Hải Phòng', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'sold', priceRmb: 4600, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 16.907,  profitVnd: 2.893, trackingCode: 'STO11225009' },
-  { importDate: '15/07/2026', id: '#110', serial: 'SN-LEG5PRO-5010', name: 'Legion 5 Pro 2022 i7-12700H/16GB/512GB/RTX 3070 2.5K 165Hz', location: 'store', category: '5', conditionNote: 'Khách đặt cọc 3tr chờ lấy cuối tuần', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'deposited', priceRmb: 5000, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 18.327,  profitVnd: 3.173, trackingCode: 'STO11225010' },
+  { importDate: '15/07/2026', id: '#110', serial: 'SN-LEG5PRO-5010', name: 'Legion 5 Pro 2022 i7-12700H/16GB/512GB/RTX 3070 2.5K 165Hz', location: 'store', category: '5', conditionNote: 'Khách đặt cọc 3tr chờ lấy cuối tuần', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'reserved', priceRmb: 5000, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 18.327,  profitVnd: 3.173, trackingCode: 'STO11225010' },
   { importDate: '18/07/2026', id: '#111', serial: 'SN-LEG5PRO-6011', name: 'Legion 5 Pro 2023 R7-7745HX/16GB/1TB/RTX 4060 2.5K 240Hz', location: 'store', category: '6', conditionNote: 'Đã đóng gói gửi ViettelPost chờ thu COD', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'available', priceRmb: 5600, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 20.517,  profitVnd: 3.283, trackingCode: 'SF88996011' },
   { importDate: '20/07/2026', id: '#112', serial: 'SN-LEG5PRO-6012', name: 'Legion 5 Pro 2024 i7-14650HX/16GB/1TB/RTX 4060 2.5K 240Hz', location: 'wh', category: '6', conditionNote: 'Đang chuẩn bị hàng xuất kho nhà xe', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'available', priceRmb: 6100, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 22.292,  profitVnd: 3.608, trackingCode: 'SF88996012' },
-  { importDate: '22/07/2026', id: '#113', serial: 'SN-SLIM7-7013', name: 'Legion Slim 7 2022 R7-6800H/16GB/512GB/RX 6800S 2.5K', location: 'repair', category: '7', conditionNote: 'Lỗi màn giật sọc nhẹ, đang nhờ kỹ thuật kiểm tra', chargerStatus: 'shared_charger', seller: 'Shop TQ Xiao', status: 'repairing', priceRmb: 4500, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 16.532,  profitVnd: 2.968, trackingCode: 'ZTO99117013' },
+  { importDate: '22/07/2026', id: '#113', serial: 'SN-SLIM7-7013', name: 'Legion Slim 7 2022 R7-6800H/16GB/512GB/RX 6800S 2.5K', location: 'repair', category: '7', conditionNote: 'Lỗi màn giật sọc nhẹ, đang nhờ kỹ thuật kiểm tra', chargerStatus: 'shared_charger', seller: 'Shop TQ Xiao', status: 'repair', priceRmb: 4500, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 16.532,  profitVnd: 2.968, trackingCode: 'ZTO99117013' },
   { importDate: '25/07/2026', id: '#114', serial: 'SN-SLIM7-7014', name: 'Legion Slim 7 2023 R7-7840HS/16GB/1TB/RTX 4060 3.2K 165Hz', location: 'store', category: '7', conditionNote: 'Máy siêu mỏng đẹp 99.9%, sạc zin đi kèm', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'available', priceRmb: 5800, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 21.167,  profitVnd: 3.333, trackingCode: 'ZTO99117014' },
   { importDate: '28/07/2026', id: '#115', serial: 'SN-TUF-8015', name: 'Asus TUF Gaming A15 2023 R7-7735HS/16GB/512GB/RTX 4060 144Hz', location: 'store', category: '8', conditionNote: 'Đã bán trả góp xong cho khách Đà Nẵng', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'sold', priceRmb: 4200, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 15.487,  profitVnd: 2.513, trackingCode: 'SF11228015' },
   { importDate: '30/07/2026', id: '#116', serial: 'SN-TUF-8016', name: 'Asus TUF Gaming F15 2023 i7-13620H/16GB/512GB/RTX 4060 144Hz', location: 'wh', category: '8', conditionNote: 'Hàng chuẩn zin fullbox', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'available', priceRmb: 4400, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 16.197,  profitVnd: 2.603, trackingCode: 'SF11228016' },
   { importDate: '01/08/2026', id: '#117', serial: 'SN-ROG-M16-9017', name: 'Asus ROG Strix M16 2023 i7-13700H/16GB/1TB/RTX 4060 QHD+ 240Hz', location: 'store', category: '9', conditionNote: 'Màn Nebulae siêu đẹp, test ok', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'available', priceRmb: 6000, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 21.937,  profitVnd: 3.563, trackingCode: 'YT88119017' },
-  { importDate: '02/08/2026', id: '#118', serial: 'SN-ROG-G16-9018', name: 'Asus ROG Strix G16 2023 i7-13650HX/16GB/512GB/RTX 4060 FHD+', location: 'wh_cn', category: '9', conditionNote: 'Đang xếp lịch ghép xe TQ chở về', chargerStatus: 'with_charger', seller: 'Shop TQ Xiao', status: 'not_imported', priceRmb: 5700, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 20.812,  profitVnd: 3.188, trackingCode: 'YT88119018' },
-  { importDate: '03/08/2026', id: '#119', serial: 'SN-NITRO5-1019', name: 'Acer Nitro 5 2022 i5-12500H/16GB/512GB/RTX 3050Ti 144Hz', location: 'wh_cn', category: '10', conditionNote: 'Vỡ vỏ móp sườn, back lại xưởng TQ', chargerStatus: 'no_charger', seller: 'Shop TQ Xiao', status: 'returned_cn', priceRmb: 3100, shippingRmb: 30, exchangeRate: 3550, importPriceVnd: 11.582,  profitVnd: 1.618, trackingCode: 'SF77661019' },
+  { importDate: '02/08/2026', id: '#118', serial: 'SN-ROG-G16-9018', name: 'Asus ROG Strix G16 2023 i7-13650HX/16GB/512GB/RTX 4060 FHD+', location: 'wh_cn', category: '9', conditionNote: 'Đang xếp lịch ghép xe TQ chở về', chargerStatus: 'with_charger', seller: 'Shop TQ Xiao', status: 'in_transit', priceRmb: 5700, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 20.812,  profitVnd: 3.188, trackingCode: 'YT88119018' },
+  { importDate: '03/08/2026', id: '#119', serial: 'SN-NITRO5-1019', name: 'Acer Nitro 5 2022 i5-12500H/16GB/512GB/RTX 3050Ti 144Hz', location: 'wh_cn', category: '10', conditionNote: 'Vỡ vỏ móp sườn, back lại xưởng TQ', chargerStatus: 'no_charger', seller: 'Shop TQ Xiao', status: 'supplier_return', priceRmb: 3100, shippingRmb: 30, exchangeRate: 3550, importPriceVnd: 11.582,  profitVnd: 1.618, trackingCode: 'SF77661019' },
   { importDate: '05/08/2026', id: '#120', serial: 'SN-NITRO5-1020', name: 'Acer Nitro 5 2023 R7-6800H/16GB/512GB/RTX 3060 FHD 165Hz', location: 'store', category: '10', conditionNote: 'Đã hủy đơn hoàn về kho chờ bán lại', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'available', priceRmb: 3800, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 14.047,  profitVnd: 2.153, trackingCode: 'SF77661020' },
   { importDate: '06/08/2026', id: '#121', serial: 'SN-LEG5-2023-1021', name: 'Legion 5 2023 R7-7735HS/16GB/1TB/RTX 4050 165Hz', location: 'store', category: '1', conditionNote: 'Sẵn hàng tại showroom', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'available', priceRmb: 4400, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 16.197,  profitVnd: 2.403, trackingCode: 'SF1428571021' },
   { importDate: '08/08/2026', id: '#122', serial: 'SN-ROG-G513-2022', name: 'Asus ROG Strix G513 2022 R7-6800H/16GB/512GB/RTX 3050Ti', location: 'wh', category: '2', conditionNote: 'Sẵn hàng kho tổng', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'available', priceRmb: 3900, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 14.402,  profitVnd: 2.398, trackingCode: 'YT9081272022' },
   { importDate: '10/08/2026', id: '#123', serial: 'SN-SCAR-2022-3023', name: 'Asus ROG Strix Scar 15 2022 i7-12700H/16GB/512GB/RTX 3070Ti', location: 'store', category: '3', conditionNote: 'Đẹp nét zin test kĩ', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'available', priceRmb: 5800, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 21.227,  profitVnd: 3.573, trackingCode: 'ZTO88773023' },
-  { importDate: '11/08/2026', id: '#124', serial: 'SN-ZEP-G14-4024', name: 'Asus ROG Zephyrus G14 2022 R9-6900HS/16GB/1TB/RX 6800S 120Hz', location: 'store', category: '4', conditionNote: 'Bỏ qua do nguồn hàng không chuyển được', chargerStatus: 'with_charger', seller: 'Shop TQ Xiao', status: 'skipped', priceRmb: 4600, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 16.907,  profitVnd: 2.593, trackingCode: 'SF99814024' },
+  { importDate: '11/08/2026', id: '#124', serial: 'SN-ZEP-G14-4024', name: 'Asus ROG Zephyrus G14 2022 R9-6900HS/16GB/1TB/RX 6800S 120Hz', location: 'store', category: '4', conditionNote: 'Bỏ qua do nguồn hàng không chuyển được', chargerStatus: 'with_charger', seller: 'Shop TQ Xiao', status: 'ignored', priceRmb: 4600, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 16.907,  profitVnd: 2.593, trackingCode: 'SF99814024' },
   { importDate: '12/08/2026', id: '#125', serial: 'SN-LEG5PRO-5025', name: 'Legion 5 Pro 2022 R7-6800H/32GB/1TB/RTX 3070 2.5K 165Hz', location: 'wh', category: '5', conditionNote: 'RAM 32GB dung lượng cao', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'available', priceRmb: 5200, shippingRmb: 50, exchangeRate: 3550, importPriceVnd: 19.037,  profitVnd: 3.163, trackingCode: 'STO11225025' },
   { importDate: '13/08/2026', id: '#126', serial: 'SN-LEG5PRO-6026', name: 'Legion 5 Pro 2023 R9-7945HX/32GB/1TB/RTX 4070 2.5K 240Hz', location: 'store', category: '6', conditionNote: 'Cấu hình khủng nhất phân khúc', chargerStatus: 'with_charger', seller: 'Guangzhou Tech', status: 'available', priceRmb: 7500, shippingRmb: 70, exchangeRate: 3550, importPriceVnd: 27.352,  profitVnd: 4.148, trackingCode: 'SF88996026' },
-  { importDate: '14/08/2026', id: '#127', serial: 'SN-SLIM7-7027', name: 'Legion Slim 7 2023 i7-13700H/16GB/1TB/RTX 4060 3.2K 165Hz', location: 'wh_cn', category: '7', conditionNote: 'Đang làm thủ tục hải quan nhập', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'not_imported', priceRmb: 6200, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 22.647,  profitVnd: 3.553, trackingCode: 'ZTO99117027' },
+  { importDate: '14/08/2026', id: '#127', serial: 'SN-SLIM7-7027', name: 'Legion Slim 7 2023 i7-13700H/16GB/1TB/RTX 4060 3.2K 165Hz', location: 'wh_cn', category: '7', conditionNote: 'Đang làm thủ tục hải quan nhập', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'in_transit', priceRmb: 6200, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 22.647,  profitVnd: 3.553, trackingCode: 'ZTO99117027' },
   { importDate: '15/08/2026', id: '#128', serial: 'SN-TUF-8028', name: 'Asus TUF Gaming A15 2022 R7-6800H/16GB/512GB/RTX 3060 144Hz', location: 'store', category: '8', conditionNote: 'Hàng tuyển chọn đẹp keng', chargerStatus: 'with_charger', seller: 'Shop TQ A-Ming', status: 'available', priceRmb: 3800, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 14.047,  profitVnd: 2.453, trackingCode: 'SF11228028' },
   { importDate: '15/08/2026', id: '#129', serial: 'SN-ROG-G16-9029', name: 'Asus ROG Strix G16 2024 i7-14650HX/16GB/1TB/RTX 4060 FHD+', location: 'store', category: '9', conditionNote: 'Đời 2024 mới nhất fullbox', chargerStatus: 'with_charger', seller: 'Shenzhen Digital', status: 'available', priceRmb: 6300, shippingRmb: 60, exchangeRate: 3550, importPriceVnd: 23.002,  profitVnd: 3.798, trackingCode: 'YT88119029' },
   { importDate: '16/08/2026', id: '#130', serial: 'SN-NITRO5-1030', name: 'Acer Nitro 5 2022 i7-12700H/16GB/512GB/RTX 3060 FHD 165Hz', location: 'store', category: '10', conditionNote: 'Máy khỏe giá cực rẻ', chargerStatus: 'with_charger', seller: 'Beijing Digital', status: 'available', priceRmb: 3950, shippingRmb: 40, exchangeRate: 3550, importPriceVnd: 14.579,  profitVnd: 2.421, trackingCode: 'SF77661030' }
@@ -488,6 +488,12 @@ export const InventoryProvider = ({ children }) => {
     }
 
     let unsubscribe = () => {};
+    // These pages own their API data; do not also load inventory metadata,
+    // poll every minute or subscribe to unrelated inventory/order events.
+    if (['/suppliers', '/supplier-payments', '/purchases', '/receiving'].some(route => pathname === route || pathname.startsWith(`${route}/`))) {
+      setDataLoading(false);
+      return;
+    }
     let cancelled = false;
     const monthQuery = selectedMonth === 'ALL'
       ? { all: true }
@@ -603,8 +609,8 @@ export const InventoryProvider = ({ children }) => {
         setCloudStatus('error');
       } else {
         setCloudStatus('connected');
-        if (cloudLaptops !== null) setLaptops(cloudLaptops);
-        if (cloudOrders !== null) setOrders(cloudOrders);
+        // Primary rows were already committed by primaryPromise. Metadata
+        // completion must not schedule the same large tables a second time.
         if (cloudWarranty !== null) setWarrantyCases(cloudWarranty);
         if (cloudCustomers !== null) setCustomers(cloudCustomers);
         if (cloudPayments !== null) setPayments(cloudPayments);
@@ -665,7 +671,7 @@ export const InventoryProvider = ({ children }) => {
       }
       // Laptop thay đổi → reconcile status cần orders mới nhất (throttle)
       const now = Date.now();
-      if (now - lastCrossFetchLaptop > CROSS_FETCH_THROTTLE_MS) {
+      if ((pathname === '/' || ['/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route))) && now - lastCrossFetchLaptop > CROSS_FETCH_THROTTLE_MS) {
         lastCrossFetchLaptop = now;
         fetchOrdersFromCloud(monthQuery).then(d => { if (d && !cancelled) setOrders(d); });
       }
@@ -687,7 +693,7 @@ export const InventoryProvider = ({ children }) => {
       }
       // Order thay đổi → reconcile laptop status (throttle)
       const now = Date.now();
-      if (now - lastCrossFetchOrder > CROSS_FETCH_THROTTLE_MS) {
+      if ((pathname === '/' || ['/inventory', '/orders', '/warranty', '/settings'].some(route => pathname.startsWith(route))) && now - lastCrossFetchOrder > CROSS_FETCH_THROTTLE_MS) {
         lastCrossFetchOrder = now;
         fetchLaptopsFromCloud(monthQuery).then(d => {
           if (d && !cancelled) setLaptops(reconcileLaptopStatuses(d, ordersRef.current, selectedMonth));
@@ -1033,9 +1039,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
       ]);
     }
 
-    if (newOrder.laptopId && !savedData.inventoryApplied) {
-      addStockMovement({ laptopId: newOrder.laptopId, orderId: newOrder.id, type: isReservationActive(newOrder, appOptions) ? 'GIỮ MÁY' : 'GÁN VÀO ĐƠN', note: `Đơn #${newOrder.id}` });
-    }
     return { ok: true, order: newOrder };
   };
 
@@ -1103,7 +1106,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     applyAndSaveLaptopStatuses(nextOrders, false);
     if (releasingPhysicalLaptop) {
       setLaptops(prev => prev.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
-        ? { ...laptop, status: merged.requestedLaptopId ? 'deposited' : 'available', isLocked: false }
+        ? { ...laptop, status: merged.requestedLaptopId ? 'reserved' : 'available', isLocked: false }
         : laptop));
     }
 
@@ -1121,7 +1124,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
         }
         if (releasingPhysicalLaptop) {
           next = next.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
-            ? { ...laptop, status: merged.requestedLaptopId ? 'deposited' : 'available', isLocked: false }
+            ? { ...laptop, status: merged.requestedLaptopId ? 'reserved' : 'available', isLocked: false }
             : laptop);
         }
         return next;
@@ -1188,9 +1191,15 @@ const mapLabelsToKeys = (fields, appOpts) => {
   };
 
   // Cập nhật từng laptop
-  const updateLaptop = (id, updatedFields) => {
+  const updateLaptop = async (id, updatedFields) => {
     const currentLaptop = laptops.find(laptop => laptop.id == id);
     if (!currentLaptop) return { ok: false, message: 'Không tìm thấy máy.' };
+    if (updatedFields.qcDetails !== undefined) {
+      return saveLaptopToCloud({ id, ...updatedFields }).then(saved => {
+        setLaptops(prev => prev.map(laptop => laptop.id == id ? { ...laptop, ...saved } : laptop));
+        return { ok: true };
+      });
+    }
     const lockedProtectedFields = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
     const currentStatusKey = labelToKey('laptopStatus', currentLaptop.status);
     if (currentStatusKey === 'sold' && ['name', 'serial'].some(field => (
@@ -1208,7 +1217,10 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const duplicatedSerial = serial && laptops.some(laptop => laptop.id !== id && String(laptop.serial || '').trim().toLowerCase() === serial.toLowerCase());
     if (duplicatedSerial) return { ok: false, message: `Serial ${serial} đã tồn tại ở một máy khác.` };
 
-    const merged = { ...currentLaptop, ...updatedFields, serial, updatedAt: new Date().toISOString() };
+    const qcDetails = updatedFields.batteryHealth !== undefined
+      ? { ...(currentLaptop.qcDetails || {}), batteryHealth: updatedFields.batteryHealth === '' ? '' : String(updatedFields.batteryHealth) }
+      : currentLaptop.qcDetails;
+    const merged = { ...currentLaptop, ...updatedFields, qcDetails, serial, updatedAt: new Date().toISOString() };
     const explicitImportPrice = updatedFields.importPriceVnd !== undefined && updatedFields.importPriceVnd !== ''
       ? parseFlexibleFloat(updatedFields.importPriceVnd)
       : null;
@@ -1231,11 +1243,15 @@ const mapLabelsToKeys = (fields, appOpts) => {
     // Optimistic update
     setLaptops(prev => prev.map(laptop => laptop.id == id ? finalLaptop : laptop));
     
-    // Fire and forget cloud save
-    void saveLaptopToCloud(finalLaptop).catch(error => {
+    // Wait for the API so database validation errors remain visible and the modal
+    // only closes after battery_health/qc_details have both been persisted.
+    try {
+      const saved = await saveLaptopToCloud(finalLaptop);
+      setLaptops(prev => prev.map(laptop => laptop.id == id ? { ...finalLaptop, ...saved } : laptop));
+    } catch (error) {
       setLaptops(prev => prev.map(laptop => laptop.id == id ? currentLaptop : laptop));
-      console.error('Không thể đồng bộ máy:', error);
-    });
+      return { ok: false, message: error.message || 'Không thể đồng bộ máy.' };
+    }
 
     // Tự động tính lại profit_vnd cho tất cả đơn hàng liên kết khi giá nhập thay đổi
     if (importPriceVnd !== currentLaptop.importPriceVnd) {
@@ -1306,8 +1322,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
       profitVnd: prof,
       trackingCode: laptopData.trackingCode || '',
       // Phase 2 fields
-      batteryHealth: laptopData.batteryHealth === undefined || laptopData.batteryHealth === ''
-        ? 100
+      batteryHealth: laptopData.batteryHealth == null || laptopData.batteryHealth === ''
+        ? null
         : parseFlexibleFloat(laptopData.batteryHealth),
       isLocked: laptopData.isLocked || false,
       partsHistory: laptopData.partsHistory || [],

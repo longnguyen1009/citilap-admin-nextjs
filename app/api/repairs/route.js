@@ -28,8 +28,8 @@ export async function GET(request) {
     if (job.error || parts.error || actions.error) return NextResponse.json({ error: 'Không thể tải chi tiết sửa chữa' }, { status: 503 });
     let sourceQc = null;
     if (job.data?.source_type === 'QC' && UUID.test(job.data.source_id || '')) {
-      const result = await db.from('qc_inspections').select('id,inspection_code,result,overall_notes,mainboard_status,charger_status,completed_at').eq('id', job.data.source_id).maybeSingle();
-      sourceQc = result.data || null;
+      const result = await db.from('qc_inspections').select('id,inspection_code,result,completed_at,laptops(condition_note)').eq('id', job.data.source_id).maybeSingle();
+      sourceQc = result.data ? { ...result.data, overall_notes: result.data.laptops?.condition_note || '' } : null;
     }
     return NextResponse.json({ job: job.data, parts: parts.data, actions: actions.data, sourceQc });
   }

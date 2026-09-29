@@ -69,7 +69,7 @@ const customer = customerResult.body[0];
 const laptopResult = await rest('laptops', 'POST', {
   serial: `${tag}-SERIAL`, name: `${tag} Laptop`, category: 'PILOT', location: 'store', charger_status: 'with_charger',
   status: 'available', price_rmb: 2000, shipping_rmb: 50, exchange_rate: 3500, import_price_vnd: 7.175,
-  wholesale_price_vnd: 11, retail_price_vnd: 12.5, is_locked: false, is_active: true,
+  wholesale_price_vnd: 11, retail_price_vnd: 12.5, is_active: true,
   available_for_sale_at: new Date().toISOString(), import_date: today, warehouse_date: today, condition_note: tag,
 });
 check('create pilot laptop', laptopResult.ok, { status: laptopResult.status, error: laptopResult.body });
@@ -98,14 +98,14 @@ check('issue invoice', invoiceResult.ok, { status: invoiceResult.status, error: 
 
 const [persistedOrder, persistedLaptop, payments, invoice, account] = await Promise.all([
   rest(`orders?id=eq.${order.id}&select=id,order_status,payment_status,amount_paid,debt_amount,laptop_id`),
-  rest(`laptops?id=eq.${laptop.id}&select=id,status,is_locked`),
+  rest(`laptops?id=eq.${laptop.id}&select=id,status`),
   rest(`payments?order_id=eq.${order.id}&select=id,amount,payment_type`),
   rest(`invoices?order_id=eq.${order.id}&select=id,snapshot`),
   rest(`cash_account_balances?id=eq.${accountId}&select=recorded_balance,last_difference`),
 ]);
 const finalOrder = persistedOrder.body[0];
 check('order remains paid after reload', persistedOrder.ok && finalOrder.payment_status === 'paid' && Number(finalOrder.amount_paid) === 12.5 && Number(finalOrder.debt_amount) === 0, { order: finalOrder });
-check('sold laptop remains locked', persistedLaptop.ok && persistedLaptop.body[0].status === 'sold' && persistedLaptop.body[0].is_locked === true, { laptop: persistedLaptop.body[0] });
+check('sold laptop remains sold', persistedLaptop.ok && persistedLaptop.body[0].status === 'sold', { laptop: persistedLaptop.body[0] });
 check('exactly two payment rows', payments.ok && payments.body.length === 2 && payments.body.reduce((total, row) => total + Number(row.amount), 0) === 12.5, { payments: payments.body });
 check('invoice snapshot is settled', invoice.ok && invoice.body.length === 1 && Number(invoice.body[0].snapshot?.paid) === 12.5 && Number(invoice.body[0].snapshot?.order?.debt_amount) === 0, { invoice: invoice.body[0]?.id });
 check('pilot bank balance increased once', account.ok && Number(account.body[0].recorded_balance) === 12500000 && Number(account.body[0].last_difference || 0) === 0, { account: account.body[0] });

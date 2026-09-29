@@ -95,14 +95,14 @@ const [persistedCase, movements, activity, sourceOrderAfter, sourceLaptopAfter] 
   rest(`stock_movements?warranty_case_id=eq.${warranty.id}&select=id,laptop_id,order_id,movement_type,note&order=created_at`),
   rest(`activity_logs?entity_type=eq.WARRANTY&entity_id=eq.${warranty.id}&select=id,action,changes&order=created_at`),
   rest(`orders?id=eq.${sourceOrder.id}&select=id,order_status,payment_status,amount_paid,debt_amount`),
-  rest(`laptops?id=eq.${sourceOrder.laptop_id}&select=id,status,is_locked`),
+  rest(`laptops?id=eq.${sourceOrder.laptop_id}&select=id,status`),
 ]);
 const finalCase = persistedCase.body[0];
 check('warranty persists after reload', persistedCase.ok && finalCase.status === 'done' && finalCase.resolved_date && Number(finalCase.repair_cost) === 0.25, { warranty: finalCase });
 check('three lifecycle stock movements persist', movements.ok && movements.body.length === 3 && movements.body.every(row => String(row.laptop_id) === String(sourceOrder.laptop_id) && String(row.order_id) === String(sourceOrder.id)), { movements: movements.body });
 check('create and update audit entries persist', activity.ok && activity.body.filter(row => row.action === 'CREATE').length === 1 && activity.body.filter(row => row.action === 'UPDATE').length === 2, { activity: activity.body });
 check('warranty does not mutate sale settlement', sourceOrderAfter.ok && sourceOrderAfter.body[0].payment_status === 'paid' && Number(sourceOrderAfter.body[0].debt_amount) === 0, { order: sourceOrderAfter.body[0] });
-check('sold device ownership state remains locked', sourceLaptopAfter.ok && sourceLaptopAfter.body[0].status === 'sold' && sourceLaptopAfter.body[0].is_locked === true, { laptop: sourceLaptopAfter.body[0] });
+check('sold device ownership state remains sold', sourceLaptopAfter.ok && sourceLaptopAfter.body[0].status === 'sold', { laptop: sourceLaptopAfter.body[0] });
 
 const reopened = await api('/api/warranty', { ...warranty, status: 'repairing', resolvedDate: today });
 check('reopening clears resolved date', reopened.ok && reopened.body.status === 'repairing' && !reopened.body.resolvedDate, { status: reopened.status, body: reopened.body });

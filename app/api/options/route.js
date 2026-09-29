@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { requireUser } from '@/lib/apiAuth';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
 import { ALLOWED_OPTION_GROUPS, isExtensibleOptionGroup, isSystemOptionGroup } from '@/lib/optionPolicy';
+import { repairMojibake } from '@/lib/textEncoding';
 
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
@@ -13,7 +14,7 @@ export async function GET(request) {
   const { data, error } = await supabase.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json(data.map(option => ({ ...option, label: repairMojibake(option.label) })));
 }
 
 export async function POST(request) {

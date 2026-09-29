@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseListScope } from '../../../lib/listScope';
 import { fetchOrdersFromCloud, saveOrderToCloud, createOrderWithInventoryToCloud, keysToCamel } from '../../../lib/services/dbService';
 import { diffObject, pickAuditFields, logActivity } from '../../../lib/services/logger';
 import { requireUser, filterSensitiveFields, sanitizePayload, validateOrderPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
@@ -21,13 +22,13 @@ export async function GET(request) {
   const isAdmin = profile.role === 'ADMIN';
 
   const { searchParams } = new URL(request.url);
-  const monthKey = searchParams.get('monthKey');
-  const all = searchParams.get('all') === 'true';
+  let scope;
+  try { scope = parseListScope(searchParams); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: 400 }); }
   const requestedLimit = Number(searchParams.get('limit'));
   const requestedOffset = Number(searchParams.get('offset'));
   const query = {
-    monthKey,
-    all,
+    ...scope,
     ...(Number.isInteger(requestedLimit) && requestedLimit > 0 ? { limit: requestedLimit, offset: requestedOffset } : {})
   };
   const result = await timeAsync(timing, 'query', () => fetchOrdersFromCloud(query));
@@ -70,7 +71,11 @@ export async function GET(request) {
   const payload = paginated
     ? { data: responseData, total: result.total, offset: result.offset, limit: result.limit, hasMore: result.hasMore }
     : responseData;
-  return withServerTiming(NextResponse.json(payload), timing);
+  return withServerTiming(NextResponse.json(payload, { headers: {
+    'X-Data-Month': scope.all ? 'ALL' : scope.monthKey,
+    'X-Data-Count': String(responseData.length),
+    'Cache-Control': 'private, no-store',
+  } }), timing);
 }
 
 export async function POST(request) {
@@ -197,7 +202,7 @@ export async function POST(request) {
         if (laptopError || !selectedLaptop || selectedLaptop.is_active !== true) {
           return NextResponse.json({ error: 'Laptop không tồn tại hoặc đã ngừng sử dụng.' }, { status: 400 });
         }
-        if (!['available', 'deposited'].includes(selectedLaptop.status)) {
+        if (!['available', 'reserved'].includes(selectedLaptop.status)) {
           return NextResponse.json({ error: `Laptop chưa sẵn sàng để bán (trạng thái: ${selectedLaptop.status || 'không xác định'}).` }, { status: 409 });
         }
       }
@@ -220,7 +225,7 @@ export async function POST(request) {
       if (requestedChanged) {
         const adminClient = getSupabaseAdminClient();
         const { data: requestedLaptop } = await adminClient.from('laptops').select('status, is_active').eq('id', requestedId).maybeSingle();
-        if (!requestedLaptop || requestedLaptop.is_active !== true || !['available', 'deposited'].includes(requestedLaptop.status)) {
+        if (!requestedLaptop || requestedLaptop.is_active !== true || !['available', 'reserved'].includes(requestedLaptop.status)) {
           return NextResponse.json({ error: `Laptop chưa sẵn sàng để giữ/bán (trạng thái: ${requestedLaptop?.status || 'không xác định'}).` }, { status: 409 });
         }
       }

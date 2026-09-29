@@ -19,9 +19,12 @@ const STATUS_VARIANT_MAP = {
   cancelled: "neutral",
   returned: "neutral",
   inactive: "neutral",
-  repairing: "warning",
-  returned_cn: "neutral",
-  skipped: "neutral",
+  in_transit: "neutral",
+  waiting_qc: "warning",
+  reserved: "info",
+  repair: "warning",
+  supplier_return: "neutral",
+  ignored: "neutral",
   sold: "neutral",
 };
 

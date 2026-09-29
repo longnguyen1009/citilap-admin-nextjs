@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseListScope } from '../../../lib/listScope';
 import { fetchLaptopsFromCloud, saveLaptopToCloud, keysToCamel } from '../../../lib/services/dbService';
 import { logActivity, diffObject, pickAuditFields } from '../../../lib/services/logger';
 import { requireUser, filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
@@ -9,8 +10,8 @@ const LAPTOP_AUDIT_FIELDS = [
   'sku', 'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
   'chargerStatus', 'status', 'priceRmb', 'shippingRmb', 'exchangeRate',
   'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd', 'trackingCode',
-  'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth', 'isLocked',
-  'screenStatus', 'cameraMicStatus', 'mainboardStatus', 'partsHistory'
+  'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth',
+  'screenStatus', 'cameraMicStatus', 'mainboardStatus', 'partsHistory', 'qcDetails'
 ];
 
 export async function GET(request) {
@@ -21,13 +22,18 @@ export async function GET(request) {
   const isAdmin = profile.role === 'ADMIN';
 
   const { searchParams } = new URL(request.url);
-  const monthKey = searchParams.get('monthKey');
-  const all = searchParams.get('all') === 'true';
+  let scope;
+  try { scope = parseListScope(searchParams); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: 400 }); }
+  const status = searchParams.get('status');
+  if (status !== null && !['in_transit', 'waiting_qc', 'available', 'reserved', 'sold', 'repair', 'supplier_return', 'ignored'].includes(status)) {
+    return NextResponse.json({ error: 'Trạng thái máy không hợp lệ' }, { status: 400 });
+  }
   const requestedLimit = Number(searchParams.get('limit'));
   const requestedOffset = Number(searchParams.get('offset'));
   const query = {
-    monthKey,
-    all,
+    ...scope,
+    ...(status ? { status } : {}),
     ...(Number.isInteger(requestedLimit) && requestedLimit > 0 ? { limit: requestedLimit, offset: requestedOffset } : {})
   };
   const result = await timeAsync(timing, 'query', () => fetchLaptopsFromCloud(query));
@@ -70,7 +76,11 @@ export async function GET(request) {
   markTiming(timing, 'total', timing.startedAt);
   const responseData = isAdmin ? enriched : filterSensitiveFields(enriched, SENSITIVE_LAPTOP_KEYS);
   const payload = paginated ? { data: responseData, total: result.total, offset: result.offset, limit: result.limit, hasMore: result.hasMore } : responseData;
-  return withServerTiming(NextResponse.json(payload), timing);
+  return withServerTiming(NextResponse.json(payload, { headers: {
+    'X-Data-Month': scope.all ? 'ALL' : scope.monthKey,
+    'X-Data-Count': String(responseData.length),
+    'Cache-Control': 'private, no-store',
+  } }), timing);
 }
 
 export async function POST(request) {
@@ -81,6 +91,9 @@ export async function POST(request) {
 
   try {
     const rawPayload = await request.json();
+    if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
+    }
     const body = sanitizePayload(rawPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
 
     // P0.4: Trả lỗi nếu non-admin gửi field nhạy cảm
@@ -88,7 +101,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Bạn không có quyền thay đổi các trường tài chính nhạy cảm.' }, { status: 403 });
     }
 
-    validateLaptopPayload(body);
+    const { searchParams } = new URL(request.url);
+    const isCreateRequest = searchParams.get('mode') === 'create';
+    validateLaptopPayload(body, { partial: !isCreateRequest });
 
     // Validate price ranges to prevent extreme values
     const MAX_PRICE_RMB = 100000;
@@ -100,8 +115,9 @@ export async function POST(request) {
       return NextResponse.json({ error: `Phí vận chuyển không hợp lệ: ${body.shippingRmb}. Tối đa ${MAX_SHIPPING_RMB} RMB.` }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const isCreateRequest = searchParams.get('mode') === 'create';
+    if (isCreateRequest) {
+      return NextResponse.json({ error: 'Hãy tạo máy qua Lô mua, Nhận máy chưa rõ nguồn hoặc Thu cũ đổi mới.' }, { status: 400 });
+    }
 
     // P0.1: Khi tạo mới, luôn bỏ ID để database tự sinh
     if (isCreateRequest) {
@@ -119,8 +135,25 @@ export async function POST(request) {
         oldData = data;
         action = 'UPDATE';
 
+        if (!isAdmin && ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
+          const oldLaptop = keysToCamel(oldData);
+          const procurementFields = ['name', 'serial', 'trackingCode', 'priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd'];
+          const changedProcurement = procurementFields.filter(key => {
+            if (rawPayload?.[key] === undefined) return false;
+            return String(rawPayload[key] ?? '').trim() !== String(oldLaptop[key] ?? '').trim();
+          });
+          if (changedProcurement.length > 0) {
+            return NextResponse.json({
+              error: 'Chỉ ADMIN được sửa thông tin mua hàng của laptop từ nhà cung cấp.'
+            }, { status: 403 });
+          }
+        }
+
         // FIX: Chống sửa đổi trường tài chính trên laptop đã bị khóa/bán
-        const isSoldOrLocked = oldData.is_locked || oldData.status === 'sold';
+        const procurementEditableStatuses = new Set(['in_transit', 'waiting_qc', 'repair', 'available', 'reserved']);
+        if (body.status !== undefined && body.status !== oldData.status) {
+          return NextResponse.json({ error: 'Trạng thái máy chỉ được thay đổi qua quy trình nghiệp vụ tương ứng.' }, { status: 400 });
+        }
         if (oldData.status === 'sold') {
           const changedIdentity = ['name', 'serial'].filter(k => (
             body[k] !== undefined && String(body[k] ?? '').trim() !== String(oldData[k] ?? '').trim()
@@ -129,7 +162,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Laptop đã bán không thể thay đổi tên máy hoặc số serial.' }, { status: 400 });
           }
         }
-        if (isSoldOrLocked && isAdmin) {
+        if (!procurementEditableStatuses.has(oldData.status) && isAdmin) {
           const oldLaptop = keysToCamel(oldData);
           const LOCKED_PROTECTED_FIELDS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
           const changedProtected = LOCKED_PROTECTED_FIELDS.filter(k => {

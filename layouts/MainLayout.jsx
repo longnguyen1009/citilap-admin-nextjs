@@ -15,13 +15,13 @@ import {
   Wrench,
           BadgeDollarSign,
   Database,
+  LoaderCircle,
   Settings,
   FileText,
   MousePointer2,
   Truck,
   Building2,
   Landmark,
-  Ship,
   PackageCheck,
   ClipboardCheck,
   PackageX,
@@ -87,7 +87,12 @@ export default function MainLayout({ children }) {
               <h2>KHO CITILAP</h2>
               <span className="brand-operator">
                 <span>{user?.name || 'Nhân viên'}</span>
-                <Database className={`database-status-icon is-${cloudStatus}`} size={14} aria-label={cloudStatus === 'connected' ? 'Database đã kết nối' : 'Trạng thái kết nối database'} />
+                <span className="database-connection-status" role="status" aria-live="polite">
+                  <Database className={`database-status-icon is-${cloudStatus}`} size={14} aria-label={cloudStatus === 'connected' ? 'Database đã kết nối' : 'Trạng thái kết nối database'} />
+                  {cloudStatus === 'checking' && (
+                    <LoaderCircle className="database-loading-icon" size={13} aria-label="Đang kết nối cloud" />
+                  )}
+                </span>
               </span>
             </div>
           )}
@@ -132,7 +137,6 @@ export default function MainLayout({ children }) {
           {user?.role === 'ADMIN' && <div className="nav-section-label">{!isCollapsed && 'Nhập hàng'}</div>}
           {user?.role === 'ADMIN' && <Link href="/suppliers" aria-current={pathname === '/suppliers' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhà cung cấp' : ''}><Building2 size={20}/>{!isCollapsed && <span>Nhà cung cấp</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/purchases" aria-current={pathname === '/purchases' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Lô mua hàng' : ''}><Truck size={20}/>{!isCollapsed && <span>Lô mua hàng</span>}</Link>}
-          {user?.role === 'ADMIN' && <Link href="/shipments" aria-current={pathname.startsWith('/shipments') ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Vận chuyển TQ–VN' : ''}><Ship size={20}/>{!isCollapsed && <span>Vận chuyển TQ–VN</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/receiving" aria-current={pathname === '/receiving' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhận hàng' : ''}><PackageCheck size={20}/>{!isCollapsed && <span>Nhận hàng</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/supplier-returns" aria-current={pathname === '/supplier-returns' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Trả nhà cung cấp' : ''}><PackageX size={20}/>{!isCollapsed && <span>Trả nhà cung cấp</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/costs" aria-current={pathname === '/costs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Giá vốn thực tế' : ''}><Calculator size={20}/>{!isCollapsed && <span>Giá vốn thực tế</span>}</Link>}

@@ -1,16 +1,33 @@
-# Làm mới database và seed tháng 06–09/2026
+# Làm mới database và seed dữ liệu 06–09/2026
+
+## Cảnh báo
+
+`init_full_db.sql` xóa và tạo lại toàn bộ schema `public`. File giữ `auth.users` và sao lưu/khôi phục `user_profiles`, nhưng xóa dữ liệu nghiệp vụ. Chỉ chạy trên đúng project và bằng quyền postgres.
+
+## Nguồn schema
+
+Schema chuẩn duy nhất:
+
+```text
+db/migrations/20260925_clean_baseline.sql
+```
+
+`init_full_db.sql` được sinh từ migration đang hoạt động. Không sửa trực tiếp. Migration lịch sử trong `db/migrations_archive/` không tham gia reset.
+
+Tái tạo file:
+
+```powershell
+node qa/build-db-init.mjs
+```
 
 ## Chạy trên Supabase
 
-Trong SQL Editor của đúng project thử nghiệm, chạy lần lượt:
+1. Mở SQL Editor của đúng project.
+2. Chạy toàn bộ `init_full_db.sql`.
+3. Chạy `reseed_data.sql` nếu cần dữ liệu mẫu.
+4. Tải lại ứng dụng và chọn tháng 06, 07, 08 hoặc 09/2026.
 
-1. Toàn bộ `init_full_db.sql`: thay thế schema `public`, bao gồm đủ 41 migration đến `20261017`. Xóa dữ liệu nghiệp vụ cũ; giữ `auth.users` và khôi phục các `user_profiles` hiện có, gồm vai trò ADMIN/nhân viên. Không tạo hoặc đổi mật khẩu.
-2. Sau khi bước 1 thành công, chạy toàn bộ `reseed_data.sql`.
-3. Tải lại ứng dụng và chọn tháng 06, 07, 08 hoặc 09/2026.
-
-Mỗi file có transaction riêng: lỗi trong một file sẽ rollback file đó. Nếu init thành công nhưng seed lỗi, schema mới vẫn tồn tại; sửa lỗi rồi chạy lại seed. Không cần chạy lại 41 migration sau init.
-
-Nếu chỉ cần thay dữ liệu trên schema đã cập nhật đầy đủ, chạy riêng `reseed_data.sql`. File này xóa dữ liệu nghiệp vụ và lịch sử liên quan qua `TRUNCATE ... CASCADE`, giữ tài khoản, danh mục tùy chọn, chi nhánh và phụ kiện. Cấu hình công thức trở về giá trị seed.
+Mỗi file có transaction riêng. Nếu seed lỗi sau khi init thành công, sửa seed rồi chạy lại riêng file seed.
 
 ## Dữ liệu mẫu
 
@@ -22,15 +39,30 @@ Nếu chỉ cần thay dữ liệu trên schema đã cập nhật đầy đủ, 
 | 09/2026 | 120 | 80 | 104 |
 | Tổng | 480 | 320 | 416 |
 
-Mỗi tháng: 40 đơn hoàn thành, 8 đơn đặt cọc, 8 chuẩn bị giao, 8 đang giao COD, 8 đơn mới và 8 đơn hủy. Có khách hàng, serial riêng, giá bán lẻ/bán buôn, đặt cọc và trả phần còn lại. Ngày thu nằm trong đúng tháng nghiệp vụ.
+Laptop seed đi theo nguồn nhà cung cấp và lô mua. Mỗi tháng có 120 máy: 10 đang vận chuyển,
+10 đã nhận chờ QC và 100 đã hoàn tất QC; trong nhóm đã QC có 80 máy phục vụ dữ liệu đơn hàng.
+Mỗi laptop giữ nguyên ID xuyên suốt lô mua, nhận hàng, QC và bán hàng. Order/payment dùng triệu VND;
+account ledger và thành phần giá vốn dùng VND.
 
-Ba tài khoản mẫu: tiền mặt VND, ngân hàng VND và WeChat CNY. 416 thanh toán đi qua RPC và khớp 416 giao dịch sổ tài khoản. Có 32 khoản COD đang giao. Đơn và thanh toán tính bằng **triệu VND**; sổ tài khoản và thành phần giá vốn tính bằng **VND**.
+## Kiểm tra local
 
-Laptop là tồn đầu kỳ nhập trực tiếp; giá vốn đã được ghi nhận bằng thành phần chi phí mở đầu. Vì không giả lập chứng từ mua hàng/vận chuyển/QC, trạng thái nguồn giá vốn là `LEGACY`, không phải lô mua `COMPLETE`. Các màn hình nghiệp vụ mở rộng khởi đầu trống, trừ khoản COD nói trên. `created_at` của ledger là thời điểm seed; báo cáo lịch sử dùng ngày nghiệp vụ, không sửa lịch sử bất biến sau khi ghi.
+```powershell
+node qa/clean-schema-db-verification.mjs
+node qa/validate-db-reset.mjs
+npm.cmd run lint
+npm.cmd run build
+git diff --check
+```
 
-## Kiểm chứng và bảo trì
+PGlite kiểm tra schema sạch, reset, seed lặp lại, bảo toàn profile, inventory, ledger và số lượng theo tháng. Đây không phải bằng chứng đã áp dụng lên Supabase.
 
-- `node qa/build-db-init.mjs`: tái tạo init từ `db/bootstrap/legacy_core.sql` và toàn bộ migration được sắp theo tên. Không sửa tay file init sinh ra.
-- `node qa/validate-db-reset.mjs`: kiểm tra bằng PGlite độc lập; cần `@electric-sql/pglite` trong thư mục tạm `citilap-db-validation`.
-- Đã đạt 7 nhóm kiểm tra: init sạch; seed lần đầu; seed lặp lại; init lặp lại giữ profile; seed sau reset; khóa kho/sổ tiền/giá vốn/công nợ; hàm dashboard và tổng hợp tài chính.
-- Kiểm tra này chạy local, không phải bằng chứng đã reset Supabase hoặc kiểm tra quyền RLS trên Supabase. Chưa thực thi hai file trên database từ xa trong lượt này; cấu hình hiện có chỉ cung cấp REST/service-role, không có kết nối SQL quản trị.
+## Kiểm tra live
+
+Sau khi chạy init trên Supabase:
+
+```powershell
+node qa/live-procurement-inventory-e2e.mjs
+node qa/live-full-regression-e2e.mjs
+```
+
+Sau đó kiểm tra trình duyệt bằng phiên mới và xác nhận đúng role trước khi kết luận quyền hoặc giao diện hoạt động.

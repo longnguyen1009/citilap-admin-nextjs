@@ -1,2 +1,2 @@
-import Logistics from '@/components/pages/Logistics';
-export default function Page(){return <Logistics mode="receiving"/>;}
+import DirectIntake from '@/components/pages/DirectIntake';
+export default function Page(){return <DirectIntake receiving/>;}

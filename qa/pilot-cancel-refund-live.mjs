@@ -18,7 +18,7 @@ check('pilot prerequisites', branchResult.ok && branchResult.body.length === 1 &
 const branchId = branchResult.body[0].id, accountId = accountResult.body[0].id, openingBalance = Number(accountResult.body[0].recorded_balance);
 const customerResult = await rest('customers', 'POST', { name: `${tag} Customer`, phone: `08${Date.now().toString().slice(-8)}`, address: 'Dữ liệu hoàn tiền' });
 check('create customer', customerResult.ok, { error: customerResult.body }); const customer = customerResult.body[0];
-const laptopResult = await rest('laptops', 'POST', { serial: `${tag}-SERIAL`, name: `${tag} Laptop`, category: 'PILOT', location: 'store', charger_status: 'with_charger', status: 'available', price_rmb: 1000, shipping_rmb: 0, exchange_rate: 3500, import_price_vnd: 3.5, wholesale_price_vnd: 7, retail_price_vnd: 8, is_locked: false, is_active: true, available_for_sale_at: new Date().toISOString(), import_date: today, warehouse_date: today, condition_note: tag });
+const laptopResult = await rest('laptops', 'POST', { serial: `${tag}-SERIAL`, name: `${tag} Laptop`, category: 'PILOT', location: 'store', charger_status: 'with_charger', status: 'available', price_rmb: 1000, shipping_rmb: 0, exchange_rate: 3500, import_price_vnd: 3.5, wholesale_price_vnd: 7, retail_price_vnd: 8, is_active: true, available_for_sale_at: new Date().toISOString(), import_date: today, warehouse_date: today, condition_note: tag });
 check('create laptop', laptopResult.ok, { error: laptopResult.body }); const laptop = laptopResult.body[0];
 const created = await api('/api/orders', 'POST', { createdDate: today, orderType: 'retail', orderStatus: 'new', paymentStatus: 'unpaid', salePrice: 8, laptopId: laptop.id, requestedLaptopId: laptop.id, customerId: customer.id, branchId, note: tag, isActive: true });
 check('create order', created.ok, { status: created.status, error: created.body?.error }); const order = created.body.order || created.body;
@@ -35,7 +35,7 @@ const cancelled = await api('/api/orders', 'POST', { id: order.id, createdDate: 
 check('cancel refunded order', cancelled.ok, { status: cancelled.status, error: cancelled.body?.error });
 const [finalOrderResult, finalLaptopResult, ledgerResult, accountAfterResult, receivableResult, invoiceAttempt] = await Promise.all([
   rest(`orders?id=eq.${order.id}&select=id,order_status,payment_status,amount_paid,debt_amount,is_active`),
-  rest(`laptops?id=eq.${laptop.id}&select=id,status,is_locked`),
+  rest(`laptops?id=eq.${laptop.id}&select=id,status`),
   rest(`account_transactions?reference_type=eq.PAYMENT&select=direction,amount,reference_id&reference_id=in.(${deposit.body.payment.id},${refund.body.payment.id})`),
   rest(`cash_account_balances?id=eq.${accountId}&select=recorded_balance,last_difference`),
   rest(`customer_receivable_summaries?order_id=eq.${order.id}&select=order_id`),
@@ -43,7 +43,7 @@ const [finalOrderResult, finalLaptopResult, ledgerResult, accountAfterResult, re
 ]);
 const finalOrder = finalOrderResult.body[0], finalLaptop = finalLaptopResult.body[0];
 check('cancelled order retains refund audit state', finalOrder.order_status === 'cancelled' && finalOrder.payment_status === 'refunded' && Number(finalOrder.amount_paid) === 0, { order: finalOrder });
-check('cancelled order releases laptop', finalLaptop.status === 'available' && finalLaptop.is_locked === false, { laptop: finalLaptop });
+check('cancelled order releases laptop', finalLaptop.status === 'available', { laptop: finalLaptop });
 check('cash ledger has one IN and one OUT', ledgerResult.ok && ledgerResult.body.length === 2 && new Set(ledgerResult.body.map(row => row.direction)).size === 2, { ledger: ledgerResult.body });
 check('cash account returns to opening balance', Number(accountAfterResult.body[0].recorded_balance) === openingBalance && Number(accountAfterResult.body[0].last_difference || 0) === 0, { account: accountAfterResult.body[0] });
 check('cancelled order excluded from receivables', receivableResult.ok && receivableResult.body.length === 0, { receivable: receivableResult.body });

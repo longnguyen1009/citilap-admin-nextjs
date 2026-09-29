@@ -15,7 +15,7 @@ import ListPagination, { useListPagination } from '../ui/ListPagination';
 const GROUP_SECTIONS = [
   {
     sectionLabel: '💻 Sản phẩm (Laptop)',
-    groups: ['category', 'laptopStatus', 'laptopLocation', 'chargerStatus', 'componentStatus', 'seller'],
+    groups: ['category', 'laptopStatus', 'laptopLocation', 'chargerStatus', 'componentStatus'],
   },
   {
     sectionLabel: '🛒 Đơn hàng',
@@ -34,7 +34,6 @@ const GROUP_TITLES = {
   laptopLocation: 'Vị trí kho',
   chargerStatus: 'Trạng thái Sạc',
   componentStatus: 'Trạng thái Linh kiện (Check máy)',
-  seller: 'Nguồn hàng / Người bán',
   orderStatus: 'Trạng thái Đơn hàng',
   paymentStatus: 'Trạng thái Thanh toán',
   deliveryStatus: 'Trạng thái Giao hàng',
@@ -373,7 +372,7 @@ export default function Settings() {
   const targetMonth = currentMonthStr;
 
   // Đếm số máy và đơn chưa hoàn thành từ tháng hiện tại sẽ được chuyển
-  const OPEN_LAPTOP_STATUS = ['available', 'deposited', 'repairing', 'not_imported', 'returned_cn', 'skipped'];
+  const OPEN_LAPTOP_STATUS = ['in_transit', 'waiting_qc', 'available', 'reserved', 'sold', 'repair', 'supplier_return', 'ignored'];
   const OPEN_ORDER_STATUS = ['new', 'deposited', 'prepared'];
 
   const willMoveLaptops = laptops.filter(l => {
@@ -404,12 +403,18 @@ export default function Settings() {
         </div>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-            Quản lý Tuỳ chọn Hệ thống (Database)
+            Cài đặt danh mục & quy trình
           </h1>
           <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-            Thêm, sửa, xoá các danh mục thuộc tính hiển thị (Được lưu trực tiếp trong cơ sở dữ liệu)
+            Dùng chung phân loại và mẫu cấu hình cho lô mua, nhận hàng và kho bán.
           </p>
         </div>
+      </div>
+
+      <div style={{ padding: '14px 16px', marginBottom: '24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#475569', fontSize: '0.85rem', lineHeight: 1.65 }}>
+        <strong style={{ color: '#1e293b' }}>Nhà cung cấp → Lô mua → Nhận hàng → QC → Sẵn bán</strong>
+        <p style={{ margin: '6px 0 0' }}>Nguồn nhập lấy từ nhà cung cấp của lô mua. Phân loại và mẫu cấu hình được chọn khi nhập máy; kết quả QC cập nhật trên cùng hồ sơ máy.</p>
+        <p style={{ margin: '4px 0 0' }}>Tên hiển thị của trạng thái có thể đổi tại đây. Việc chuyển trạng thái được thực hiện tại từng bước nghiệp vụ.</p>
       </div>
 
       {/* ─── Quản lý theo tháng ─── */}

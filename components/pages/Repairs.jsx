@@ -25,12 +25,12 @@ export default function Repairs() {
   const requestedLaptopId = params.get('laptopId') || '';
   const load = useCallback(async () => {
     try {
-      const [repairData, laptops] = await Promise.all([api('/api/repairs'), api('/api/inventory?all=true')]);
+      const [repairData, laptops] = await Promise.all([api('/api/repairs'), api('/api/inventory?all=true&status=waiting_qc')]);
       setJobs(repairData.jobs || []); setTechnicians(repairData.technicians || []);
-      setInventory(laptops.filter(x => ['qc_failed', 'waiting_qc'].includes(String(x.status).toLowerCase()))); setError('');
+      setInventory(laptops.filter(x => String(x.status).toLowerCase() === 'waiting_qc')); setError('');
     } catch (e) { setError(e.message); }
   }, []);
-  useEffect(() => { Promise.all([api('/api/repairs'), api('/api/inventory?all=true')]).then(([repairData, laptops]) => { setJobs(repairData.jobs || []); setTechnicians(repairData.technicians || []); setInventory(laptops.filter(x => ['qc_failed', 'waiting_qc'].includes(String(x.status).toLowerCase()))); if (requestedLaptopId) setShowCreate(true); }).catch(e => setError(e.message)); }, [requestedLaptopId]);
+  useEffect(() => { Promise.all([api('/api/repairs'), api('/api/inventory?all=true&status=waiting_qc')]).then(([repairData, laptops]) => { setJobs(repairData.jobs || []); setTechnicians(repairData.technicians || []); setInventory(laptops.filter(x => String(x.status).toLowerCase() === 'waiting_qc')); if (requestedLaptopId) setShowCreate(true); }).catch(e => setError(e.message)); }, [requestedLaptopId]);
   const open = async job => { try { const data = await api(`/api/repairs?id=${job.id}`); setActive(data.job); setParts(data.parts || []); setActions(data.actions || []); setSourceQc(data.sourceQc); } catch (e) { setError(e.message); } };
   const mutate = async body => { setSaving(true); try { await api('/api/repairs', { method: 'POST', body: JSON.stringify(body) }); await load(); if (active) await open(active); return true; } catch (e) { setError(e.message); return false; } finally { setSaving(false); } };
   const create = async e => { e.preventDefault(); const f = new FormData(e.currentTarget); const ok = await mutate({ action: 'start', laptopId: f.get('laptopId'), sourceType: f.get('sourceType'), sourceId: f.get('sourceId'), reportedIssue: f.get('reportedIssue'), priority: f.get('priority'), assignedTo: f.get('assignedTo'), idempotencyKey: crypto.randomUUID() }); if (ok) { setShowCreate(false); router.replace('/repairs'); } };

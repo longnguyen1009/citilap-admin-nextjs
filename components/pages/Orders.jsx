@@ -124,6 +124,7 @@ const EditableCell = ({ value, onChange, type = "text", rows, placeholder, class
 };
 
 export default function Orders() {
+  const [activeLaptopPicker, setActiveLaptopPicker] = useState(null);
   const { 
     laptops, 
     orders: allOrders,
@@ -148,7 +149,6 @@ export default function Orders() {
     getLaptopAssignmentError,
     getOptions,
     getLabel,
-    cloudStatus,
     appOptions
   } = useInventory();
 
@@ -597,6 +597,7 @@ export default function Orders() {
     });
   }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
 
+
   const hasActiveFilters = Boolean(
     searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory
   );
@@ -756,13 +757,6 @@ export default function Orders() {
           )}
         </div>
       </div>
-
-      {cloudStatus === 'checking' && (
-        <div className="sync-indicator checking" style={{ marginBottom: '0.75rem' }}>
-          <span className="sync-spinner"></span>
-          Đang kết nối cloud...
-        </div>
-      )}
 
       {/* FILTER & SEARCH CARD */}
       <div className="card glass filter-card orders-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
@@ -1092,12 +1086,13 @@ export default function Orders() {
                                     background: isLocked ? 'rgba(100,116,139,0.08)' : undefined
                                   }}
                                   value={ord.laptopId || ord.requestedLaptopId || ''}
+                                  onFocus={() => setActiveLaptopPicker(ord.id)}
                                   onChange={(e) => handleDirectChangeLaptop(ord.id, e.target.value)}
                                   disabled={isLocked}
                                   title={isLocked ? `🔒 Không được đổi máy — ${lockReason}` : 'Chọn máy cho đơn hàng'}
                                 >
                                   <option value="">- Chưa gán máy -</option>
-                                  {(ord.laptopId ? getSelectableLaptops(ord.id) : (
+                                  {(activeLaptopPicker !== ord.id || isLocked ? (laptopObj ? [laptopObj] : []) : ord.laptopId ? getSelectableLaptops(ord.id) : (
                                     labelToKey('orderStatus', ord.orderStatus, appOptions) === 'deposited'
                                     || labelToKey('paymentStatus', ord.paymentStatus, appOptions) === 'deposited'
                                       ? getDepositReferenceLaptops(ord.requestedLaptopId)

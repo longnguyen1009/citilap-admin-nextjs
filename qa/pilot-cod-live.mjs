@@ -60,7 +60,7 @@ const customer = customerResult.body[0];
 const laptopResult = await rest('laptops', 'POST', {
   serial: `${tag}-SERIAL`, name: `${tag} Laptop`, category: 'PILOT', location: 'store', charger_status: 'with_charger',
   status: 'available', price_rmb: 2400, shipping_rmb: 50, exchange_rate: 3500, import_price_vnd: 8.575,
-  wholesale_price_vnd: 13, retail_price_vnd: 15, is_locked: false, is_active: true,
+  wholesale_price_vnd: 13, retail_price_vnd: 15, is_active: true,
   available_for_sale_at: new Date().toISOString(), import_date: today, warehouse_date: today, condition_note: tag,
 });
 check('create pilot laptop', laptopResult.ok, { status: laptopResult.status, error: laptopResult.body });
