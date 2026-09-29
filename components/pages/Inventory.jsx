@@ -226,7 +226,7 @@ export default function Inventory() {
     status: 'available',
     priceRmb: '',
     shippingRmb: 0,
-    exchangeRate: formulaConfig.defaultRate || 3550,
+    exchangeRate: formulaConfig.defaultRate || 3990,
     wholesalePriceVnd: '',
     retailPriceVnd: '',
     importPriceVnd: '',
@@ -493,7 +493,7 @@ export default function Inventory() {
     const result = await updateFormulaConfig({
       ...formulaConfig,
       shippingVnd: parseFloat(formulaForm.shippingVnd) || 400000,
-      defaultRate: parseFloat(formulaForm.defaultRate) || 3550
+      defaultRate: parseFloat(formulaForm.defaultRate) || 3990
     }, formulaForm.recalculateAll);
     if (!result?.ok) {
       toast.error(result?.message || 'Không thể lưu công thức.');

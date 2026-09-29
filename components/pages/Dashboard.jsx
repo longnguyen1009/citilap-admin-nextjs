@@ -96,7 +96,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1d4ed8' }}>{selectedMonth === 'ALL' ? 'Tất cả' : 'Tháng ' + selectedMonth}</span>
           </div>
           <p className="subtitle">
-            Xin chào, {user?.name} ({user?.role}) &bull; Báo cáo: {selectedMonth === 'ALL' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`} &bull; Tỷ giá: {formulaConfig?.defaultRate || 3550} RMB/VND
+            Xin chào, {user?.name} ({user?.role}) &bull; Báo cáo: {selectedMonth === 'ALL' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`} &bull; Tỷ giá: {formulaConfig?.defaultRate || 3990} RMB/VND
           </p>
         </div>
       </div>

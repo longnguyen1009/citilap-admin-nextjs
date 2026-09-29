@@ -75,7 +75,7 @@ export const useInventory = () => useContext(InventoryContext);
 export const DEFAULT_FORMULA_CONFIG = {
   shippingVnd: 400000,
   divisor: 1000000,
-  defaultRate: 3550,
+  defaultRate: 3990,
 };
 
 // ─── Helper nội bộ: đọc customConfig từ localStorage tại runtime ──────────────
@@ -163,7 +163,7 @@ export const parseFlexibleFloat = (val) => {
 export const computeImportPrice = (priceRmb, shippingRmb, exchangeRate, formulaConfig = DEFAULT_FORMULA_CONFIG) => {
   const p = parseFlexibleFloat(priceRmb);
   const s = parseFlexibleFloat(shippingRmb);
-  const r = parseFlexibleFloat(exchangeRate) || formulaConfig.defaultRate || 3550;
+  const r = parseFlexibleFloat(exchangeRate) || formulaConfig.defaultRate || 3990;
   const extraVnd = formulaConfig.shippingVnd !== undefined ? parseFlexibleFloat(formulaConfig.shippingVnd) : 400000;
   const divisor = formulaConfig.divisor || 1000000;
 
