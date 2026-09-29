@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
+import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '@/lib/apiAuth';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 
 const toCamel = value => {
@@ -34,7 +34,10 @@ export async function GET(request) {
 export async function POST(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'Dữ liệu phân máy không hợp lệ' }, { status: 400 });
+  }
   const validId = value => Number.isSafeInteger(value) && value > 0;
   if (!validId(body.orderId) || (body.laptopId !== null && !validId(body.laptopId)) || (body.expectedOwner !== null && !validId(body.expectedOwner))) {
     return NextResponse.json({ error: 'Mã đơn hoặc máy không hợp lệ' }, { status: 400 });
@@ -61,5 +64,10 @@ export async function POST(request) {
   if (orders.error || laptops.error) {
     return NextResponse.json({ error: 'Đã phân máy nhưng không thể tải dữ liệu cập nhật' }, { status: 503 });
   }
-  return NextResponse.json(toCamel({ allocation: data, orders: orders.data, laptops: laptops.data }));
+  const result = toCamel({ allocation: data, orders: orders.data, laptops: laptops.data });
+  if (auth.profile.role !== 'ADMIN') {
+    result.orders = filterSensitiveFields(result.orders, SENSITIVE_ORDER_KEYS);
+    result.laptops = filterSensitiveFields(result.laptops, SENSITIVE_LAPTOP_KEYS);
+  }
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
 }

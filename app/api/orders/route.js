@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parseListScope } from '../../../lib/listScope';
+import { parseListScope, businessMonthKey } from '../../../lib/listScope';
 import { fetchOrdersFromCloud, saveOrderToCloud, createOrderWithInventoryToCloud, keysToCamel } from '../../../lib/services/dbService';
 import { diffObject, pickAuditFields, logActivity } from '../../../lib/services/logger';
 import { requireUser, filterSensitiveFields, sanitizePayload, validateOrderPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
@@ -39,13 +39,17 @@ export async function GET(request) {
 
   const db = getSupabaseAdminClient();
   const orderIds = data.map(item => Number(item.id)).filter(Number.isFinite);
-  const [{ data: reservations }, { data: tradeIns }, summaryResult, commissionsResult, { data: invoices }] = orderIds.length ? await Promise.all([
-    db.from('reservations').select('reservation_code,order_id,status,reserved_at,expires_at,converted_at').in('order_id', orderIds),
+  const enrichment = orderIds.length ? await Promise.all([
+    db.from('reservations').select('reservation_code,order_id,status,reserved_at,expires_at,converted_at').in('order_id', orderIds).eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString()).order('reserved_at').order('id'),
     db.from('trade_ins').select('trade_in_code,order_id,status,agreed_value_vnd').in('order_id', orderIds),
     isAdmin ? db.from('order_sales_operations_summary').select('*').in('order_id', orderIds) : Promise.resolve({ data: [] }),
     isAdmin ? db.from('commissions').select('order_id,beneficiary_type,beneficiary_name,commission_type,amount_vnd,status').in('order_id', orderIds).neq('status', 'CANCELLED') : Promise.resolve({ data: [] }),
     db.from('invoices').select('id,order_id').in('order_id', orderIds)
   ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  if (enrichment.some(result => result.error)) {
+    return NextResponse.json({ error: 'Không thể tải đầy đủ trạng thái giữ máy và chứng từ. Vui lòng thử lại.' }, { status: 503 });
+  }
+  const [{ data: reservations }, { data: tradeIns }, summaryResult, commissionsResult, { data: invoices }] = enrichment;
   const byOrder = rows => new Map((rows || []).map(item => [String(item.order_id), keysToCamel(item)]));
   const reservationByOrder = byOrder(reservations);
   const tradeInByOrder = byOrder(tradeIns);
@@ -93,6 +97,15 @@ export async function POST(request) {
     }
     for (const key of protectedCostFields) delete rawPayload[key];
     const body = sanitizePayload(rawPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
+    delete body.createdAt;
+    delete body.updatedAt;
+    delete body.laptopLocked;
+    delete body.cancelledAt;
+    delete body.returnedAt;
+    if (body.isActive === false) {
+      return NextResponse.json({ error: 'Hãy dùng quy trình hủy hoặc trả đơn hàng.' }, { status: 403 });
+    }
+    delete body.isActive;
     const isLegacyTradeInType = value => {
       const normalized = String(value || '').trim().toLowerCase();
       return normalized === 'trade_in' || normalized.includes('trade-in') || normalized.includes('thu cũ');
@@ -135,8 +148,10 @@ export async function POST(request) {
         oldData = data;
         action = 'UPDATE';
         if (!isAdmin) {
-          const now = new Date();
-          const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+          if (body.monthKey !== undefined && body.monthKey !== oldData.month_key) {
+            return NextResponse.json({ error: 'Chỉ admin được đổi tháng dữ liệu.' }, { status: 403 });
+          }
+          const currentMonth = businessMonthKey();
           if (oldData.month_key && oldData.month_key !== currentMonth) {
             return NextResponse.json({ error: 'Bạn chỉ được sửa đơn hàng trong tháng hiện tại.' }, { status: 403 });
           }
@@ -144,6 +159,8 @@ export async function POST(request) {
       }
     }
     // This value can only originate from the accepted trade-in workflow.
+    if (body.orderStatus === 'cancelled' && oldData?.order_status !== 'cancelled') body.cancelledAt = new Date().toISOString();
+    if (body.orderStatus === 'returned' && oldData?.order_status !== 'returned') body.returnedAt = new Date().toISOString();
     body.tradeInCreditVnd = Number(oldData?.trade_in_credit_vnd || 0);
     // Once an order exists, payment status is derived from the payment ledger,
     // refunds, COD workflow, and trade-in credit. Editing ordinary order fields
@@ -157,10 +174,11 @@ export async function POST(request) {
       body.paymentStatus = oldData.payment_status;
       body.amountPaid = Number(oldData.amount_paid || 0);
       body.depositAmount = Number(oldData.deposit_amount || 0);
-      const salePrice = Number(body.salePrice || 0);
+      const salePrice = Number(body.salePrice ?? oldData.sale_price ?? 0);
+      body.salePrice = salePrice;
       const tradeInCredit = Number(body.tradeInCreditVnd || 0) / 1000000;
       body.debtAmount = Math.max(0, salePrice - body.amountPaid - tradeInCredit);
-      body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount || 0), 0));
+      body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount ?? oldData.cod_amount ?? 0), 0));
     }
 
     // P0.4: Trả lỗi nếu non-admin gửi profitVnd

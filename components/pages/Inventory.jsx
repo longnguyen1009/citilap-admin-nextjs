@@ -1,4 +1,5 @@
 "use client";
+import { downloadExport } from '@/lib/downloadExport';
 import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import {
@@ -512,42 +513,14 @@ export default function Inventory() {
   );
 
   // Xuất file CSV (Khớp chính xác 20 cột của Google Sheet)
-  const handleExportCSV = () => {
-    const isAdmin = user?.role === 'ADMIN';
-    const headers = [
-      "Ngày nhập", "NO", "Tên", "Vị trí kho", "", "Phân Loại",
-      "SERIAL", "Tình trạng Sạc", "Tình trạng", "Nguồn nhập", "Tình Trạng Note", "Trạng thái bán",
-      ...(isAdmin ? ["Giá mua (RMB)", "Phí nội địa (RMB)", "Tỷ giá (VNĐ/RMB)", "Giá nhập (triệu VNĐ)"] : []),
-      "Giá bán thợ", "giá bán lẻ", "Mã đơn vận"
-    ];
-
-    const csvRows = [
-      headers.join(','),
-      ...laptops.map(l => {
-        const base = [
-          `"${l.importDate}"`, `"${l.id}"`, `"${l.name.replace(/"/g, '""')}"`, `"${l.location}"`, '""', `"${getLabel('category', l.category)}"`,
-          `"${l.serial || ''}"`, `"${l.chargerStatus || D.chargerWith}"`, '""', `"${l.seller}"`, `"${(l.conditionNote || '').replace(/"/g, '""')}"`, `"${l.status}"`,
-        ];
-        const financial = isAdmin
-          ? [l.priceRmb, l.shippingRmb, l.exchangeRate, l.importPriceVnd]
-          : [];
-        const selling = [
-          `"${l.wholesalePriceVnd || ''}"`,
-          `"${l.retailPriceVnd || ''}"`,
-          `"${l.trackingCode || ''}"`,
-        ];
-        return [...base, ...financial, ...selling].join(',');
-      })
-    ];
-
-    const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Kho_CitiLap_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
+  const [exporting, setExporting] = useState(false);
+  const handleExportCSV = async (format = 'csv') => {
+    if (user?.role !== 'ADMIN' || exporting) return;
+    setExporting(true);
+    try { await downloadExport('laptops', format, filteredLaptops.map(row => row.id)); }
+    catch (error) { toast.error(error.message); }
+    finally { setExporting(false); }
   };
-
   const [sheetUrlInput, setSheetUrlInput] = useState(
     'https://docs.google.com/spreadsheets/d/1QuHlL_ld8jEFasiIpDSDmRogYkrhs9f1-Ngewzwk0UI/edit?gid=1444306295#gid=1444306295'
   );
@@ -1574,11 +1547,9 @@ export default function Inventory() {
                     <Download size={16} /> Tải dữ liệu về Excel/CSV
                   </h4>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                    Xuất đầy đủ 18 cột dữ liệu kho máy ra file .CSV.
+                    Xuất 24 cột của danh sách đang lọc, gồm giá mua, serial và thông tin nhập hàng. Chỉ dành cho admin.
                   </p>
-                  <button className="btn btn-sm btn-outline" style={{ width: '100%' }} onClick={handleExportCSV}>
-                    Tải File CSV Kho
-                  </button>
+                  {user?.role === 'ADMIN' && <><button className="btn btn-sm btn-outline" disabled={exporting} onClick={() => handleExportCSV('csv')}>CSV</button><button className="btn btn-sm btn-outline" disabled={exporting} onClick={() => handleExportCSV('xlsx')}>Excel (.xlsx)</button></>}
                 </div>
 
                 <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>

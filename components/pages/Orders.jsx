@@ -1,4 +1,5 @@
 "use client";
+import { downloadExport } from '@/lib/downloadExport';
 import React, { useState, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -625,64 +626,14 @@ export default function Orders() {
   );
 
   // Xuất file CSV Đơn Hàng
-  const handleExportCSV = () => {
-    if (orders.length === 0) {
-      toast.error('Không có dữ liệu đơn hàng để xuất!');
-      return;
-    }
-    const isAdmin = user?.role === 'ADMIN';
-    const headers = [
-      'ID Đơn', 'Ngày Tạo', 'SALE Online', 'Ghi Chú', 'Mã Máy (ID)', 'Cấu Hình Máy',
-      'Trạng Thái Đơn', 'Trạng Thái Thanh Toán', 'Phương Thức TT', 'Trạng Thái Giao Hàng', 'Gửi Hàng',
-      'Giá Bán (tr)',
-      ...(isAdmin ? ['Lợi Nhuận (tr)'] : []),
-      'Cọc', 'Thu Hộ COD (tr)', 'Thông Tin Khách', 'Địa Chỉ', 'Mã Vận Đơn', 'Cài Đặt', 'Bảo Hành', 'Quà Tặng', 'Ngày Gửi'
-    ];
-
-    const rows = filteredOrders.map(o => {
-      const laptopObj = laptops.find(l => String(l.id) === String(o.laptopId || o.requestedLaptopId));
-      const noteText = o.note || [o.note1, o.note2].filter(Boolean).join(' - ') || '';
-      const base = [
-        o.id,
-        `"${o.createdDate || ''}"`,
-        `"${o.saleOnline || ''}"`,
-        `"${noteText}"`,
-        `"${o.laptopId || o.requestedLaptopId || ''}"`,
-        `"${laptopObj?.name || ''}"`,
-        `"${o.orderStatus || ''}"`,
-        `"${o.paymentStatus || ''}"`,
-        `"${o.paymentMethod || ''}"`,
-        `"${o.deliveryStatus || ''}"`,
-        `"${o.shippingMethod || ''}"`,
-        o.salePrice || 0,
-      ];
-      const profit = isAdmin
-        ? [(laptopObj && o.salePrice ? Number((parseFlexibleFloat(o.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2)) : '')]
-        : [];
-      const rest = [
-        `"${o.depositNote || ''}"`,
-        o.codAmount || 0,
-        `"${o.customerId || ''}"`,
-        `"${o.customerAddress || ''}"`,
-        `"${o.trackingCode || ''}"`,
-        `"${o.setupNote || ''}"`,
-        `"${o.warranty || ''}"`,
-        `"${o.shipDate || ''}"`
-      ];
-      return [...base, ...profit, ...rest];
-    });
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `CitiLap_DonHang_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const [exporting, setExporting] = useState(false);
+  const handleExportCSV = async (format = 'csv') => {
+    if (user?.role !== 'ADMIN' || exporting) return;
+    setExporting(true);
+    try { await downloadExport('orders', format, filteredOrders.map(row => row.id)); }
+    catch (error) { toast.error(error.message); }
+    finally { setExporting(false); }
   };
-
   // Badge Style Utilities
   const getOrderStatusBadgeClass = (status) => {
     const key = labelToKey('orderStatus', status, appOptions);
@@ -769,9 +720,7 @@ export default function Orders() {
         </div>
 
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download size={14} /> Xuất CSV / Excel
-          </Button>
+          {user?.role === 'ADMIN' && <><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('csv')}><Download size={14} /> CSV</Button><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('xlsx')}><Download size={14} /> Excel (.xlsx)</Button></>}
 
           {(user?.role === 'ADMIN' || user?.role === 'SALES' || !user) && (
             <Button data-testid="order-add-button" variant="default" size="sm" onClick={handleOpenAdd}>

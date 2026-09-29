@@ -5,6 +5,16 @@ import { fetchUsersFromCloud, saveUserToCloud, updateUserStatus } from '../lib/a
 import { getMockUserRole, isMockAuthAllowed } from '../lib/authPolicy';
 
 const AuthContext = createContext();
+const AUTH_REQUEST_TIMEOUT_MS = 10000;
+
+const withTimeout = (request, timeoutMs, message) => {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([Promise.resolve(request), timeout])
+    .finally(() => window.clearTimeout(timeoutId));
+};
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -37,23 +47,23 @@ export const AuthProvider = ({ children }) => {
     loadingProfileRef.current = authUser.id;
 
     try {
-      const { data: profile, error } = await client
-        .from('user_profiles')
-        .select('name, role, is_active')
-        .eq('id', authUser.id)
-        .single();
+      const { data: profile, error } = await withTimeout(
+        client.from('user_profiles').select('name, role, is_active').eq('id', authUser.id).single(),
+        AUTH_REQUEST_TIMEOUT_MS,
+        'Quá thời gian tải hồ sơ người dùng'
+      );
 
       let newUser;
 
       if (error || !profile) {
-        await client.auth.signOut();
+        await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
         lastUserRef.current = null;
         loadingProfileRef.current = false;
         setUser(null);
         setLoading(false);
         return false;
       } else if (!profile.is_active) {
-        await client.auth.signOut();
+        await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
         lastUserRef.current = null;
         loadingProfileRef.current = false;
         setUser(null);
@@ -77,7 +87,7 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (err) {
       console.error('Lỗi load user profile:', err);
-      await client.auth.signOut().catch(() => {});
+      await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
       lastUserRef.current = null;
       setUser(null);
       return false;
@@ -93,19 +103,29 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    // Lấy session hiện tại
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserProfile(client, session.user);
-      } else {
+    // Luôn kết thúc bước khôi phục, kể cả khi storage/network của Supabase bị treo.
+    void (async () => {
+      try {
+        const { data: { session } } = await withTimeout(
+          client.auth.getSession(),
+          AUTH_REQUEST_TIMEOUT_MS,
+          'Quá thời gian khôi phục phiên đăng nhập'
+        );
+        if (session?.user) await loadUserProfile(client, session.user);
+      } catch (error) {
+        console.error('Không thể khôi phục phiên:', error);
+        lastUserRef.current = null;
+        loadingProfileRef.current = false;
+        setUser(null);
+      } finally {
         setLoading(false);
       }
-    });
+    })();
 
     // Listen auth state changes — chỉ xử lý SIGNED_IN / SIGNED_OUT
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        loadUserProfile(client, session.user);
+        void loadUserProfile(client, session.user);
       } else if (event === 'SIGNED_OUT') {
         lastUserRef.current = null;
         setUser(null);

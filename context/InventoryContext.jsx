@@ -31,7 +31,7 @@ import { useAuth } from './AuthContext';
 const InventoryContext = createContext();
 
 // ─── Phân quyền data: ẩn thông tin nhạy cảm theo role ─────────────────
-const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'seller', 'warrantySupplier'];
+const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'seller', 'warrantySupplier', 'purchasePriceRmb', 'purchaseExchangeRate'];
 const SENSITIVE_ORDER_KEYS = [
   'profitVnd', 'costSnapshotVnd', 'grossProfitSnapshotVnd',
   'directCostSnapshotVnd', 'netContributionSnapshotVnd',
@@ -663,7 +663,7 @@ export const InventoryProvider = ({ children }) => {
       const now = Date.now();
       if ((pathname === '/' || ['/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route))) && now - lastCrossFetchLaptop > CROSS_FETCH_THROTTLE_MS) {
         lastCrossFetchLaptop = now;
-        fetchOrdersFromCloud(monthQuery).then(d => { if (d && !cancelled) setOrders(d); });
+        fetchOrdersFromCloud(monthQuery).then(d => { if (d && !cancelled) setOrders(d); }).catch(() => { if (!cancelled) setCloudStatus('error'); });
       }
     };
 
@@ -687,7 +687,7 @@ export const InventoryProvider = ({ children }) => {
         lastCrossFetchOrder = now;
         fetchLaptopsFromCloud(monthQuery).then(d => {
           if (d && !cancelled) setLaptops(reconcileLaptopStatuses(d, ordersRef.current, selectedMonth));
-        });
+        }).catch(() => { if (!cancelled) setCloudStatus('error'); });
       }
     };
 

@@ -44,16 +44,24 @@ export async function GET(request) {
 
   const db = getSupabaseAdminClient();
   const laptopIds = data.map(item => Number(item.id)).filter(Number.isFinite);
-  const [{ data: reservations }, { data: tradeIns }] = laptopIds.length ? await Promise.all([
+  const enrichment = laptopIds.length ? await Promise.all([
     db.from('reservations').select('id,reservation_code,laptop_id,customer_id,reserved_by,expires_at,status').in('laptop_id', laptopIds).eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString()),
     db.from('trade_ins').select('trade_in_code,inventory_laptop_id').in('inventory_laptop_id', laptopIds)
   ]) : [{ data: [] }, { data: [] }];
+  if (enrichment.some(result => result.error)) {
+    return NextResponse.json({ error: 'Không thể tải đầy đủ trạng thái giữ máy. Vui lòng thử lại.' }, { status: 503 });
+  }
+  const [{ data: reservations }, { data: tradeIns }] = enrichment;
   const customerIds = [...new Set((reservations || []).map(item => item.customer_id).filter(Boolean))];
   const userIds = [...new Set((reservations || []).map(item => item.reserved_by).filter(Boolean))];
-  const [{ data: customers }, { data: users }] = await Promise.all([
+  const people = await Promise.all([
     customerIds.length ? db.from('customers').select('id,name,phone').in('id', customerIds) : Promise.resolve({ data: [] }),
     userIds.length ? db.from('user_profiles').select('id,name').in('id', userIds) : Promise.resolve({ data: [] })
   ]);
+  if (people.some(result => result.error)) {
+    return NextResponse.json({ error: 'Không thể tải thông tin người giữ máy. Vui lòng thử lại.' }, { status: 503 });
+  }
+  const [{ data: customers }, { data: users }] = people;
   const customerById = new Map((customers || []).map(item => [String(item.id), item]));
   const userById = new Map((users || []).map(item => [String(item.id), item]));
   const reservationByLaptop = new Map((reservations || []).map(item => [String(item.laptop_id), item]));
@@ -95,6 +103,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
     const body = sanitizePayload(rawPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
+    if (body.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
+    }
+    delete body.createdAt;
+    delete body.updatedAt;
 
     // P0.4: Trả lỗi nếu non-admin gửi field nhạy cảm
     if (!isAdmin && SENSITIVE_LAPTOP_KEYS.some(k => rawPayload?.[k] !== undefined && rawPayload[k] !== null && rawPayload[k] !== '')) {
@@ -119,9 +132,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Hãy tạo máy qua Lô mua, Nhận máy chưa rõ nguồn hoặc Thu cũ đổi mới.' }, { status: 400 });
     }
 
-    // P0.1: Khi tạo mới, luôn bỏ ID để database tự sinh
-    if (isCreateRequest) {
-      delete body.id;
+    if (!Number.isSafeInteger(Number(body.id)) || Number(body.id) <= 0) {
+      return NextResponse.json({ error: 'Cần ID laptop hợp lệ để chỉnh sửa.' }, { status: 400 });
     }
 
     // Lấy dữ liệu cũ để diff
@@ -131,16 +143,24 @@ export async function POST(request) {
       const adminClient = getSupabaseAdminClient();
       const { data, error } = await adminClient.from('laptops').select('*').eq('id', Number(body.id)).maybeSingle();
       if (error) throw error;
+      if (!data) return NextResponse.json({ error: 'Không tìm thấy laptop.' }, { status: 404 });
       if (data) {
         oldData = data;
         action = 'UPDATE';
+        if (body.isActive !== undefined && body.isActive !== oldData.is_active) {
+          return NextResponse.json({ error: 'Không thể đổi trạng thái hoạt động qua chỉnh sửa máy.' }, { status: 403 });
+        }
+        if (!isAdmin && body.monthKey !== undefined && body.monthKey !== oldData.month_key) {
+          return NextResponse.json({ error: 'Chỉ admin được đổi tháng dữ liệu.' }, { status: 403 });
+        }
+        delete body.isActive;
 
         if (!isAdmin && ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
           const oldLaptop = keysToCamel(oldData);
           const procurementFields = ['name', 'serial', 'trackingCode', 'priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd'];
           const changedProcurement = procurementFields.filter(key => {
-            if (rawPayload?.[key] === undefined) return false;
-            return String(rawPayload[key] ?? '').trim() !== String(oldLaptop[key] ?? '').trim();
+            if (body[key] === undefined) return false;
+            return String(body[key] ?? '').trim() !== String(oldLaptop[key] ?? '').trim();
           });
           if (changedProcurement.length > 0) {
             return NextResponse.json({

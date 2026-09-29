@@ -6,12 +6,15 @@ import { invoiceRequest, invoiceMoney } from '@/lib/invoiceClient';
 import { useInventory } from '@/context/InventoryContext';
 import ListPagination, { useListPagination } from '../ui/ListPagination';
 
+import InvoiceDocument from './InvoiceDocument';
+
 const code = id => `HD${String(id).padStart(6,'0')}`;
 const date = value => value ? new Date(value).toLocaleString('vi-VN') : '—';
 export default function Invoices({ id, query = '' }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [a4InvoiceId, setA4InvoiceId] = useState(null);
   const { getLabel } = useInventory();
   const filtered = Array.isArray(rows) && !id ? rows.filter(row => [code(row.id),row.order_id,row.snapshot?.customer?.name,row.snapshot?.customer?.phone].join(' ').toLowerCase().includes(search.toLowerCase())) : [];
   const invoicePages = useListPagination(filtered, search);
@@ -30,6 +33,7 @@ export default function Invoices({ id, query = '' }) {
   }
   const invoice = rows[0];
   if (!invoice) return <p>Không tìm thấy hóa đơn. <Link href="/invoices">Về danh sách</Link></p>;
+  if (a4InvoiceId === invoice.id) return <InvoiceDocument invoice={invoice} getLabel={getLabel} onBack={() => setA4InvoiceId(null)} />;
   const s = invoice.snapshot || {}, o = s.order || {}, customer = s.customer || {};
   const total = Number(s.total || 0), paid = Number(s.paid || 0);
   const tradeInCredit = Number(o.trade_in_credit_vnd || 0);
@@ -40,7 +44,7 @@ export default function Invoices({ id, query = '' }) {
   const percent = total > 0 ? Math.min(100, Math.max(0, Math.round((total - debt) / total * 100))) : 0;
   const label = (group, value) => getLabel(group, value) || value || '—';
   return <article className="invoice-workspace invoice-detail">
-    <div className="invoice-toolbar invoice-no-print"><Link href="/invoices"><ArrowLeft size={16} /> Danh sách hóa đơn</Link><button className="btn btn-primary" onClick={() => window.print()}><Printer size={16} /> In / Lưu PDF</button></div>
+    <div className="invoice-toolbar invoice-no-print"><Link href="/invoices"><ArrowLeft size={16} /> Danh sách hóa đơn</Link><button className="btn btn-primary" onClick={() => setA4InvoiceId(invoice.id)}><Printer size={16} /> Giao diện A4</button></div>
     <div className="invoice-paper"><header className="invoice-document-header"><div><p className="invoice-eyebrow">CITILAP · HÓA ĐƠN BÁN HÀNG</p><h1><FileText size={23} /> {code(invoice.id)}</h1><div className="invoice-badges"><span><CheckCircle2 size={13} /> {label('orderStatus',o.order_status)}</span><span>{label('orderType',o.order_type)}</span><span>{label('paymentMethod',o.payment_method)}</span><span>{percent >= 100 ? 'Đã thanh toán đủ' : `Đã thanh toán ${percent}%`}</span></div></div><div className="invoice-document-date">Đơn hàng #{invoice.order_id}<small>{date(invoice.created_at)}</small></div></header>
     <div className="invoice-columns"><section><h2>Thông tin đơn bán</h2><dl className="invoice-facts">{[
       ['Khách hàng',customer.name],['Số điện thoại',customer.phone],['Địa chỉ',o.customer_address || customer.address],['Chi nhánh',s.branch?.name],['Địa chỉ chi nhánh',s.branch?.address],['SALE Online',label('saleOnline',o.sale_online)],['SALE Offline',label('saleOffline',o.sale_offline)],['Ngày tạo hóa đơn',date(invoice.created_at)],['Người xuất',invoice.created_by]

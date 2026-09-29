@@ -4,9 +4,9 @@ import { fetchPaymentsFromCloud, savePaymentToCloud } from '@/lib/services/dbSer
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
 import { randomUUID } from 'node:crypto';
+import { isCalendarDate } from '@/lib/listScope';
 
 const PAYMENT_TYPES = new Set(['deposit', 'balance', 'cod', 'refund', 'other']);
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const parseId = (value) => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
@@ -14,8 +14,7 @@ const parseId = (value) => {
   return null;
 };
 
-const validDate = (value) => !value || (typeof value === 'string' && DATE_RE.test(value)
-  && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()));
+const validDate = value => !value || isCalendarDate(value);
 
 export async function GET(request) {
   const auth = await requireUser(request, ['ADMIN', 'SALES']);

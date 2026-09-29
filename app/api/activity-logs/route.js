@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
 import { requireUser } from '../../../lib/apiAuth';
+import { canReadAudit, visibleAuditChanges } from '../../../lib/auditVisibility';
 
 const ENTITY_TYPES = new Set([
   'LAPTOP',
@@ -26,6 +27,9 @@ export async function GET(request) {
   }
 
   const adminClient = getSupabaseAdminClient();
+  if (!canReadAudit(auth.profile.role, entityType)) {
+    return NextResponse.json({ error: 'Không có quyền xem lịch sử này.' }, { status: 403 });
+  }
   if (!adminClient) {
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
@@ -43,7 +47,9 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data.map(row => ({
+      ...row, changes: visibleAuditChanges(row.changes, auth.profile.role),
+    })), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('Exception fetching activity logs:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -33,7 +33,7 @@ export async function GET(request) {
   const purchaseRange = !batchId && !scope.all && !receiving ? monthDateRange(scope.monthKey) : null;
   const [laptops, suppliers, options] = await Promise.all([
     allRows(() => {
-      const batchJoin = `purchase_batches${purchaseRange ? '!inner' : ''}(id,batch_code,purchase_date,exchange_rate,suppliers(name))`;
+      const batchJoin = `purchase_batches${purchaseRange ? '!inner' : ''}(id,batch_code,supplier_id,purchase_date,exchange_rate,suppliers(name))`;
       let query = db.from('laptops').select(`id,sku,purchase_batch_id,source_type,name,category,serial,tracking_code_cn,purchase_price_rmb,shipping_rmb,purchase_exchange_rate,import_price_vnd,status,received_at,condition_note,month_key,${batchJoin}`).eq('is_active', true).in('source_type', ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT', 'UNKNOWN']).order('id', { ascending: false });
       if (batchId) query = query.eq('purchase_batch_id', Number(batchId));
       if (purchaseRange) query = query.gte('purchase_batches.purchase_date', purchaseRange.start).lt('purchase_batches.purchase_date', purchaseRange.end);
@@ -48,7 +48,7 @@ export async function GET(request) {
   const categories = options.data.filter(row => row.group_key === 'category');
   const batches = new Map();
   const rows = laptops.data.map(({ purchase_batches: batch, ...laptop }) => {
-    if (batch) batches.set(batch.id, { id: batch.id, batch_code: batch.batch_code,
+    if (batch) batches.set(batch.id, { id: batch.id, batch_code: batch.batch_code, supplier_id: batch.supplier_id,
       purchase_date: batch.purchase_date, exchange_rate: batch.exchange_rate,
       supplier_name: batch.suppliers?.name || '' });
     return laptop;
