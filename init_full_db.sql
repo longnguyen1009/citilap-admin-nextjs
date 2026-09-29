@@ -5062,6 +5062,282 @@ GRANT EXECUTE ON FUNCTION public.complete_qc_with_details(uuid,text,text,text,te
 NOTIFY pgrst,'reload schema';
 
 
+-- MIGRATION: 20260929071322_order_profit_from_import_price_vnd.sql
+-- Profit is defined by the business as sale price minus the laptop's stored
+-- import price. Keep operational landed-cost components separate from this
+-- product-profit figure.
+CREATE OR REPLACE FUNCTION public.snapshot_order_cost()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+  import_cost_vnd numeric;
+  direct_cost numeric;
+  sale_vnd numeric;
+BEGIN
+  IF NEW.laptop_id IS NOT NULL AND NEW.sale_price IS NOT NULL THEN
+    SELECT round(l.import_price_vnd * 1000000, 2)
+      INTO import_cost_vnd
+      FROM public.laptops l
+     WHERE l.id = NEW.laptop_id;
+
+    NEW.profit_vnd := CASE
+      WHEN import_cost_vnd IS NULL THEN 0
+      ELSE round(NEW.sale_price - (import_cost_vnd / 1000000), 4)
+    END;
+  ELSE
+    NEW.profit_vnd := 0;
+  END IF;
+
+  IF NEW.order_status IN ('prepared', 'shipping', 'done')
+     AND NEW.cost_snapshotted_at IS NULL
+     AND NEW.laptop_id IS NOT NULL THEN
+    sale_vnd := coalesce(NEW.sale_price, 0) * 1000000;
+    direct_cost := coalesce(NEW.credit_card_fee, 0) * 1000000;
+
+    NEW.cost_snapshot_vnd := import_cost_vnd;
+    NEW.gross_profit_snapshot_vnd := CASE
+      WHEN import_cost_vnd IS NULL THEN NULL
+      ELSE sale_vnd - import_cost_vnd
+    END;
+    NEW.direct_cost_snapshot_vnd := direct_cost;
+    NEW.net_contribution_snapshot_vnd := CASE
+      WHEN import_cost_vnd IS NULL THEN NULL
+      ELSE sale_vnd - import_cost_vnd - direct_cost
+    END;
+    NEW.cost_snapshot_status := CASE
+      WHEN import_cost_vnd IS NULL THEN 'INCOMPLETE'
+      ELSE 'COMPLETE'
+    END;
+    NEW.cost_snapshot_reasons := CASE
+      WHEN import_cost_vnd IS NULL THEN jsonb_build_array('MISSING_IMPORT_PRICE_VND')
+      ELSE '[]'::jsonb
+    END;
+    NEW.cost_snapshotted_at := timezone('utc', now());
+    INSERT INTO public.activity_logs(entity_type, entity_id, action, changes, user_name)
+    VALUES (
+      'ORDER',
+      coalesce(NEW.id::text, 'pending'),
+      'UPDATE',
+      jsonb_build_object(
+        'event', 'COST_SNAPSHOT_CREATED',
+        'cost_source', 'laptops.import_price_vnd',
+        'laptop_id', NEW.laptop_id,
+        'cost_snapshot_vnd', NEW.cost_snapshot_vnd,
+        'cost_status', NEW.cost_snapshot_status
+      ),
+      'SYSTEM'
+    );
+  END IF;
+
+  RETURN NEW;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.sync_order_profit_from_import_price()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  UPDATE public.orders
+     SET profit_vnd = CASE
+       WHEN NEW.import_price_vnd IS NULL THEN 0
+       ELSE round(sale_price - NEW.import_price_vnd, 4)
+     END
+   WHERE laptop_id = NEW.id
+     AND sale_price IS NOT NULL;
+
+  RETURN NEW;
+END
+$function$;
+
+DROP TRIGGER IF EXISTS laptops_sync_order_profit_from_import_price ON public.laptops;
+CREATE TRIGGER laptops_sync_order_profit_from_import_price
+AFTER UPDATE OF import_price_vnd ON public.laptops
+FOR EACH ROW
+WHEN (OLD.import_price_vnd IS DISTINCT FROM NEW.import_price_vnd)
+EXECUTE FUNCTION public.sync_order_profit_from_import_price();
+
+-- Recalculate existing order profit and committed-order snapshots once so
+-- historical rows follow the same business rule as new orders.
+DROP TRIGGER IF EXISTS orders_cost_snapshot_immutable ON public.orders;
+
+UPDATE public.orders o
+   SET profit_vnd = round(o.sale_price - l.import_price_vnd, 4)
+  FROM public.laptops l
+ WHERE l.id = o.laptop_id
+   AND o.sale_price IS NOT NULL
+   AND l.import_price_vnd IS NOT NULL;
+
+UPDATE public.orders o
+   SET cost_snapshot_vnd = round(l.import_price_vnd * 1000000, 2),
+       gross_profit_snapshot_vnd = round((o.sale_price - l.import_price_vnd) * 1000000, 2),
+       net_contribution_snapshot_vnd = round(
+         (o.sale_price - l.import_price_vnd - coalesce(o.credit_card_fee, 0)) * 1000000,
+         2
+       ),
+       cost_snapshot_status = 'COMPLETE',
+       cost_snapshot_reasons = '[]'::jsonb
+  FROM public.laptops l
+ WHERE l.id = o.laptop_id
+   AND o.order_status IN ('prepared', 'shipping', 'done')
+   AND o.cost_snapshotted_at IS NOT NULL
+   AND o.sale_price IS NOT NULL
+   AND l.import_price_vnd IS NOT NULL;
+
+CREATE TRIGGER orders_cost_snapshot_immutable
+BEFORE UPDATE OF
+  cost_snapshot_vnd,
+  gross_profit_snapshot_vnd,
+  direct_cost_snapshot_vnd,
+  net_contribution_snapshot_vnd,
+  cost_snapshot_status,
+  cost_snapshot_reasons,
+  cost_snapshotted_at
+ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.guard_order_cost_snapshot();
+
+
+-- MIGRATION: 20260929073848_separate_order_demand_allocation.sql
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS requested_configuration text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS requested_category text;
+
+-- References describe demand only; a physical allocation alone reserves stock.
+CREATE OR REPLACE FUNCTION public.order_uses_laptop(p_laptop_id bigint, p_is_active boolean, p_order_status text, p_payment_status text, p_reservation_expires_at timestamptz)
+RETURNS boolean LANGUAGE sql STABLE SET search_path TO public, pg_temp AS $$
+ SELECT coalesce(p_laptop_id IS NOT NULL AND p_is_active IS TRUE
+   AND coalesce(p_order_status,'') NOT IN ('cancelled','returned')
+   AND coalesce(p_payment_status,'') <> 'refunded', false);
+$$;
+
+DO $$
+DECLARE definition text;
+BEGIN
+ definition := pg_get_functiondef('public.refresh_laptop_inventory(bigint)'::regprocedure);
+ IF position('(laptop_id=p_laptop_id OR requested_laptop_id=p_laptop_id)' in definition)=0 THEN
+   RAISE EXCEPTION 'Unexpected refresh_laptop_inventory definition';
+ END IF;
+ EXECUTE replace(definition,'(laptop_id=p_laptop_id OR requested_laptop_id=p_laptop_id)','laptop_id=p_laptop_id');
+ definition := pg_get_functiondef('public.guard_order_sellable_laptop()'::regprocedure);
+ EXECUTE replace(replace(definition,'coalesce(NEW.laptop_id,NEW.requested_laptop_id)','NEW.laptop_id'),'coalesce(OLD.laptop_id,OLD.requested_laptop_id)','OLD.laptop_id');
+ definition := pg_get_functiondef('public.guard_active_reservation_order_assignment()'::regprocedure);
+ EXECUTE replace(definition,'(r.laptop_id = NEW.laptop_id OR r.laptop_id = NEW.requested_laptop_id)','r.laptop_id = NEW.laptop_id');
+END $$;
+
+CREATE OR REPLACE FUNCTION public.save_order_demand(p_order jsonb, p_result jsonb)
+RETURNS jsonb LANGUAGE plpgsql SET search_path TO public, pg_temp AS $$
+DECLARE saved orders; source laptops;
+BEGIN
+ SELECT * INTO saved FROM orders WHERE id=(p_result->'order'->>'id')::bigint;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Order save did not return an order'; END IF;
+ IF p_order ? 'requested_laptop_id' THEN
+   SELECT * INTO source FROM laptops WHERE id=nullif(p_order->>'requested_laptop_id','')::bigint;
+   UPDATE orders SET requested_laptop_id=source.id,
+     requested_configuration=CASE WHEN requested_laptop_id IS DISTINCT FROM source.id OR requested_configuration IS NULL THEN coalesce(source.name,requested_configuration) ELSE requested_configuration END,
+     requested_category=CASE WHEN requested_laptop_id IS DISTINCT FROM source.id OR requested_configuration IS NULL THEN coalesce(source.category,requested_category) ELSE requested_category END
+   WHERE id=saved.id RETURNING * INTO saved;
+ END IF;
+ RETURN jsonb_set(p_result,'{order}',to_jsonb(saved));
+END $$;
+
+CREATE OR REPLACE FUNCTION public.create_order_with_inventory(p_order jsonb,p_recorded_by text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public, pg_temp AS $$
+BEGIN RETURN save_order_demand(p_order,save_order_invoice_fields(p_order,create_order_before_invoice(p_order,p_recorded_by))); END $$;
+CREATE OR REPLACE FUNCTION public.update_order_with_inventory(p_order jsonb,p_recorded_by text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public, pg_temp AS $$
+BEGIN RETURN save_order_demand(p_order,save_order_invoice_fields(p_order,update_order_before_invoice(p_order,p_recorded_by))); END $$;
+
+UPDATE orders o SET requested_configuration=l.name,requested_category=l.category
+FROM laptops l WHERE l.id=coalesce(o.requested_laptop_id,o.laptop_id) AND o.requested_configuration IS NULL;
+
+-- Existing physical allocations remain allocated; references no longer reserve.
+DO $$ DECLARE target bigint; BEGIN
+ FOR target IN SELECT DISTINCT requested_laptop_id FROM orders WHERE requested_laptop_id IS NOT NULL LOOP
+   PERFORM refresh_laptop_inventory(target);
+ END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.allocate_order_laptop(p_order_id bigint,p_laptop_id bigint,p_expected_owner bigint DEFAULT NULL,p_actor text DEFAULT 'SYSTEM')
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO public, pg_temp AS $$
+DECLARE target orders; owner orders; machine laptops; previous_id bigint;
+BEGIN
+ -- Serialize allocation operations, including transfers of different machines.
+ PERFORM pg_advisory_xact_lock(726481321);
+ SELECT * INTO target FROM orders WHERE id=p_order_id FOR UPDATE;
+ IF NOT FOUND OR target.is_active IS NOT TRUE OR target.order_status IN ('prepared','shipping','done','cancelled','returned') OR target.payment_status='refunded' THEN
+   RAISE EXCEPTION 'Đơn không thể phân hoặc đổi máy';
+ END IF;
+ previous_id:=target.laptop_id;
+ IF p_laptop_id IS NOT NULL THEN
+   PERFORM pg_advisory_xact_lock(p_laptop_id);
+   SELECT * INTO machine FROM laptops WHERE id=p_laptop_id FOR UPDATE;
+   IF NOT FOUND OR machine.is_active IS NOT TRUE OR machine.status NOT IN ('available','reserved') THEN RAISE EXCEPTION 'Máy chưa sẵn sàng'; END IF;
+   SELECT * INTO owner FROM orders WHERE laptop_id=p_laptop_id AND id<>target.id
+     AND order_uses_laptop(laptop_id,is_active,order_status,payment_status,reservation_expires_at) FOR UPDATE;
+   IF owner.id IS DISTINCT FROM p_expected_owner THEN RAISE EXCEPTION 'Đơn giữ máy đã thay đổi. Vui lòng tải lại'; END IF;
+   IF owner.id IS NOT NULL THEN
+     IF owner.order_status IN ('prepared','shipping','done') THEN RAISE EXCEPTION 'Không thể chuyển máy đã chuẩn bị giao'; END IF;
+     UPDATE orders SET laptop_id=NULL,laptop_locked=false,profit_vnd=0 WHERE id=owner.id;
+   END IF;
+ END IF;
+ UPDATE orders SET laptop_id=p_laptop_id,laptop_locked=(p_laptop_id IS NOT NULL),reservation_expires_at=NULL WHERE id=target.id;
+ PERFORM refresh_laptop_inventory(previous_id);
+ IF p_laptop_id IS DISTINCT FROM previous_id THEN PERFORM refresh_laptop_inventory(p_laptop_id); END IF;
+ INSERT INTO activity_logs(entity_type,entity_id,action,changes,user_name)
+ VALUES('ORDER',target.id::text,'UPDATE',jsonb_build_object('event','LAPTOP_ALLOCATION','previous_laptop_id',previous_id,'laptop_id',p_laptop_id,'previous_order_id',owner.id),p_actor);
+ IF owner.id IS NOT NULL THEN
+ INSERT INTO activity_logs(entity_type,entity_id,action,changes,user_name)
+ VALUES('ORDER',owner.id::text,'UPDATE',jsonb_build_object('event','LAPTOP_TRANSFERRED','laptop_id',p_laptop_id,'target_order_id',target.id),p_actor);
+ END IF;
+ RETURN jsonb_build_object('order_id',target.id,'laptop_id',p_laptop_id);
+END $$;
+REVOKE ALL ON FUNCTION public.save_order_demand(jsonb,jsonb) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.allocate_order_laptop(bigint,bigint,bigint,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.save_order_demand(jsonb,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.allocate_order_laptop(bigint,bigint,bigint,text) TO service_role;
+CREATE OR REPLACE FUNCTION public.require_order_allocation()
+RETURNS trigger LANGUAGE plpgsql SET search_path TO public, pg_temp AS $$
+BEGIN
+ IF NEW.order_status IN ('prepared','shipping','done') AND NEW.laptop_id IS NULL THEN
+   RAISE EXCEPTION 'Phải phân máy trước khi chuẩn bị giao hàng';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER orders_require_allocation BEFORE INSERT OR UPDATE OF order_status,laptop_id ON orders
+FOR EACH ROW EXECUTE FUNCTION require_order_allocation();
+
+
+-- MIGRATION: 20260929101500_remove_order_allocation_expiry.sql
+
+-- A deposited order may wait indefinitely for a physical laptop allocation.
+-- Once allocated, the machine remains assigned until a user explicitly changes
+-- or releases it; order allocations no longer expire by time.
+UPDATE public.orders
+   SET reservation_expires_at = NULL
+ WHERE reservation_expires_at IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.clear_order_allocation_expiry()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO public, pg_temp
+AS $$
+BEGIN
+  NEW.reservation_expires_at := NULL;
+  RETURN NEW;
+END
+$$;
+
+DROP TRIGGER IF EXISTS orders_clear_allocation_expiry ON public.orders;
+CREATE TRIGGER orders_clear_allocation_expiry
+BEFORE INSERT OR UPDATE OF reservation_expires_at ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION public.clear_order_allocation_expiry();
+
+
 INSERT INTO public.user_profiles(id,name,role,is_active,created_at,updated_at)
 SELECT (data->>'id')::uuid,data->>'name',data->>'role',
        (data->>'is_active')::boolean,(data->>'created_at')::timestamptz,(data->>'updated_at')::timestamptz

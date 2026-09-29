@@ -37,6 +37,20 @@ export default function MainLayout({ children }) {
   const { dataLoading, loadingStage, cloudStatus } = useInventory();
   const navigate = useRouter();
   const pathname = usePathname();
+  const isLegacyList = pathname === '/inventory' || pathname === '/orders';
+  const workspaceLabels = {
+    '/': 'Tổng quan', '/qc': 'Kiểm tra kỹ thuật', '/repairs': 'Sửa chữa',
+    '/suppliers': 'Nhà cung cấp', '/purchases': 'Lô mua hàng',
+    '/receiving': 'Nhận hàng', '/supplier-returns': 'Trả nhà cung cấp',
+    '/costs': 'Giá vốn', '/reservations': 'Giữ máy',
+    '/trade-ins': 'Thu cũ đổi mới', '/commissions': 'Hoa hồng',
+    '/customers': 'Khách hàng', '/accessories': 'Phụ kiện',
+    '/payments': 'Thu tiền', '/finance': 'Tài chính',
+    '/supplier-payments': 'Thanh toán nhà cung cấp',
+    '/invoices': 'Hóa đơn', '/warranty': 'Bảo hành', '/settings': 'Cài đặt'
+  };
+  const workspaceSection = workspaceLabels[pathname] ||
+    workspaceLabels[`/${pathname.split('/')[1]}`] || 'Vận hành';
 
   // Scroll to top khi chuyển trang
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -240,7 +254,7 @@ export default function MainLayout({ children }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`main-content ${isCollapsed ? 'collapsed' : ''} ${pathname === '/inventory' || pathname === '/orders' ? 'list-workspace' : ''}`}>
+      <main className={`main-content ${isCollapsed ? 'collapsed' : ''} ${isLegacyList ? 'list-workspace' : 'taste-workspace'}`}>
         <nav className="mobile-navigation" aria-label="Điều hướng trên điện thoại">
           <Link href="/inventory" aria-current={pathname === '/inventory' ? 'page' : undefined}><Package size={18} /> Kho laptop</Link>
           {(user?.role === 'ADMIN' || user?.role === 'SALES') && <Link href="/orders" aria-current={pathname === '/orders' ? 'page' : undefined}><ShoppingCart size={18} /> Đơn hàng</Link>}
@@ -249,6 +263,12 @@ export default function MainLayout({ children }) {
           <Link href="/warranty" aria-current={pathname === '/warranty' ? 'page' : undefined}><Wrench size={18} /> Bảo hành</Link>
           <button type="button" onClick={handleLogout} aria-label="Đăng xuất"><LogOut size={18} /></button>
         </nav>
+        {!isLegacyList && (
+          <div className="workspace-context" aria-label="Vị trí hiện tại">
+            <span>CITILAP</span><ChevronRight size={13} aria-hidden="true" />
+            <strong>{workspaceSection}</strong>
+          </div>
+        )}
         {dataLoading && (
           <div className="route-loading-overlay" role="status" aria-live="polite" aria-busy="true">
             <div className="route-loading-card">

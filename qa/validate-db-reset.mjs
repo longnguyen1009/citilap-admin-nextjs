@@ -28,18 +28,26 @@ try {
   const invalid = await db.query(`SELECT
     (SELECT count(*) FROM laptops l WHERE l.status IN('available','reserved','sold') AND l.status IS DISTINCT FROM CASE
       WHEN EXISTS(SELECT 1 FROM orders o WHERE o.laptop_id=l.id AND o.laptop_locked AND o.order_status IN('prepared','shipping','done')) THEN 'sold'
-      WHEN EXISTS(SELECT 1 FROM orders o WHERE (o.laptop_id=l.id OR o.requested_laptop_id=l.id) AND o.is_active
-        AND (o.order_status='deposited' OR o.payment_status='deposited')) THEN 'reserved'
+      WHEN EXISTS(SELECT 1 FROM orders o WHERE o.laptop_id=l.id
+        AND order_uses_laptop(o.laptop_id,o.is_active,o.order_status,o.payment_status,o.reservation_expires_at)) THEN 'reserved'
       ELSE 'available' END) status_sync,
     (SELECT count(*) FROM orders o WHERE o.amount_paid <> coalesce((
       SELECT sum(CASE WHEN f.record_type='expense' THEN -f.amount ELSE f.amount END)
       FROM financial_records f WHERE f.order_id=o.id),0)) ledger,
     (SELECT count(*) FROM laptop_landed_costs c JOIN laptops l ON l.id=c.laptop_id
       WHERE c.landed_cost_vnd<>round((l.purchase_price_rmb+l.shipping_rmb)*l.purchase_exchange_rate,2)) costs,
+    (SELECT count(*) FROM orders o JOIN laptops l ON l.id=o.laptop_id
+      WHERE o.sale_price IS NOT NULL AND l.import_price_vnd IS NOT NULL
+        AND o.profit_vnd<>round(o.sale_price-l.import_price_vnd,4)) order_profit,
+    (SELECT count(*) FROM orders o JOIN laptops l ON l.id=o.laptop_id
+      WHERE o.order_status IN ('prepared','shipping','done') AND o.cost_snapshotted_at IS NOT NULL
+        AND l.import_price_vnd IS NOT NULL
+        AND (o.cost_snapshot_vnd<>round(l.import_price_vnd*1000000,2)
+          OR o.gross_profit_snapshot_vnd<>round((o.sale_price-l.import_price_vnd)*1000000,2))) order_profit_snapshot,
     (SELECT count(*) FROM customer_receivable_summaries r JOIN orders o ON o.id=r.order_id
       WHERE o.order_status IN ('cancelled','returned') OR o.payment_status='refunded') receivables`);
   if(Object.values(invalid.rows[0]).some(n=>Number(n)!==0)) throw Error(JSON.stringify(invalid.rows[0]));
-  console.log('PASS inventory status, finance ledger, landed costs and collectible debt');
+  console.log('PASS inventory status, finance ledger, landed costs, order profit and collectible debt');
   await db.query('SELECT get_management_dashboard(), get_financial_operations_summary()');
   console.log('PASS dashboard and finance summary functions');
   console.log(JSON.stringify((await db.query(`SELECT month_key,count(*) orders,

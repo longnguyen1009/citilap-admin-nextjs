@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
 import InvoiceLink from '../InvoiceLink';
 import ProductNameInput from '@/components/common/ProductNameInput';
+import { getAuthHeaders } from '@/lib/apiFetchers';
+import OrderAllocation from '@/components/OrderAllocation';
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -41,6 +43,20 @@ const toVnFormat = (ymd) => {
 };
 
 export default function Inventory() {
+  const [demandOrders, setDemandOrders] = useState([]);
+  const [allocationOrder, setAllocationOrder] = useState(null);
+  useEffect(() => {
+    let active = true;
+    async function loadDemand() {
+      try {
+        const response = await fetch('/api/order-allocation?demand=1', { headers: await getAuthHeaders() });
+        if (response.ok && active) setDemandOrders(await response.json());
+      } catch { /* The inventory list remains usable if demand cannot load. */ }
+    }
+    void loadDemand();
+    const timer = setInterval(loadDemand, 60000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
   const {
     laptops: allLaptops,
     filteredLaptops: laptops,
@@ -611,6 +627,17 @@ export default function Inventory() {
   return (
     <section className="page-section list-workspace-page">
       {/* COMPACT SECTION HEADER */}
+      {allocationOrder && <OrderAllocation
+        order={allocationOrder}
+        initialLaptopId={allocationOrder.initialLaptopId}
+        onClose={(payload) => {
+          if (payload?.orders) {
+            const changedIds = new Set(payload.orders.map(order => String(order.id)));
+            setDemandOrders(previous => previous.filter(order => !changedIds.has(String(order.id))));
+          }
+          setAllocationOrder(null);
+        }}
+      />}
       <div className="section-title section-header list-page-header inventory-page-header">
         <div className="workspace-heading">
           <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
@@ -1068,6 +1095,10 @@ export default function Inventory() {
                         {getLabel('laptopStatus', l.status, fieldOptionsConfig) || 'Chưa có trạng thái'}
                       </span>
                       {l.sourceUnresolved && <Link href="/receiving" className="phase9-inline-link warning">Chưa rõ nguồn</Link>}
+                      {(() => {
+                        const matching = demandOrders.filter(order => order.requested_configuration === l.name && String(order.requested_category || '') === String(l.category || ''));
+                        return matching.length > 0 && <details><summary>{matching.length} đơn cọc cùng cấu hình</summary>{matching.map(order => <button type="button" className="btn btn-outline" key={order.id} onClick={() => setAllocationOrder({ id: order.id, requestedConfiguration: order.requested_configuration, initialLaptopId: l.id })}>Phân máy cho #{order.id} · {order.customer_info}</button>)}</details>;
+                      })()}
                       {l.activeReservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(l.activeReservation.code)}`} title={`Hết hạn ${new Date(l.activeReservation.expiresAt).toLocaleString('vi-VN')}`}>Đang giữ · {l.activeReservation.customer?.name || l.activeReservation.code}</a>}
                       {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'sold' && l.laptopId && <InvoiceLink laptopId={l.laptopId} label="Xem hóa đơn" />}
                     </td>

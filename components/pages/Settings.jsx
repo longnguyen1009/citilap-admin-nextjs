@@ -393,8 +393,8 @@ export default function Settings() {
   }).length;
 
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', paddingBottom: '60px' }}>
-      <div style={{
+    <div className="settings-workspace">
+      <div className="settings-heading" style={{
         display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px',
         paddingBottom: '16px', borderBottom: '1px solid #e2e8f0'
       }}>
@@ -411,7 +411,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div style={{ padding: '14px 16px', marginBottom: '24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#475569', fontSize: '0.85rem', lineHeight: 1.65 }}>
+      <div className="settings-process" style={{ padding: '14px 16px', marginBottom: '24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#475569', fontSize: '0.85rem', lineHeight: 1.65 }}>
         <strong style={{ color: '#1e293b' }}>Nhà cung cấp → Lô mua → Nhận hàng → QC → Sẵn bán</strong>
         <p style={{ margin: '6px 0 0' }}>Nguồn nhập lấy từ nhà cung cấp của lô mua. Phân loại và mẫu cấu hình được chọn khi nhập máy; kết quả QC cập nhật trên cùng hồ sơ máy.</p>
         <p style={{ margin: '4px 0 0' }}>Tên hiển thị của trạng thái có thể đổi tại đây. Việc chuyển trạng thái được thực hiện tại từng bước nghiệp vụ.</p>
@@ -419,14 +419,14 @@ export default function Settings() {
 
       {/* ─── Quản lý theo tháng ─── */}
       <div style={{ marginBottom: '32px' }}>
-        <div style={{
+        <div className="settings-month-card" style={{
           borderRadius: '12px',
           border: '1px solid #e2e8f0',
           background: '#fff',
           overflow: 'hidden',
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
         }}>
-          <div style={{
+          <div className="settings-month-heading" style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             padding: '14px 16px',
             background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',

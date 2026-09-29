@@ -171,6 +171,15 @@ Các route chính còn hoạt động gồm inventory, orders, intake, purchases
 
 ## Reset và kiểm tra
 
+### Cọc theo cấu hình và phân máy (2026-09-29)
+
+- `requested_laptop_id` là máy tham khảo; `requested_configuration` và `requested_category` lưu yêu cầu trên đơn. Nhiều khách có thể cọc cùng cấu hình mà không giữ laptop.
+- `laptop_id` là phân bổ vật lý độc quyền. Chỉ thao tác phân máy mới giữ máy; trạng thái `reserved` hiển thị “Đã giữ cho đơn”.
+- `/api/order-allocation` cho ADMIN/SALES chọn, giải phóng hoặc chuyển máy. RPC kiểm tra chủ giữ hiện tại, khóa transaction và ghi audit; tiền đã thu vẫn thuộc đơn gốc.
+- Đơn `prepared`, `shipping`, `done` bắt buộc có máy và không chuyển bằng thao tác phân máy. Đơn chưa phân máy chưa hiển thị lợi nhuận.
+- List laptop hiển thị đơn đã thu tiền chờ phân theo cùng tên cấu hình và phân loại, đọc tất cả tháng. Các đơn cũ có `laptop_id` vẫn giữ phân bổ hiện tại.
+- Kiểm tra hồi quy: `node qa/order-allocation-verification.mjs`.
+
 Reset toàn bộ môi trường phát triển:
 
 1. Chạy `init_full_db.sql` bằng quyền postgres trong Supabase SQL Editor.

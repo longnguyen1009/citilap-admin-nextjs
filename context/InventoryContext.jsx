@@ -127,17 +127,10 @@ export const isOrderCommitted = (order, appOptions = []) => {
   return COMMITTED_ORDER_STATUS_KEYS.includes(statusKey);
 };
 
-export const isReservationActive = (order, appOptions = [], now = new Date()) => {
-  const reservationTarget = order?.laptopId || order?.requestedLaptopId;
+export const isReservationActive = (order, appOptions = []) => {
+  const reservationTarget = order?.laptopId;
   if (!reservationTarget || order.isActive === false || isOrderCancelled(order, appOptions) || isOrderCommitted(order, appOptions)) return false;
-  const statusKey  = labelToKey('orderStatus', order?.orderStatus, appOptions);
-  const paymentKey = labelToKey('paymentStatus', order?.paymentStatus, appOptions);
-  const hasDeposit = DEPOSIT_PAYMENT_STATUS_KEYS.includes(paymentKey)
-    || DEPOSIT_ORDER_STATUS_KEYS.includes(statusKey);
-  if (!hasDeposit) return false;
-  if (!order.reservationExpiresAt) return true; // tương thích đơn cọc cũ
-  const expiresAt = new Date(order.reservationExpiresAt);
-  return Number.isNaN(expiresAt.getTime()) || expiresAt > now;
+  return true;
 };
 
 
@@ -301,10 +294,7 @@ const reconcileLaptopStatuses = (laptops, orders, scopeMonth = 'ALL') => {
     const hasPhysicalReservation = linkedOrders.some(o => (
       String(o.laptopId) === String(laptop.id) && isReservationActive(o, opts)
     ));
-    const hasDepositReference = linkedOrders.some(o => (
-      String(o.requestedLaptopId) === String(laptop.id) && isReservationActive(o, opts)
-    ));
-    if (hasPhysicalReservation || hasDepositReference) {
+    if (hasPhysicalReservation) {
       return { ...laptop, status: 'reserved', isLocked: hasPhysicalReservation };
     }
 
@@ -869,12 +859,22 @@ export const InventoryProvider = ({ children }) => {
     !getLaptopAssignmentError(laptop.id, currentOrderId)
   ));
 
+  // Allocation can intentionally transfer a machine from another uncommitted
+  // deposit order. Sold/technical machines remain unavailable.
+  const getAllocationCandidates = (currentOrderId = null) => {
+    const currentLaptopId = orders.find(order => String(order.id) === String(currentOrderId))?.laptopId;
+    return filterLaptopsByMonth(laptops, selectedMonth).filter(laptop => {
+      if (laptop.isActive === false) return false;
+      if (String(laptop.id) === String(currentLaptopId || '')) return true;
+      const statusKey = labelToKey('laptopStatus', laptop.status, _cfg());
+      return ['available', 'reserved'].includes(statusKey);
+    });
+  };
+
   // A deposit can reference a machine already referenced by another deposit.
   // It becomes an exclusive allocation only after laptopId is assigned.
-  const getDepositReferenceLaptops = (currentRequestedId = null) => filterLaptopsByMonth(laptops, selectedMonth)
-    .filter(laptop => laptop.isActive !== false
-      && (labelToKey('laptopStatus', laptop.status, _cfg()) !== 'sold'
-        || String(laptop.id) === String(currentRequestedId)));
+  const getDepositReferenceLaptops = () => filterLaptopsByMonth(laptops, selectedMonth)
+    .filter(laptop => laptop.isActive !== false);
 
   // Bất biến tiền tệ: công nợ trừ cả tiền đã thu và credit thu cũ phi tiền mặt.
   // Chỉ tính lại khi các trường tiền tệ thay đổi, tránh ghi đè giá trị thủ công hợp lệ.
@@ -898,16 +898,9 @@ export const InventoryProvider = ({ children }) => {
 
   const normalizeReservation = (order) => {
     const normalized = { ...order };
-    const pKey = labelToKey('paymentStatus', normalized.paymentStatus, _cfg());
     const oKey = labelToKey('orderStatus', normalized.orderStatus, _cfg());
-    const reservationTarget = normalized.laptopId || normalized.requestedLaptopId;
-    const shouldReserve = reservationTarget && (
-      pKey === 'deposited' || oKey === 'deposited'
-    );
-    if (shouldReserve && !normalized.reservationExpiresAt) {
-      normalized.reservationExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-    }
-    if (shouldReserve && oKey === 'new') {
+    const reservationTarget = normalized.laptopId;
+    if (reservationTarget && oKey === 'new') {
       normalized.orderStatus = 'deposited';
     }
     return normalized;
@@ -917,6 +910,19 @@ export const InventoryProvider = ({ children }) => {
     setOrders(nextOrders);
     applyAndSaveLaptopStatuses(nextOrders);
   };
+
+  const applyAllocationUpdate = useCallback((payload) => {
+    const changedOrders = Array.isArray(payload?.orders) ? payload.orders : [];
+    const changedLaptops = Array.isArray(payload?.laptops) ? payload.laptops : [];
+    if (changedOrders.length) {
+      const byId = new Map(changedOrders.map(order => [String(order.id), order]));
+      setOrders(previous => previous.map(order => byId.get(String(order.id)) || order));
+    }
+    if (changedLaptops.length) {
+      const byId = new Map(changedLaptops.map(laptop => [String(laptop.id), laptop]));
+      setLaptops(previous => previous.map(laptop => byId.get(String(laptop.id)) || laptop));
+    }
+  }, []);
 
   // Tạo đơn không khóa máy khi mới tạo. Máy chỉ chuyển sang giữ chỗ khi có cọc.
 
@@ -969,7 +975,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
       salePrice: normalizedInput.salePrice || 0,
       depositAmount,
       depositNote: orderData.depositNote || '',
-      reservationExpiresAt: orderData.reservationExpiresAt || '',
       codAmount: normalizedInput.codAmount || 0,
       setupNote: orderData.setupNote || 'Cài cơ bản',
       warranty: orderData.warranty || '6 tháng',
@@ -992,9 +997,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
       updatedAt: new Date().toISOString()
     });
 
-    if (isOrderCommitted(newOrder, appOptions) && !newOrder.laptopId && newOrder.requestedLaptopId) {
-      newOrder.laptopId = newOrder.requestedLaptopId;
-    }
     const assignmentError = getLaptopAssignmentError(newOrder.laptopId);
     if (assignmentError) return { ok: false, message: assignmentError };
     if (isOrderCommitted(newOrder, appOptions) && !newOrder.laptopId) {
@@ -1067,9 +1069,6 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
     // Converting a deposit into a committed order allocates the requested
     // machine. The normal laptop conflict check below then makes this atomic.
-    if (isOrderCommitted(merged, appOptions) && !merged.laptopId && merged.requestedLaptopId) {
-      merged.laptopId = merged.requestedLaptopId;
-    }
 
     const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
     if (isLocked && !releasingPhysicalLaptop && merged.laptopId !== currentOrder.laptopId) {
@@ -1106,7 +1105,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
     applyAndSaveLaptopStatuses(nextOrders, false);
     if (releasingPhysicalLaptop) {
       setLaptops(prev => prev.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
-        ? { ...laptop, status: merged.requestedLaptopId ? 'reserved' : 'available', isLocked: false }
+        ? { ...laptop, status: 'available', isLocked: false }
         : laptop));
     }
 
@@ -1124,7 +1123,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
         }
         if (releasingPhysicalLaptop) {
           next = next.map(laptop => String(laptop.id) === String(physicalLaptopToRelease)
-            ? { ...laptop, status: merged.requestedLaptopId ? 'reserved' : 'available', isLocked: false }
+            ? { ...laptop, status: 'available', isLocked: false }
             : laptop);
         }
         return next;
@@ -1664,6 +1663,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       resetAllFieldOptions,
       // ────────────────────────────────────────────────────────────────────
       getSelectableLaptops,
+      getAllocationCandidates,
       getDepositReferenceLaptops,
       getLaptopAssignmentError,
       updateLaptop,
@@ -1675,6 +1675,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       addOrder,
       updateOrder,
       recordPayment,
+      applyAllocationUpdate,
       deleteOrder,
       cancelOrder,
       createCustomer,

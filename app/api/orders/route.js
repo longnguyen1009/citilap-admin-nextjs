@@ -11,7 +11,7 @@ const ORDER_AUDIT_FIELDS = [
   'paymentStatus', 'paymentMethod', 'deliveryStatus', 'shippingMethod', 'laptopId', 'requestedLaptopId',
   'salePrice', 'depositAmount', 'depositNote', 'codAmount', 'creditCardFee',
   'tradeInLaptopId', 'customerId', 'customerInfo', 'customerNote', 'customerAddress', 'trackingCode',
-  'shipDate', 'setupNote', 'warranty', 'branchId', 'giftPreset', 'giftAccessoryIds', 'reservationExpiresAt'
+  'shipDate', 'setupNote', 'warranty', 'branchId', 'giftPreset', 'giftAccessoryIds'
 ];
 
 export async function GET(request) {
@@ -157,7 +157,10 @@ export async function POST(request) {
       body.paymentStatus = oldData.payment_status;
       body.amountPaid = Number(oldData.amount_paid || 0);
       body.depositAmount = Number(oldData.deposit_amount || 0);
-      body.debtAmount = Number(oldData.debt_amount || 0);
+      const salePrice = Number(body.salePrice || 0);
+      const tradeInCredit = Number(body.tradeInCreditVnd || 0) / 1000000;
+      body.debtAmount = Math.max(0, salePrice - body.amountPaid - tradeInCredit);
+      body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount || 0), 0));
     }
 
     // P0.4: Trả lỗi nếu non-admin gửi profitVnd
@@ -184,13 +187,6 @@ export async function POST(request) {
 
     // FIX: Kiểm tra laptop có đang bị đơn hàng khác giữ/bán không
     // Ngay cả khi đơn mới chỉ là "pending", laptop đã bị dùng bởi đơn active khác thì không được gán
-    const requestedTarget = body.requestedLaptopId !== undefined
-      ? body.requestedLaptopId
-      : oldData?.requested_laptop_id;
-    const requestedStatus = body.orderStatus ?? oldData?.order_status;
-    if (!body.laptopId && requestedTarget && ['prepared', 'shipping', 'done'].includes(requestedStatus)) {
-      body.laptopId = requestedTarget;
-    }
 
     if (body.laptopId && /^\d+$/.test(String(body.laptopId))) {
       const adminClient = getSupabaseAdminClient();
@@ -225,13 +221,13 @@ export async function POST(request) {
       if (requestedChanged) {
         const adminClient = getSupabaseAdminClient();
         const { data: requestedLaptop } = await adminClient.from('laptops').select('status, is_active').eq('id', requestedId).maybeSingle();
-        if (!requestedLaptop || requestedLaptop.is_active !== true || !['available', 'reserved'].includes(requestedLaptop.status)) {
+        if (!requestedLaptop || requestedLaptop.is_active !== true) {
           return NextResponse.json({ error: `Laptop chưa sẵn sàng để giữ/bán (trạng thái: ${requestedLaptop?.status || 'không xác định'}).` }, { status: 409 });
         }
       }
     }
 
-    const reservationTargets = [...new Set([body.laptopId, body.requestedLaptopId]
+    const reservationTargets = [...new Set([body.laptopId]
       .filter(value => /^\d+$/.test(String(value)))
       .map(Number))];
     if (reservationTargets.length) {

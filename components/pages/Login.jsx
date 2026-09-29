@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, User, LogIn, AlertCircle, LoaderCircle } from 'lucide-react';
+import { Lock, User, LogIn, AlertCircle, LoaderCircle, Package } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -45,7 +45,7 @@ export default function Login() {
   };
 
   return (
-    <div style={{
+    <div className="citilap-login" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
       display: 'flex',
@@ -53,7 +53,7 @@ export default function Login() {
       justifyContent: 'center',
       fontFamily: 'Inter, sans-serif',
     }}>
-      <div style={{
+      <div className="citilap-login-card" style={{
         background: 'rgba(255,255,255,0.05)',
         backdropFilter: 'blur(20px)',
         borderRadius: '16px',
@@ -64,12 +64,12 @@ export default function Login() {
         boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
       }}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div className="citilap-login-brand" style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
-            🖥️ CitiLap
+            <span className="citilap-login-mark"><Package size={23} aria-hidden="true" /></span> CitiLap
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', marginTop: '6px' }}>
-            Warehouse Management System
+            Hệ thống quản lý vận hành
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function Login() {
 
           {/* Error message */}
           {error && (
-            <div style={{
+            <div className="citilap-login-error" role="alert" style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '10px 12px', marginBottom: '16px',
               background: 'rgba(239,68,68,0.15)', borderRadius: '8px',
@@ -169,7 +169,7 @@ export default function Login() {
 
         {/* Mock login toggle */}
         {!isSupabaseConnected && canUseMockAuth && (
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <div className="citilap-login-demo" style={{ marginTop: '20px', textAlign: 'center' }}>
             <button
               onClick={() => setShowMockLogin(!showMockLogin)}
               style={{
@@ -201,7 +201,7 @@ export default function Login() {
         )}
 
         {/* Footer */}
-        <p style={{
+        <p className="citilap-login-footer" style={{
           textAlign: 'center', color: 'rgba(255,255,255,0.3)',
           fontSize: '0.7rem', marginTop: '24px',
         }}>

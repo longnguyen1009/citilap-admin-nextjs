@@ -1,0 +1,512 @@
+/* Taste: shared visual language for operational screens.
+   Inventory and Orders deliberately never receive .taste-workspace. */
+.taste-workspace {
+  --taste-ink: #182944;
+  --taste-subtle: #61748e;
+  --taste-blue: #2554c7;
+  --taste-blue-soft: #edf3ff;
+  --taste-border: #dce5ef;
+  --taste-surface: #ffffff;
+  --taste-shadow: 0 3px 16px rgb(35 62 99 / 4%);
+  background: #f4f7fb;
+  color: var(--taste-ink);
+  padding: 8px clamp(12px, 1.5vw, 24px) 24px;
+}
+
+.taste-workspace .workspace-context {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 27px;
+  margin: 0 0 7px;
+  color: #8a99ab;
+  font-size: .69rem;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+.taste-workspace .workspace-context span {
+  font-size: .63rem;
+  font-weight: 800;
+  letter-spacing: .11em;
+}
+.taste-workspace .workspace-context strong {
+  color: #455e7e;
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+/* Give each route the same working canvas without changing its data or actions. */
+.taste-workspace > :is(.page-section, .invoice-workspace, .procurement-page, .qc-page,
+  .repair-page, .finance-page, .salesops-page, .cost-page, .supplier-return-page,
+  .intake-page) {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 0 28px !important;
+  background: transparent;
+}
+.taste-workspace :is(.finance-page, .salesops-page, .cost-page, .supplier-return-page,
+  .repair-page, .procurement-page, .qc-page) {
+  color: var(--taste-ink);
+}
+
+/* One readable title pattern across receiving, sales, service and finance. */
+.taste-workspace :is(.page-section > .section-title, .invoice-toolbar,
+  .procurement-header, .qc-header, .repair-hero, .cost-hero, .finance-hero,
+  .salesops-hero, .supplier-return-hero) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 65px !important;
+  padding: 12px 17px !important;
+  margin: 0 0 12px !important;
+  border: 1px solid var(--taste-border);
+  border-left: 3px solid var(--taste-blue);
+  border-radius: 12px;
+  background: var(--taste-surface);
+  box-shadow: var(--taste-shadow);
+  color: var(--taste-ink);
+}
+.taste-workspace :is(.page-section > .section-title, .invoice-toolbar,
+  .procurement-header, .qc-header, .repair-hero, .cost-hero, .finance-hero,
+  .salesops-hero, .supplier-return-hero) :is(h1, h2) {
+  margin: 0 0 3px !important;
+  color: #1b3051 !important;
+  font-family: var(--font-be-vietnam-pro), 'Segoe UI', sans-serif;
+  font-size: clamp(1.04rem, 1.25vw, 1.32rem) !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+  letter-spacing: -.028em;
+}
+.taste-workspace :is(.procurement-header, .qc-header, .repair-hero,
+  .cost-hero, .finance-hero, .salesops-hero, .supplier-return-hero)
+  :is(p, span):not(.status-badge):not(.procurement-status) {
+  color: var(--taste-subtle);
+}
+.taste-workspace .salesops-title > svg {
+  background: var(--taste-blue-soft);
+  color: var(--taste-blue);
+}
+.taste-workspace .salesops-title span,
+.taste-workspace .finance-hero span,
+.taste-workspace .cost-hero span,
+.taste-workspace .supplier-return-hero span {
+  color: #426ba9;
+  font-size: .64rem;
+  letter-spacing: .08em;
+}
+.taste-workspace .page-section > .section-title .subtitle { color: var(--taste-subtle); }
+
+/* Quiet, consistent information panels. Preserve semantic status colors. */
+.taste-workspace :is(.metric-card, .list-table-card, .filter-card, .card.glass,
+  .procurement-table-wrap, .procurement-form, .finance-table-wrap, .finance-account-board,
+  .cost-table-wrap, .invoice-paper, .qc-panel, .repair-card,
+  .salesops-card, .supplier-return-card, .supplier-return-detail > div) {
+  border: 1px solid var(--taste-border);
+  border-radius: 12px;
+  background: var(--taste-surface);
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .glass { backdrop-filter: none; }
+.taste-workspace .settings-workspace {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 4px 0 40px;
+}
+.taste-workspace .settings-heading {
+  gap: 13px !important;
+  margin-bottom: 12px !important;
+  padding: 15px 17px !important;
+  border: 1px solid var(--taste-border);
+  border-left: 3px solid var(--taste-blue);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .settings-heading h1 { font-size: 1.25rem !important; letter-spacing: -.025em; }
+.taste-workspace .settings-heading p { max-width: 80ch; line-height: 1.5; }
+.taste-workspace .settings-process {
+  margin-bottom: 15px !important;
+  border-color: #dae6f5 !important;
+  border-radius: 10px !important;
+  background: #eef4fc !important;
+  color: #516782 !important;
+}
+.taste-workspace .settings-month-card {
+  border: 1px solid var(--taste-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--taste-shadow) !important;
+}
+.taste-workspace .settings-month-heading {
+  background: #f4f7fc !important;
+  border-bottom: 1px solid var(--taste-border) !important;
+}
+.taste-workspace .metrics-grid { gap: 11px; margin: 12px 0 16px; }
+.taste-workspace .metric-card {
+  min-width: 0;
+  gap: 12px;
+  padding: 15px;
+  transition: border-color .17s ease, box-shadow .17s ease;
+}
+.taste-workspace .metric-card:hover {
+  transform: none;
+  border-color: #b6c8e1;
+  box-shadow: 0 5px 22px rgb(35 62 99 / 9%);
+}
+.taste-workspace .metric-icon { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 10px; }
+.taste-workspace .metric-value { font-size: clamp(1.25rem, 1.5vw, 1.65rem); letter-spacing: -.04em; }
+.taste-workspace .metric-label { color: #516783; font-size: .76rem; font-weight: 700; }
+.taste-workspace .metric-sub { color: #74849a; line-height: 1.45; }
+.taste-workspace .list-summary-strip { gap: 9px; margin-bottom: 11px !important; }
+.taste-workspace .list-summary-item {
+  border-color: var(--taste-border);
+  background: var(--taste-surface);
+  border-radius: 9px;
+  box-shadow: none;
+}
+.taste-workspace .list-summary-item:hover { transform: none; }
+.taste-workspace .finance-metrics,
+.taste-workspace .cost-metrics,
+.taste-workspace .supplier-return-metrics { gap: 10px; margin: 12px 0 14px; }
+.taste-workspace :is(.finance-metrics, .cost-metrics, .supplier-return-metrics) article {
+  min-width: 0;
+  min-height: 105px;
+  padding: 15px 16px;
+  border: 1px solid var(--taste-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .finance-metrics article { gap: 4px; }
+.taste-workspace .finance-metrics article svg { width: 19px; color: var(--taste-blue); }
+.taste-workspace .finance-metrics b,
+.taste-workspace .finance-account-board b { font-family: inherit; font-weight: 800; letter-spacing: -.035em; }
+.taste-workspace .finance-account-board {
+  overflow: hidden;
+  gap: 1px;
+  background: var(--taste-border);
+}
+.taste-workspace .finance-account-board > div,
+.taste-workspace .finance-account-board article { background: #fff; }
+.taste-workspace .finance-account-board h2 { font-family: inherit; color: var(--taste-ink); }
+
+/* Tables use a single hierarchy for headings, row boundaries and hover. */
+.taste-workspace :is(.finance-table-wrap, .cost-table-wrap, .procurement-table-wrap,
+  .invoice-table-scroll, .list-table-scroll) { max-width: 100%; overflow-x: auto; }
+.taste-workspace :is(.data-table, .invoice-table, .finance-table-wrap table,
+  .procurement-table, .cost-table) { width: 100%; border-collapse: separate; border-spacing: 0; }
+.taste-workspace :is(.data-table, .invoice-table, .finance-table-wrap table,
+  .procurement-table, .cost-table) thead th {
+  padding: 11px 13px;
+  border-bottom: 1px solid #d8e2ee;
+  border-right: 0;
+  color: #3b526f;
+  background: #eef3f9;
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.taste-workspace :is(.data-table, .invoice-table, .finance-table-wrap table,
+  .procurement-table, .cost-table) tbody td {
+  padding: 10px 13px;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+  color: #263951;
+  font-size: .79rem;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+.taste-workspace :is(.data-table, .invoice-table, .finance-table-wrap table,
+  .procurement-table, .cost-table) tbody tr:hover td { background: #f7faff; }
+.taste-workspace :is(.data-table, .invoice-table, .finance-table-wrap table,
+  .procurement-table, .cost-table) tbody tr:last-child td { border-bottom: 0; }
+.taste-workspace .invoice-paper { overflow: hidden; }
+.taste-workspace .invoice-catalog > input[aria-label="Tìm danh mục"] {
+  display: block;
+  width: min(100%, 360px);
+  min-height: 39px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  border: 1px solid #cbd7e5;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--taste-ink);
+}
+.taste-workspace .invoice-catalog-form {
+  margin: 11px 0 14px;
+  border: 1px solid var(--taste-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .invoice-catalog-form :is(input:not([type="checkbox"]), select) {
+  min-height: 39px;
+  border: 1px solid #cbd7e5;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--taste-ink);
+}
+
+/* All tools and filters should feel like parts of the same application. */
+.taste-workspace :is(.finance-tabs, .salesops-toolbar, .cost-toolbar,
+  .supplier-return-toolbar, .procurement-actions, .repair-toolbar) { gap: 9px; margin-block: 10px 13px; }
+.taste-workspace .finance-tabs { padding: 4px; border: 1px solid var(--taste-border); border-radius: 10px; background: #fff; }
+.taste-workspace .finance-tabs a {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 7px;
+  color: #5b6e86;
+  font-size: .77rem;
+}
+.taste-workspace .finance-tabs a.active { color: #19449f; background: var(--taste-blue-soft); }
+.taste-workspace :is(.salesops-grid, .supplier-return-board, .repair-board) { gap: 11px; }
+.taste-workspace .salesops-card { padding: 16px; }
+.taste-workspace .salesops-card h3 { color: var(--taste-ink); font-size: .96rem; }
+.taste-workspace .salesops-card dl div { background: #f4f7fc; border-radius: 7px; }
+.taste-workspace .salesops-card footer { flex-wrap: wrap; }
+.taste-workspace .salesops-card header > span[data-status="CANCELLED"],
+.taste-workspace .salesops-card header > span[data-status="REJECTED"],
+.taste-workspace .salesops-card header > span[data-status="EXPIRED"] {
+  color: #a32a36;
+  background: #fff1f2;
+}
+.taste-workspace .salesops-card header > span[data-status="INSPECTING"],
+.taste-workspace .salesops-card header > span[data-status="PENDING"] {
+  color: #925a14;
+  background: #fff4d9;
+}
+.taste-workspace .qc-panel-title { background: #f0f5fb; border-bottom-color: var(--taste-border); }
+.taste-workspace .qc-machine { gap: 12px; padding: 12px 14px; }
+.taste-workspace .qc-machine > div { min-width: 0; }
+.taste-workspace .qc-machine button { background: var(--taste-blue); border-radius: 8px; }
+.taste-workspace .qc-score {
+  border: 1px solid #c8dae9;
+  border-left: 3px solid #2773a5;
+  border-radius: 9px;
+  background: #eff5fc;
+}
+.taste-workspace .intake-header {
+  flex-wrap: wrap;
+  padding: 12px 17px;
+  border: 1px solid var(--taste-border);
+  border-left: 3px solid var(--taste-blue);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .intake-header h1 { color: var(--taste-ink); font-size: 1.22rem; }
+.taste-workspace .intake-stats { gap: 9px; }
+.taste-workspace .intake-stats > div,
+.taste-workspace .intake-panel,
+.taste-workspace .intake-batch {
+  border: 1px solid var(--taste-border);
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: var(--taste-shadow);
+}
+.taste-workspace .intake-batch-head { border-left-color: var(--taste-blue) !important; }
+.taste-workspace .finance-actions { border-radius: 12px; background: #1a355b; }
+.taste-workspace :is(.finance-hero, .salesops-hero, .cost-hero,
+  .repair-hero, .supplier-return-hero) > button,
+.taste-workspace :is(.salesops-toolbar, .salesops-card footer,
+  .supplier-return-actions, .repair-toolbar) button:not(.quiet):not(.danger) {
+  min-height: 37px;
+  border: 1px solid #1c49b5;
+  border-radius: 8px;
+  background: var(--taste-blue);
+  color: #fff;
+  box-shadow: none;
+  font-size: .76rem;
+  font-weight: 750;
+}
+.taste-workspace :is(.finance-hero, .salesops-hero, .cost-hero,
+  .repair-hero, .supplier-return-hero) > button:hover,
+.taste-workspace .salesops-toolbar button:hover { background: #173f9b; }
+.taste-workspace :is(.supplier-return-actions, .repair-footer) button.danger {
+  border-color: #9e3038;
+  background: #b63843;
+  color: #fff;
+}
+.taste-workspace :is(.finance-dialog, .salesops-dialog, .supplier-return-modal,
+  .cost-drawer, .repair-modal, .qc-modal) {
+  border: 1px solid var(--taste-border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--taste-ink);
+}
+.taste-workspace :is(.finance-dialog, .salesops-dialog, .supplier-return-form,
+  .procurement-form, .cost-add-form, .repair-form-grid) :is(input, select, textarea) {
+  min-height: 39px;
+  border: 1px solid #cbd7e5;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c3050;
+}
+.taste-workspace :is(input, textarea, select, button, a):focus-visible {
+  outline: 2px solid #477de5;
+  outline-offset: 2px;
+}
+.taste-workspace :is(button, select):disabled { cursor: not-allowed; opacity: .55; }
+.taste-workspace :is(.finance-dialog, .salesops-dialog, .supplier-return-form,
+  .procurement-form, .cost-add-form, .repair-form-grid) label {
+  color: #4d617e;
+  font-size: .76rem;
+  font-weight: 700;
+}
+.taste-workspace :is(.finance-empty, .salesops-empty, .procurement-empty,
+  .cost-empty, .repair-empty, .qc-empty) {
+  border: 1px dashed #c5d2e3;
+  border-radius: 11px;
+  color: #66788f;
+  background: #fff;
+}
+
+/* Dense dashboard keeps its secondary dark data area intentionally distinct. */
+.taste-workspace .management-command-center {
+  margin: 12px 0;
+  padding: 18px;
+  border-radius: 13px;
+  background: #172b47;
+  box-shadow: 0 8px 22px rgb(17 39 70 / 13%);
+}
+.taste-workspace .management-stat { border-radius: 10px; }
+.taste-workspace .management-panel { border-radius: 10px; }
+
+@media (max-width: 1080px) {
+  .taste-workspace .finance-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .taste-workspace .cost-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .taste-workspace .management-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .taste-workspace { padding: 5px 10px 22px; }
+  .taste-workspace .settings-heading { flex-wrap: wrap; padding: 12px !important; }
+  .taste-workspace .workspace-context { min-height: 24px; }
+  .taste-workspace :is(.page-section > .section-title, .invoice-toolbar,
+    .procurement-header, .qc-header, .repair-hero, .cost-hero,
+    .finance-hero, .salesops-hero, .supplier-return-hero) {
+    align-items: flex-start;
+    padding: 12px !important;
+    gap: 10px;
+  }
+  .taste-workspace .salesops-title { gap: 10px; }
+  .taste-workspace .salesops-title > svg { width: 35px; height: 35px; padding: 8px; }
+  .taste-workspace .salesops-title p { display: block; }
+  .taste-workspace .salesops-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace .finance-tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .taste-workspace .finance-metrics,
+  .taste-workspace .cost-metrics,
+  .taste-workspace .supplier-return-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .taste-workspace .management-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .taste-workspace .management-grid { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace .salesops-grid { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace .supplier-return-toolbar { flex-wrap: wrap; }
+  .taste-workspace .supplier-return-toolbar label { min-width: 100%; }
+  .taste-workspace :is(.finance-dialog, .salesops-dialog, .supplier-return-form,
+    .procurement-grid, .repair-form-grid) { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace :is(.finance-dialog, .salesops-dialog, .supplier-return-form) .wide { grid-column: 1; }
+}
+@media (max-width: 470px) {
+  .taste-workspace .metrics-grid,
+  .taste-workspace .finance-metrics,
+  .taste-workspace .cost-metrics,
+  .taste-workspace .supplier-return-metrics,
+  .taste-workspace .management-stats { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace .salesops-card dl { grid-template-columns: minmax(0, 1fr); }
+  .taste-workspace .finance-actions { position: static; flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .taste-workspace *, .taste-workspace *::before, .taste-workspace *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
+
+/* Login has no operational sidebar, but follows the same CitiLap palette. */
+.citilap-login {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh !important;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 12% 9%, #dfebff 0, transparent 42%),
+    radial-gradient(ellipse at 89% 85%, #e5f0f7 0, transparent 46%),
+    #f2f6fb !important;
+  font-family: var(--font-be-vietnam-pro), 'Segoe UI', sans-serif !important;
+}
+.citilap-login-card {
+  position: relative;
+  width: min(100%, 432px) !important;
+  padding: clamp(23px, 4vw, 38px) !important;
+  border: 1px solid #d7e3f2 !important;
+  border-top: 4px solid #2554c7 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 70px rgb(33 68 121 / 10%) !important;
+}
+.citilap-login-brand { margin-bottom: 27px !important; }
+.citilap-login-brand h1 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: #1b3051 !important;
+  font-size: 1.55rem !important;
+  letter-spacing: -.035em;
+}
+.citilap-login-mark {
+  display: grid;
+  place-items: center;
+  width: 41px;
+  height: 41px;
+  border-radius: 11px;
+  background: #2554c7;
+  color: #fff;
+}
+.citilap-login-brand p { margin-top: 8px !important; color: #697d96 !important; }
+.citilap-login form label { color: #4c617f !important; font-weight: 750; }
+.citilap-login form > div > div { position: relative; }
+.citilap-login form > div > div > svg { color: #8294ab !important; }
+.citilap-login form input {
+  min-height: 44px;
+  border: 1px solid #cbd8e8 !important;
+  border-radius: 9px !important;
+  background: #f8fbff !important;
+  color: #1b3051 !important;
+  font-family: inherit;
+}
+.citilap-login form input::placeholder { color: #98a7bb; }
+.citilap-login form input:focus-visible {
+  border-color: #4477df !important;
+  outline: 3px solid rgb(68 119 223 / 17%) !important;
+  outline-offset: 0;
+}
+.citilap-login form button[type="submit"] {
+  min-height: 44px;
+  border-radius: 9px !important;
+  background: #2554c7 !important;
+  box-shadow: 0 5px 12px rgb(37 84 199 / 14%);
+  font-family: inherit;
+  font-weight: 750 !important;
+}
+.citilap-login form button[type="submit"]:hover:not(:disabled) { background: #1d429d !important; }
+.citilap-login form button[type="submit"]:disabled { background: #8daae1 !important; }
+.citilap-login-error {
+  border-color: #f4c9cd !important;
+  background: #fff1f2 !important;
+}
+.citilap-login-error span { color: #9e3038 !important; }
+.citilap-login .login-progress { color: #607892 !important; }
+.citilap-login-demo > button { color: #60799f !important; }
+.citilap-login-demo > div > button {
+  border-color: #d0dceb !important;
+  background: #f1f5fb !important;
+  color: #25446f !important;
+}
+.citilap-login-footer { color: #8a9aae !important; }
+@media (max-width: 470px) {
+  .citilap-login { padding: 14px; }
+  .citilap-login-card { box-shadow: 0 9px 32px rgb(33 68 121 / 9%) !important; }
+}

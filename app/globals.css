@@ -2832,7 +2832,7 @@ body {
 .inventory-note-cell { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .inventory-test-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-bottom: 3px; color: #111827; font-weight: 800; }
 .inventory-test-summary .has-error { color: #dc2626; }
-.inventory-condition-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: #111827; font-size: .8rem; font-weight: 700; line-height: 1.35; }
+.inventory-condition-text { color: #111827; font-size: .8rem; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
 .customer-row-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .order-gift-summary { display: inline-flex; padding: 4px 7px; border-radius: 6px; color: #946200; background: #fff0bd; font-size: .7rem; font-weight: 750; }
 .finance-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }

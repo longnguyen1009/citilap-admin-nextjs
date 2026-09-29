@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { useInventory, parseFlexibleFloat, isReservationActive, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
+import { useInventory, parseFlexibleFloat, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -23,6 +23,11 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import InvoiceLink from '../InvoiceLink';
 import InvoiceOrderFields from '../InvoiceOrderFields';
+import OrderAllocation from '../OrderAllocation';
+import { getAuthHeaders } from '@/lib/apiFetchers';
+
+const formatConfigText = (value) => String(value || '').replaceAll('/', '/\u200B');
+
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
   if (vnDate.includes('-')) return vnDate;
@@ -124,6 +129,8 @@ const EditableCell = ({ value, onChange, type = "text", rows, placeholder, class
 };
 
 export default function Orders() {
+  const [allocationOrder, setAllocationOrder] = useState(null);
+  const [allocatingOrderId, setAllocatingOrderId] = useState(null);
   const [activeLaptopPicker, setActiveLaptopPicker] = useState(null);
   const { 
     laptops, 
@@ -145,8 +152,10 @@ export default function Orders() {
     PAYMENT_METHODS,
     createCustomer,
     getSelectableLaptops,
+    getAllocationCandidates,
     getDepositReferenceLaptops,
     getLaptopAssignmentError,
+    applyAllocationUpdate,
     getOptions,
     getLabel,
     appOptions
@@ -226,7 +235,6 @@ export default function Orders() {
     salePrice: '',
     depositAmount: '',
     depositNote: '',
-    reservationExpiresAt: '',
     codAmount: '',
     setupNote: 'Cài cơ bản',
     warranty: '6 tháng',
@@ -344,10 +352,7 @@ export default function Orders() {
       return;
     }
     const selected = laptops.find(l => String(l.id) === String(newLaptopId));
-    const isDepositReference = !currentOrder.laptopId && (
-      labelToKey('orderStatus', currentOrder.orderStatus, appOptions) === 'deposited'
-      || labelToKey('paymentStatus', currentOrder.paymentStatus, appOptions) === 'deposited'
-    );
+    const isDepositReference = !currentOrder.laptopId;
     let updates = isDepositReference
       ? { requestedLaptopId: newLaptopId }
       : { laptopId: newLaptopId };
@@ -360,6 +365,33 @@ export default function Orders() {
     }
     const result = updateOrder(ordId, updates);
     if (!result.ok) toast.error(result.message);
+  };
+
+  const handleAllocateLaptop = async (orderId, laptopId) => {
+    if (!laptopId || allocatingOrderId) return;
+    setAllocatingOrderId(orderId);
+    try {
+      const currentOwner = allOrders.find(order => (
+        String(order.id) !== String(orderId)
+        && String(order.laptopId) === String(laptopId)
+        && order.isActive !== false
+        && !isOrderCommitted(order, appOptions)
+        && !isOrderCancelled(order, appOptions)
+      ));
+      const response = await fetch('/api/order-allocation', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ orderId: Number(orderId), laptopId: Number(laptopId), expectedOwner: currentOwner?.id ?? null }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error);
+      applyAllocationUpdate(payload);
+      toast.success(`Đã cập nhật máy cho đơn #${orderId}.`);
+      setAllocatingOrderId(null);
+    } catch (error) {
+      toast.error(error.message || 'Không thể phân máy.');
+      setAllocatingOrderId(null);
+    }
   };
 
   // Mở modal tạo đơn mới
@@ -382,7 +414,6 @@ export default function Orders() {
       salePrice: '',
       depositAmount: '',
       depositNote: '',
-      reservationExpiresAt: '',
       codAmount: '',
       setupNote: 'Cài cơ bản',
       warranty: '6 tháng',
@@ -426,7 +457,6 @@ export default function Orders() {
       salePrice: order.salePrice ?? '',
       depositAmount: order.depositAmount ?? '',
       depositNote: order.depositNote || '',
-      reservationExpiresAt: order.reservationExpiresAt || '',
       codAmount: order.codAmount ?? '',
       setupNote: order.setupNote || '',
       warranty: order.warranty || '',
@@ -474,8 +504,7 @@ export default function Orders() {
     if (selected) {
       autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd || formData.salePrice;
     }
-    const isDepositReference = labelToKey('orderStatus', formData.orderStatus, appOptions) === 'deposited'
-      || labelToKey('paymentStatus', formData.paymentStatus, appOptions) === 'deposited';
+    const isDepositReference = !formData.laptopId;
     setFormData(prev => ({
       ...prev,
       laptopId: isDepositReference ? '' : laptopId,
@@ -487,18 +516,11 @@ export default function Orders() {
 
   const handleDraftDepositFieldChange = (field, value) => {
     const next = { ...formData, [field]: value };
-    const isDeposit = labelToKey('orderStatus', next.orderStatus, appOptions) === 'deposited'
-      || labelToKey('paymentStatus', next.paymentStatus, appOptions) === 'deposited';
-    if (isDeposit && !next.requestedLaptopId && next.laptopId) {
-      next.requestedLaptopId = next.laptopId;
-      next.laptopId = '';
-    }
     setFormData(next);
   };
 
   const getLaptopPickerOptions = () => {
-    const isDepositReference = labelToKey('orderStatus', formData.orderStatus, appOptions) === 'deposited'
-      || labelToKey('paymentStatus', formData.paymentStatus, appOptions) === 'deposited';
+    const isDepositReference = !formData.laptopId;
     const selectedId = formData.laptopId || formData.requestedLaptopId || '';
     const source = isDepositReference
       ? getDepositReferenceLaptops(formData.requestedLaptopId)
@@ -725,6 +747,7 @@ export default function Orders() {
 
   return (
     <section className="page-section list-workspace-page">
+      {allocationOrder && <OrderAllocation order={allocationOrder} onClose={() => setAllocationOrder(null)} />}
       {/* SECTION HEADER */}
       <div className="section-title section-header list-page-header orders-page-header">
         <div className="workspace-heading">
@@ -1003,6 +1026,9 @@ export default function Orders() {
                 filteredOrders.map((ord) => {
                   const laptopObj = laptops.find(l => String(l.id) === String(ord.laptopId || ord.requestedLaptopId));
                   const noteValue = ord.note !== undefined ? ord.note : [ord.note1, ord.note2].filter(Boolean).join(' - ');
+                  const showAllocationDetails = ['new', 'deposited'].includes(
+                    labelToKey('orderStatus', ord.orderStatus, appOptions)
+                  );
 
                   return (
                     <tr key={ord.id} data-testid={`order-row-${ord.id}`} className={getOrderRowStatusClass(ord)}>
@@ -1052,7 +1078,54 @@ export default function Orders() {
 
                       {/* 5. CỘT MÁY: 2 DÒNG THOÁNG MÁT (DÒNG 1: SELECTOR ID, DÒNG 2: TÊN CẤU HÌNH) */}
                       <td style={{ width: `${colWidths.laptopId}px`, minWidth: `${colWidths.laptopId}px`, padding: '0.3rem 0.4rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {showAllocationDetails && (ord.laptopId ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <button type="button" className="btn btn-outline" onClick={() => setAllocationOrder(ord)}>Đổi / Giải phóng máy</button>
+                            <select
+                              className="sheet-cell-select"
+                              aria-label={`Đổi máy cho đơn #${ord.id}`}
+                              value={ord.laptopId}
+                              disabled={allocatingOrderId !== null}
+                              onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
+                            >
+                              {getAllocationCandidates(ord.id).map(laptop => {
+                                const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
+                                return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
+                              })}
+                            </select>
+                            <div
+                              style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
+                              title={laptopObj?.name || ''}
+                            >
+                              {laptopObj?.name ? formatConfigText(laptopObj.name) : 'Chưa có cấu hình máy'}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <select
+                              className="sheet-cell-select"
+                              aria-label={`Phân máy cho đơn #${ord.id}`}
+                              value=""
+                              disabled={allocatingOrderId !== null}
+                              onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
+                            >
+                              <option value="">{allocatingOrderId === ord.id ? 'Đang phân máy…' : 'Chọn máy'}</option>
+                              {getAllocationCandidates(ord.id).map(laptop => {
+                                const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
+                                return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
+                              })}
+                            </select>
+                            {ord.requestedConfiguration && (
+                              <div
+                                style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
+                                title={ord.requestedConfiguration}
+                              >
+                                {formatConfigText(ord.requestedConfiguration)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {!showAllocationDetails && <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {/* Dòng 1: Dropdown chọn ID Máy - khóa khi đơn đã xác định sản phẩm */}
                           {(() => {
                             const lockedByDelivery = ['shipped', 'delivered'].includes(labelToKey('deliveryStatus', ord.deliveryStatus));
@@ -1092,12 +1165,7 @@ export default function Orders() {
                                   title={isLocked ? `🔒 Không được đổi máy — ${lockReason}` : 'Chọn máy cho đơn hàng'}
                                 >
                                   <option value="">- Chưa gán máy -</option>
-                                  {(activeLaptopPicker !== ord.id || isLocked ? (laptopObj ? [laptopObj] : []) : ord.laptopId ? getSelectableLaptops(ord.id) : (
-                                    labelToKey('orderStatus', ord.orderStatus, appOptions) === 'deposited'
-                                    || labelToKey('paymentStatus', ord.paymentStatus, appOptions) === 'deposited'
-                                      ? getDepositReferenceLaptops(ord.requestedLaptopId)
-                                      : getSelectableLaptops(ord.id)
-                                  )).map(l => (
+                                  {(activeLaptopPicker !== ord.id || isLocked ? (laptopObj ? [laptopObj] : []) : ord.laptopId ? getSelectableLaptops(ord.id) : getDepositReferenceLaptops(ord.requestedLaptopId)).map(l => (
                                     <option key={l.id} value={l.id}>
                                       {l.id} - {l.name} ({l.status})
                                     </option>
@@ -1112,33 +1180,14 @@ export default function Orders() {
 
                           {/* Dòng 2: Tên cấu hình máy tự động trích xuất từ kho */}
                           <div 
-                            style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, paddingLeft: '4px', fontWeight: 500 }}
+                            style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
                             title={laptopObj?.name || 'Chưa chọn máy'}
                           >
-                            {laptopObj ? laptopObj.name : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>}
+                            {laptopObj ? formatConfigText(laptopObj.name) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>}
                           </div>
-                          {isReservationActive(ord, appOptions) && ord.reservationExpiresAt && (
-                            <div style={{ fontSize: '0.7rem', color: '#d97706', paddingLeft: '4px' }}>
-                              Giữ tới: {new Date(ord.reservationExpiresAt).toLocaleString('vi-VN')}
-                            </div>
-                          )}
                           {ord.reservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(ord.reservation.reservationCode)}`}>{ord.reservation.reservationCode} · {ord.reservation.status}</a>}
                           {ord.tradeIn && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(ord.tradeIn.tradeInCode)}`}>Thu cũ {ord.tradeIn.tradeInCode} · {(Number(ord.tradeIn.agreedValueVnd || 0) / 1000000).toFixed(2)}tr (phi tiền mặt)</a>}
-                          {(() => {
-                            // Đơn vẫn ở trạng thái cọc nhưng đã hết hạn -> máy đã bị nhả về kho
-                            const oKey = labelToKey('orderStatus', ord.orderStatus);
-                            const pKey = labelToKey('paymentStatus', ord.paymentStatus);
-                            const isDepositOrder = oKey === 'deposited' || pKey === 'deposited';
-                            if (!ord.laptopId || !isDepositOrder || isOrderCommitted(ord, appOptions) || isOrderCancelled(ord, appOptions)) return null;
-                            if (isReservationActive(ord, appOptions)) return null;
-                            return (
-                              <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, paddingLeft: '4px' }}
-                                title='Đơn giữ chỗ đã hết hạn — máy đã được nhả về kho. Hãy gia hạn giữ máy hoặc hủy đơn.'>
-                                ⚠️ Hết hạn giữ máy
-                              </div>
-                            );
-                          })()}
-                        </div>
+                        </div>}
                       </td>
 
 
@@ -1247,10 +1296,10 @@ export default function Orders() {
                       {/* 10b. LỢI NHUẬN (TR) — chỉ ADMIN: giá bán - giá nhập của máy */}
                       {user?.role === 'ADMIN' && (
                         <td style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, fontWeight: 800, color: '#059669', textAlign: 'center' }}>
-                          {ord.salesOperationsSummary?.netContributionAfterCommissionVnd != null
-                            ? <><div>{(Number(ord.salesOperationsSummary.netContributionAfterCommissionVnd) / 1000000).toFixed(2)}tr</div>{ord.commissions?.map((commission, index) => <div className="phase9-cell-meta" key={`${commission.beneficiaryName}-${index}`}>{commission.beneficiaryName || commission.beneficiaryType}: {(Number(commission.amountVnd) / 1000000).toFixed(2)}tr · {commission.status}</div>)}</>
+                          {!ord.laptopId ? 'Chưa phân máy' : ord.profitVnd != null
+                            ? `${Number(ord.profitVnd).toFixed(2)}tr`
                             : laptopObj && ord.salePrice
-                              ? Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2))
+                              ? `${Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2)).toFixed(2)}tr`
                               : '-'}
                         </td>
                       )}
@@ -1516,6 +1565,7 @@ export default function Orders() {
                       </option>
                     ))}
                   </select>
+                  <small>Chọn cấu hình tham khảo. Sau khi lưu đơn, dùng “Phân máy” để giữ một laptop cụ thể.</small>
                 </div>
 
                 {/* 7. TRẠNG THÁI ĐƠN */}
@@ -1621,18 +1671,6 @@ export default function Orders() {
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Tiền Cọc Đã Ghi Nhận</label>
                       <div className="form-control" aria-readonly="true">{Number(formData.depositAmount || 0).toFixed(2)} triệu VNĐ</div>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="order-field-23" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Giữ Máy Đến</label>
-                      <input id="order-field-23"
-                        type="datetime-local"
-                        data-testid="order-reservation-input"
-                        className="form-control"
-                        value={formData.reservationExpiresAt}
-                        onChange={e => setFormData({ ...formData, reservationExpiresAt: e.target.value })}
-                        title="Để trống: hệ thống mặc định giữ 48 giờ"
-                      />
-                      <small style={{ color: 'var(--text-muted)' }}>Để trống sẽ tự giữ trong 48 giờ.</small>
                     </div>
                   </>
                 )}
