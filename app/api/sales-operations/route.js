@@ -32,7 +32,6 @@ export async function GET(request) {
 
   if (type === 'reservations') {
     if (!salesRoles.includes(auth.profile.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    await db.rpc('expire_reservations', { p_actor: auth.profile.name });
     result = await db.from('reservations').select('*,laptops(id,serial,name,status),customers(id,name,phone),payments(id,amount,payment_method)').order('created_at', { ascending: false }).limit(200);
   } else if (type === 'trade-ins') {
     const salesFields = '*,customers(id,name,phone),trade_in_inspections(*,trade_in_check_items(*))';
@@ -57,7 +56,10 @@ export async function POST(request) {
     const db = getSupabaseAdminClient();
     let result;
 
-    if (body.action === 'createReservation') {
+    if (body.action === 'expireReservations') {
+      assertRole(auth.profile, salesRoles);
+      result = await db.rpc('expire_reservations', { p_actor: auth.profile.name });
+    } else if (body.action === 'createReservation') {
       assertRole(auth.profile, salesRoles);
       const orderId = body.orderId ? Number(body.orderId) : null;
       const depositPaymentId = body.depositPaymentId ? Number(body.depositPaymentId) : null;

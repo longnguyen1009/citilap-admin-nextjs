@@ -49,7 +49,10 @@ export default function SalesOperations({ mode }) {
   const load = useCallback(async () => {
     if (!allowed) return setLoading(false);
     setLoading(true);setError('');
-    try { setRows(await api(`/api/sales-operations?type=${mode}`)); } catch (err) { setError(err.message); } finally { setLoading(false); }
+    try {
+      if (mode === 'reservations') await api('/api/sales-operations', { method: 'POST', body: JSON.stringify({ action: 'expireReservations' }) });
+      setRows(await api(`/api/sales-operations?type=${mode}`));
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
   }, [allowed, mode]);
   // Network synchronization intentionally refreshes server-owned sales operations data.
   // eslint-disable-next-line react-hooks/set-state-in-effect

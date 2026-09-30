@@ -1,13 +1,20 @@
 'use client';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { computeImportPrice } from '@/context/InventoryContext';
 import ProductNameInput from '@/components/common/ProductNameInput';
 import { formatRmb } from '@/lib/procurement';
 import './purchase-day-tables.css';
 
 export default function PurchaseDayTables({ groups, categories, formulaConfig, mutate, pending, onEdit, statuses }) {
-  const [drafts, setDrafts] = useState({});
+  const [drafts, setDrafts] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try { return JSON.parse(window.sessionStorage.getItem('citilap_purchase_inline_drafts') || '{}'); }
+    catch { return {}; }
+  });
   const [collapsed, setCollapsed] = useState({});
+  useEffect(() => {
+    window.sessionStorage.setItem('citilap_purchase_inline_drafts', JSON.stringify(drafts));
+  }, [drafts]);
   const update = (key, field, value) => setDrafts(current => ({ ...current, [key]: { ...current[key], [field]: value } }));
   const remove = key => setDrafts(current => { const next = { ...current }; delete next[key]; return next; });
   return <section className="purchase-days">{groups.map(group => {

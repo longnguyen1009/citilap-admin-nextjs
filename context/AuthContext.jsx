@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
       while (loadingProfileRef.current === authUser.id && Date.now() - startedAt < 15000) {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
-      return Boolean(lastUserRef.current?.id === authUser.id);
+      return lastUserRef.current?.id === authUser.id ? lastUserRef.current : false;
     }
     loadingProfileRef.current = authUser.id;
 
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
         lastUserRef.current = newUser;
         setUser(newUser);
       }
-      return true;
+      return newUser;
     } catch (err) {
       console.error('Lỗi load user profile:', err);
       await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
@@ -166,6 +166,7 @@ export const AuthProvider = ({ children }) => {
       if (data.session?.user) {
         const profileReady = await loadUserProfile(client, data.session.user);
         if (!profileReady) return { ok: false, message: 'Không thể tải hồ sơ người dùng hoặc tài khoản đã bị khóa.' };
+        return { ok: true, user: profileReady };
       }
       return { ok: true };
     } catch (err) {

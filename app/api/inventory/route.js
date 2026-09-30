@@ -99,6 +99,11 @@ export async function POST(request) {
 
   try {
     const rawPayload = await request.json();
+    const { searchParams } = new URL(request.url);
+    const isCreateRequest = searchParams.get('mode') === 'create';
+    if (isCreateRequest && !isAdmin) {
+      return NextResponse.json({ error: 'Chỉ quản trị viên được tạo laptop mới.' }, { status: 403 });
+    }
     if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL'].includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
@@ -114,8 +119,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Bạn không có quyền thay đổi các trường tài chính nhạy cảm.' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const isCreateRequest = searchParams.get('mode') === 'create';
     validateLaptopPayload(body, { partial: !isCreateRequest });
 
     // Validate price ranges to prevent extreme values

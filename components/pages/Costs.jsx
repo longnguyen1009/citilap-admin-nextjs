@@ -75,6 +75,7 @@ export default function Costs() {
 
   const open = async row => {
     try {
+      await api('/api/costs', { method: 'POST', body: JSON.stringify({ action: 'sync', laptopId: row.laptop_id }) });
       setDetail(await api(`/api/costs?laptopId=${row.laptop_id}`));
       setError('');
     } catch (openError) {

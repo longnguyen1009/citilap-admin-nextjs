@@ -28,6 +28,11 @@ for (const role of ['ADMIN','SALES','TECH','TECHNICAL','STAFF']) {
     const response=await handler.POST(request(payload));
     assert.equal(response.status,payload.id===999?404:400); passed++;
   }
+  const createResponse = await handler.POST(new Request('http://local/api/inventory?mode=create', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:'QA laptop' })
+  }));
+  assert.equal(createResponse.status, role === 'ADMIN' ? 400 : 403);
+  passed++;
   assert.equal(saves,0);
   const financial={id:1,purchasePriceRmb:5000,importPriceVnd:20,costSnapshotVnd:20000000,profitVnd:10,serial:'QA'};
   const allocation=await route('app/api/order-allocation/route.js',{
@@ -52,5 +57,24 @@ for (const role of ['ADMIN','SALES','TECH','TECHNICAL','STAFF']) {
   assert.equal(logResponse.status,200);
   const [log]=await logResponse.json();
   assert.equal(Object.hasOwn(log.changes,'purchase_price_rmb'),role==='ADMIN'); passed++;
+}
+for (const [role, payload, expected] of [
+  ['SALES', { laptopId: 1, type: 'NHẬP KHO' }, 403],
+  ['TECH', { laptopId: 1, type: 'SỰ KIỆN GIẢ' }, 400],
+  ['TECH', { laptopId: 1, warrantyCaseId: 8, orderId: 2, type: 'BẢO HÀNH: checking' }, 400],
+]) {
+  let saves = 0;
+  const handler = await route('app/api/stock-movements/route.js', {
+    ...auth, NextResponse,
+    requireUser: async () => ({ ok:true, profile:{ role, name:'QA' } }),
+    getSupabaseAdminClient: () => ({ from:() => query({ data:{ laptop_id:9, order_id:2 }, error:null }) }),
+    saveStockMovementToCloud: async () => { saves++; return { id:1 }; },
+    fetchStockMovementsFromCloud: async () => [],
+    logActivity: async () => {}, pickAuditFields: value => value,
+  });
+  const response = await handler.POST(request(payload));
+  assert.equal(response.status, expected);
+  assert.equal(saves, 0);
+  passed++;
 }
 console.log(`PASS route regression ${passed}/${passed}: five roles, missing/invalid/unknown ID, no writes, allocation and audit redaction (DB mocked)`);

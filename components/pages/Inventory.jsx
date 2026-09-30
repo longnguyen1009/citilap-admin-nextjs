@@ -446,6 +446,11 @@ export default function Inventory() {
   const handleSaveLaptop = async (e) => {
     e.preventDefault();
     if (savingRef.current) return;
+    if (!editingLaptop && user?.role !== 'ADMIN') {
+      setSaveError('Chỉ quản trị viên được tạo laptop mới.');
+      setIsAddModalOpen(false);
+      return;
+    }
     setSaveError('');
     if (!formData.name.trim()) {
       toast.error('Vui lòng nhập Tên Máy!');
@@ -663,7 +668,7 @@ export default function Inventory() {
         )}
       </div>
 
-        <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {user?.role === 'ADMIN' && <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="secondary" size="sm" onClick={() => setIsSyncModalOpen(true)}>
             <RefreshCw size={14} /> Google Sheet
           </Button>
@@ -671,7 +676,7 @@ export default function Inventory() {
           <Button data-testid="product-add-button" variant="default" size="sm" asChild>
             <Link href="/purchases"><Plus size={16} /> Nhập Máy Mới</Link>
           </Button>
-        </div>
+        </div>}
       </div>
 
       {cloudStatus === 'disconnected' && (

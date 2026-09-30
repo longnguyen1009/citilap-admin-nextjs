@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, User, LogIn, AlertCircle, LoaderCircle, Package } from 'lucide-react';
+import { defaultLandingPath } from '@/lib/authLanding';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ export default function Login() {
   // Tự động chuyển hướng khi user đã có (tránh race condition với AuthContext)
   React.useEffect(() => {
     if (user) {
-      router.push('/');
+      router.replace(defaultLandingPath(user.role));
     }
   }, [user, router]);
 
@@ -35,13 +36,13 @@ export default function Login() {
       setError(result.message || 'Sai email hoặc mật khẩu');
       setIsSubmitting(false);
     } else {
-      router.replace('/');
+      router.replace(defaultLandingPath(result.user?.role));
     }
   };
 
   // Mock login fallback (khi chưa cấu hình Supabase)
   const handleMockLogin = (role) => {
-    if (mockLogin(role)) router.push('/');
+    if (mockLogin(role)) router.replace(defaultLandingPath(role));
   };
 
   return (

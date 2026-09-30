@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireUser, isValidPositiveId } from '@/lib/apiAuth';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { publicInvoice } from '@/lib/responseVisibility';
 
 function visibleInvoice(invoice, role) {
-  if (role === 'ADMIN' || !invoice.snapshot) return invoice;
-  const snapshot = { ...invoice.snapshot, order: { ...invoice.snapshot.order } };
-  delete snapshot.order.profit_vnd;
-  snapshot.financial_records = (snapshot.financial_records || []).filter(row => row.payment_id);
-  return { ...invoice, snapshot };
+  return role === 'ADMIN' ? invoice : publicInvoice(invoice);
 }
 
 export async function GET(request) {
