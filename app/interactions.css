@@ -1,0 +1,46 @@
+/* Operational feedback: short transitions, no layout movement in table cells. */
+:is(main,.app-dialog,.modal-backdrop,.intake-modal) button {
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+@media (hover:hover) {
+  :is(main,.app-dialog,.modal-backdrop,.intake-modal) button:not(:disabled):hover { filter:brightness(.95); }
+}
+:is(main,.app-dialog,.modal-backdrop,.intake-modal) button:not(:disabled):active {
+  filter:brightness(.88); box-shadow:inset 0 2px 4px #16344b26;
+}
+:is(main,.app-dialog,.modal-backdrop,.intake-modal) :is(button,a,input,textarea,select):focus-visible {
+  outline:3px solid #2877b9; outline-offset:3px;
+}
+:is(main,.app-dialog,.modal-backdrop,.intake-modal) button:disabled { cursor:not-allowed; }
+.app-dialog {
+  border:1px solid #a6bace; border-top:4px solid #235e89;
+  box-shadow:0 24px 70px #102d4a38,0 3px 12px #102d4a20;
+}
+.app-dialog > div:first-child { padding-right:32px; }
+.app-dialog > button:last-child {
+  display:grid; place-items:center; min-width:32px; min-height:32px;
+  border:1px solid #c8d6e1; border-radius:8px; background:#edf3f8; color:#244563; opacity:1;
+}
+.app-dialog .modal-content-scroll { overscroll-behavior:contain; scrollbar-gutter:stable; }
+:is(.repair-modal,.supplier-return-modal,.salesops-dialog,.intake-modal>.intake-panel) {
+  border:1px solid #a6bace; border-top:4px solid #235e89;
+  box-shadow:0 24px 70px #102d4a38; overscroll-behavior:contain;
+  animation:operational-modal-enter 160ms ease-out;
+}
+:is(.repair-modal,.supplier-return-modal,.salesops-dialog) > header {
+  border-bottom:1px solid #bccddc; padding-bottom:12px; margin-bottom:12px;
+}
+:is(.repair-modal,.supplier-return-modal,.salesops-dialog) > header button { min-width:34px; min-height:34px; }
+@keyframes operational-modal-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.col-resizer { touch-action:none; }
+.col-resizer::after { content:''; position:absolute; top:20%; bottom:20%; left:3px; width:2px; background:#7795b0; border-radius:2px; }
+.col-resizer.is-resizing { background:#2563eb !important; opacity:1; }
+body.is-column-resizing, body.is-column-resizing * { cursor:col-resize !important; user-select:none !important; }
+.product-name-suggestions button[aria-selected=true] { background:#dbeafe !important; outline:2px solid #2563eb; outline-offset:-2px; }
+@media (prefers-reduced-motion:reduce) {
+  :is(main,.app-dialog,.modal-backdrop,.intake-modal) button { transition:none; }
+  :is(.app-dialog,.repair-modal,.supplier-return-modal,.salesops-dialog,.intake-modal>.intake-panel) { animation:none !important; }
+}
+@media (max-width:600px) {
+  :is(.repair-modal,.supplier-return-modal,.salesops-dialog) { max-height:calc(100dvh - 24px); max-width:calc(100vw - 24px); }
+}

@@ -1,4 +1,5 @@
 "use client";
+import { useColumnResize } from '@/lib/useColumnResize';
 import { downloadExport } from '@/lib/downloadExport';
 import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
@@ -153,34 +154,7 @@ export default function Inventory() {
     return keys;
   }, [user?.role]);
 
-  const startResizing = (e, colKey) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startX = e.clientX;
-    const startWidth = colWidths[colKey] || 100;
-
-    const onMouseMove = (moveEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(45, startWidth + delta);
-      setColWidths(prev => ({
-        ...prev,
-        [colKey]: newWidth
-      }));
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
+  const startResizing = useColumnResize(colWidths, setColWidths);
 
   const totalTableWidth = useMemo(() => {
     return inventoryColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0);
@@ -940,65 +914,65 @@ export default function Inventory() {
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative', textAlign: 'center' }}>
                   Mã ID
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột Mã ID" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Mã ID" aria-valuemin={45} aria-valuenow={colWidths.id || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, id: Math.max(45, (previous.id || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột Mã ID" />
                 </th>
                 <th className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', position: 'relative', left: `${colWidths.id}px` }}>
                   Thao tác
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'actions')} title="Kéo để chỉnh rộng hẹp cột Thao tác" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Thao tác" aria-valuemin={45} aria-valuenow={colWidths.actions || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, actions: Math.max(45, (previous.actions || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'actions')} title="Kéo để chỉnh rộng hẹp cột Thao tác" />
                 </th>
                 <th style={{ width: `${colWidths.importDate}px`, minWidth: `${colWidths.importDate}px`, position: 'relative', textAlign: 'center', lineHeight: '1.1' }}>
                   Ngày<br/>nhập
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importDate')} title="Kéo để chỉnh rộng hẹp cột Ngày nhập" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ngày nhập" aria-valuemin={45} aria-valuenow={colWidths.importDate || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, importDate: Math.max(45, (previous.importDate || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'importDate')} title="Kéo để chỉnh rộng hẹp cột Ngày nhập" />
                 </th>
                 <th style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px`, position: 'relative' }}>
                   Tên máy
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'name')} title="Kéo để chỉnh rộng hẹp cột Tên máy" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Tên máy" aria-valuemin={45} aria-valuenow={colWidths.name || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, name: Math.max(45, (previous.name || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'name')} title="Kéo để chỉnh rộng hẹp cột Tên máy" />
                 </th>
                 <th style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px`, position: 'relative', textAlign: 'center' }}>
                   Trạng thái
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'status')} title="Kéo để chỉnh rộng hẹp cột Trạng thái" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Trạng thái" aria-valuemin={45} aria-valuenow={colWidths.status || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, status: Math.max(45, (previous.status || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'status')} title="Kéo để chỉnh rộng hẹp cột Trạng thái" />
                 </th>
                 <th style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px`, position: 'relative' }}>
                   Phân loại
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'category')} title="Kéo để chỉnh rộng hẹp cột Phân loại" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Phân loại" aria-valuemin={45} aria-valuenow={colWidths.category || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, category: Math.max(45, (previous.category || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'category')} title="Kéo để chỉnh rộng hẹp cột Phân loại" />
                 </th>
                 <th style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, position: 'relative' }}>
                   Tình trạng & Ghi chú
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'conditionNote')} title="Kéo để chỉnh rộng hẹp cột Ghi chú" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ghi chú" aria-valuemin={45} aria-valuenow={colWidths.conditionNote || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, conditionNote: Math.max(45, (previous.conditionNote || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'conditionNote')} title="Kéo để chỉnh rộng hẹp cột Ghi chú" />
                 </th>
                 <th style={{ width: `${colWidths.seller}px`, minWidth: `${colWidths.seller}px`, position: 'relative' }}>
                   Nguồn nhập
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'seller')} title="Kéo để chỉnh rộng hẹp cột Nguồn nhập" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Nguồn nhập" aria-valuemin={45} aria-valuenow={colWidths.seller || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, seller: Math.max(45, (previous.seller || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'seller')} title="Kéo để chỉnh rộng hẹp cột Nguồn nhập" />
                 </th>
                 <th style={{ width: `${colWidths.serial}px`, minWidth: `${colWidths.serial}px`, position: 'relative' }}>
                   Số Serial
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'serial')} title="Kéo để chỉnh rộng hẹp cột Serial" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Serial" aria-valuemin={45} aria-valuenow={colWidths.serial || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, serial: Math.max(45, (previous.serial || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'serial')} title="Kéo để chỉnh rộng hẹp cột Serial" />
                 </th>
                 <th style={{ width: `${colWidths.chargerStatus}px`, minWidth: `${colWidths.chargerStatus}px`, position: 'relative' }}>
                   Sạc
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'chargerStatus')} title="Kéo để chỉnh rộng hẹp cột Sạc" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Sạc" aria-valuemin={45} aria-valuenow={colWidths.chargerStatus || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, chargerStatus: Math.max(45, (previous.chargerStatus || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'chargerStatus')} title="Kéo để chỉnh rộng hẹp cột Sạc" />
                 </th>
                 <th style={{ width: `${colWidths.location}px`, minWidth: `${colWidths.location}px`, position: 'relative' }}>
                   Vị trí
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'location')} title="Kéo để chỉnh rộng hẹp cột Vị trí" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Vị trí" aria-valuemin={45} aria-valuenow={colWidths.location || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, location: Math.max(45, (previous.location || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'location')} title="Kéo để chỉnh rộng hẹp cột Vị trí" />
                 </th>
                 {user?.role === 'ADMIN' && (
                   <>
                     <th style={{ width: `${colWidths.priceRmb}px`, minWidth: `${colWidths.priceRmb}px`, position: 'relative', textAlign: 'center' }}>
                       Giá mua<br/>(RMB)
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'priceRmb')} title="Kéo để chỉnh rộng hẹp cột Giá mua (RMB)" />
+                      <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Giá mua (RMB)" aria-valuemin={45} aria-valuenow={colWidths.priceRmb || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, priceRmb: Math.max(45, (previous.priceRmb || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'priceRmb')} title="Kéo để chỉnh rộng hẹp cột Giá mua (RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.shippingRmb}px`, minWidth: `${colWidths.shippingRmb}px`, position: 'relative', textAlign: 'center' }}>
                       Phí nội địa<br/>(RMB)
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'shippingRmb')} title="Kéo để chỉnh rộng hẹp cột Phí nội địa (RMB)" />
+                      <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Phí nội địa (RMB)" aria-valuemin={45} aria-valuenow={colWidths.shippingRmb || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, shippingRmb: Math.max(45, (previous.shippingRmb || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'shippingRmb')} title="Kéo để chỉnh rộng hẹp cột Phí nội địa (RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.exchangeRate}px`, minWidth: `${colWidths.exchangeRate}px`, position: 'relative', textAlign: 'center' }}>
                       Tỷ giá<br/>(VNĐ/RMB)
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá (VNĐ/RMB)" />
+                      <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Tỷ giá (VNĐ/RMB)" aria-valuemin={45} aria-valuenow={colWidths.exchangeRate || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, exchangeRate: Math.max(45, (previous.exchangeRate || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'exchangeRate')} title="Kéo để chỉnh rộng hẹp cột Tỷ giá (VNĐ/RMB)" />
                     </th>
                     <th style={{ width: `${colWidths.importPriceVnd}px`, minWidth: `${colWidths.importPriceVnd}px`, color: '#111827', position: 'relative', textAlign: 'center' }}>
                       Giá nhập<br/>(triệu VNĐ)
-                      <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá nhập (triệu VNĐ)" />
+                      <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Giá nhập (triệu VNĐ)" aria-valuemin={45} aria-valuenow={colWidths.importPriceVnd || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, importPriceVnd: Math.max(45, (previous.importPriceVnd || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'importPriceVnd')} title="Kéo để chỉnh rộng hẹp cột Giá nhập (triệu VNĐ)" />
                     </th>
                   </>
                 )}
@@ -1008,7 +982,7 @@ export default function Inventory() {
                 )}
                 <th style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, position: 'relative' }}>
                   Mã đơn vận
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'trackingCode')} title="Kéo để chỉnh rộng hẹp cột Mã đơn vận" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Mã đơn vận" aria-valuemin={45} aria-valuenow={colWidths.trackingCode || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, trackingCode: Math.max(45, (previous.trackingCode || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'trackingCode')} title="Kéo để chỉnh rộng hẹp cột Mã đơn vận" />
                 </th>
               </tr>
             </thead>

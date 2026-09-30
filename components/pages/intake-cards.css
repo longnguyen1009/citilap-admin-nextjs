@@ -1,0 +1,152 @@
+/* Shared visual hierarchy for purchasing and receiving only. */
+.intake-page.intake-page {
+  --intake-ink: #18334d;
+  --intake-line: #a8bdcf;
+  --intake-accent: #185d9a;
+  color: var(--intake-ink);
+}
+.intake-page.intake-receiving-page { --intake-accent: #08766d; }
+.intake-page.intake-page .intake-header {
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  border: 2px solid #193e61;
+  border-radius: 14px;
+  background: #193e61;
+  box-shadow: 0 5px 14px #193e6118;
+}
+.intake-page.intake-page .intake-header h1 { color: #fff; font-size: 25px; }
+.intake-page.intake-page .intake-header p { color: #85e4d5; }
+.intake-page.intake-page .intake-header span { color: #dfebf7; }
+.intake-page.intake-page .intake-header nav { gap: 8px; }
+.intake-page.intake-page .intake-header nav a {
+  padding: 8px 12px; border: 1px solid #7693ae; border-radius: 7px;
+  color: #fff; background: #294f73;
+}
+.intake-page.intake-page .intake-header nav a:hover { background: #38658e; }
+.intake-page:not(.intake-receiving-page) .intake-header a[href='/purchases'],
+.intake-page.intake-receiving-page .intake-header a[href='/receiving'] {
+  background: #fff; color: #183d60; border-color: #fff;
+}
+.intake-page.intake-page .intake-stats { gap: 10px; margin-bottom: 12px; }
+.intake-page.intake-page .intake-stats > div {
+  padding: 12px 15px; border: 1px solid #9fb8cf; border-left: 5px solid #315d88;
+  border-radius: 10px; background: #eaf1f8; box-shadow: 0 3px 8px #18334d0a;
+}
+.intake-page.intake-page .intake-stats > div:nth-child(2) { background: #e6f0ff; border-color: #94b9eb; border-left-color: #2167be; }
+.intake-page.intake-page .intake-stats > div:nth-child(3) { background: #fff2cf; border-color: #d8b66c; border-left-color: #a56309; }
+.intake-page.intake-page .intake-stats > div:nth-child(4) { background: #ffece4; border-color: #d6a48f; border-left-color: #b54b25; }
+.intake-page.intake-page .intake-stats small { color: #29435c; font-size: 12px; }
+.intake-page.intake-page .intake-stats b { color: #18334d; font-size: 26px; }
+.intake-page.intake-page .intake-toolbar {
+  padding: 12px; border: 1px solid var(--intake-line); border-radius: 10px;
+  background: #fff; box-shadow: 0 3px 8px #18334d08;
+}
+.intake-page.intake-page .intake-toolbar > span { color: #075f59; font-weight: 700; }
+.intake-page.intake-page .intake-list-meta { color: #34526c; font-weight: 600; margin: 10px 2px; }
+.intake-page.intake-page :is(.purchase-day,.intake-date-group) {
+  border: 2px solid #94afc7; border-radius: 12px; background: #edf3f9;
+  box-shadow: 0 4px 12px #18334d10; overflow: hidden;
+}
+.intake-page.intake-page :is(.purchase-day-heading,.intake-date-head) {
+  padding: 13px 16px !important; background: #234f77 !important; color: #fff;
+  border: 0; border-radius: 0; font-size: 14px;
+}
+.intake-page.intake-page :is(.purchase-day-heading,.intake-date-head) span { color: #e1effb; font-size: 12px; }
+.intake-page.intake-page .intake-tree { gap: 16px; }
+.intake-page.intake-page .intake-batch {
+  margin: 12px; border: 1px solid #9eb8ce; border-radius: 9px;
+  background: #fff; box-shadow: 0 2px 6px #193e6110;
+}
+.intake-page.intake-page .intake-batch-head {
+  background: #dfedf9 !important; border-left: 5px solid #185d9a !important;
+  padding: 12px !important; color: #153f65;
+}
+.intake-page.intake-page .intake-batch-head b { font-size: 14px; }
+.intake-page.intake-page .intake-batch-actions { background: #f0f6fb; border-bottom: 1px solid #a8bdcf; }
+.intake-page.intake-page :is(.purchase-day,.intake-batch) th {
+  background: #dce8f2; color: #203f5c; border-bottom: 2px solid #8ca9c2;
+  border-right: 1px solid #bdcddd; padding: 10px; font-size: 12px;
+}
+.intake-page.intake-page :is(.purchase-day,.intake-batch) td {
+  border-bottom: 1px solid #c1d0dd; border-right: 1px solid #d3dee8;
+  padding: 10px; color: #20384e;
+}
+.intake-page.intake-page .purchase-supplier {
+  background: #e0f0ef; border-right: 2px solid #7fb6b0;
+  border-top: 2px solid #7fb6b0; vertical-align: top;
+}
+.intake-page.intake-page .purchase-supplier > b { color: #075b55; font-size: 15px; }
+.intake-page.intake-page .purchase-supplier button {
+  background: #08766d; border: 1px solid #075b55; color: #fff; padding: 9px;
+}
+.intake-page.intake-page .purchase-supplier button small { color: #d3f4ef; }
+.intake-page.intake-page .purchase-row.status-in_transit { background: #edf5ff; }
+.intake-page.intake-page .purchase-row.status-waiting_qc { background: #fff5da; }
+.intake-page.intake-page .purchase-row.status-available { background: #edf8f0; }
+.intake-page.intake-page .purchase-row.status-sold { background: #f2f4f7; }
+.intake-page.intake-page .purchase-draft { background: #fff0bd; outline: 2px solid #c79323; outline-offset: -2px; }
+.intake-page.intake-page .intake-status { border: 1px solid currentColor; font-size: 12px; padding: 5px 8px; }
+.intake-page.intake-page .intake-selected-row { background: #ccefe4 !important; box-shadow: inset 4px 0 #08766d; }
+.intake-page.intake-page .intake-receive {
+  border: 2px solid #39968b; border-top: 6px solid #08766d; border-radius: 12px;
+  background: #f3fbf8; padding: 16px; box-shadow: 0 4px 12px #08766d15;
+}
+.intake-page.intake-page .intake-receive .receive-chip {
+  margin: 10px 0; padding: 12px; border: 1px solid #91bfb3;
+  border-left: 4px solid #08766d; border-radius: 8px; background: #fff;
+}
+.intake-page.intake-page .intake-panel:not(.intake-receive) { border: 2px solid #9bb5cd; border-top: 5px solid var(--intake-accent); }
+.intake-page.intake-page :is(input,select,textarea) { border-color: #8faabe; }
+.intake-page.intake-page button:disabled { cursor: not-allowed; }
+.intake-page.intake-page :is(button,a,input,select,textarea):focus-visible { outline: 3px solid #c78013; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .intake-page.intake-page .intake-header { padding: 14px; }
+  .intake-page.intake-page .intake-header nav { width: 100%; }
+  .intake-page.intake-page .intake-header nav a { flex: 1 1 auto; text-align: center; }
+  .intake-page.intake-page .intake-stats > div { padding: 10px; }
+  .intake-page.intake-page .purchase-day-heading { flex-wrap: wrap; gap: 6px; text-align: left; }
+  .intake-page.intake-page .intake-batch { margin: 8px; }
+  .intake-page.intake-page .intake-toolbar > :is(input,select) { min-width: 0; width: 100%; flex-basis: 100%; }
+}
+
+/* Match the inventory sheet's operational palette, including hover/selection. */
+.intake-page.intake-page tr.status-in_transit,
+.intake-page.intake-page tr.status-waiting_qc { --intake-row: #fff; }
+.intake-page.intake-page tr.status-available { --intake-row: #d89f00; }
+.intake-page.intake-page tr.status-reserved { --intake-row: #a9c9f7; }
+.intake-page.intake-page tr.status-repair { --intake-row: #c9362b; }
+.intake-page.intake-page tr:is(.status-sold,.status-supplier_return,.status-back_money,.status-ignored) { --intake-row: #89919b; }
+.intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr) > td:not(.purchase-supplier) {
+  background: var(--intake-row, #fff); color: #111; border-color: #7d93a5;
+}
+.intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr) td:not(.purchase-supplier) :is(small,code) { color: #172d40; }
+.intake-page.intake-page .intake-status-in_transit { background:#fff; color:#1e293b; border-color:#475569; }
+.intake-page.intake-page :is(.intake-status-waiting_qc,.intake-status-reserved) { background:#f59e0b; color:#fff; border-color:#b45309; }
+.intake-page.intake-page .intake-status-available { background:#22c55e; color:#fff; border-color:#15803d; }
+.intake-page.intake-page .intake-status-repair { background:#ef4444; color:#fff; border-color:#b91c1c; }
+.intake-page.intake-page :is(.intake-status-sold,.intake-status-supplier_return,.intake-status-back_money,.intake-status-ignored) { background:#7f8996; color:#fff; border-color:#475569; }
+.intake-page.intake-page .intake-selected-row > td:first-child { box-shadow:inset 4px 0 #08766d; }
+/* Dense purchase rows: supplier actions no longer dictate a tall laptop row. */
+.intake-page:not(.intake-receiving-page) .intake-header { padding:10px 14px; margin-bottom:8px; }
+.intake-page:not(.intake-receiving-page) .intake-header h1 { font-size:21px; }
+.intake-page:not(.intake-receiving-page) .intake-header > div > span { display:none; }
+.intake-page:not(.intake-receiving-page) .intake-stats > div { padding:6px 12px; }
+.intake-page:not(.intake-receiving-page) .intake-stats b { font-size:22px; }
+.intake-page:not(.intake-receiving-page) .intake-toolbar { padding:8px; }
+.intake-page.intake-page .purchase-day-heading { padding:8px 12px !important; }
+.intake-page.intake-page .purchase-days { gap:10px; }
+.intake-page.intake-page .purchase-day table { min-width:1060px; }
+.intake-page.intake-page .purchase-day th { padding:7px 8px; }
+.intake-page.intake-page .purchase-day th:first-child { width:145px; }
+.intake-page.intake-page .purchase-day th:nth-child(2) { width:32%; }
+.intake-page.intake-page .purchase-day th:last-child { width:65px; }
+.intake-page.intake-page .purchase-day td { padding:6px 8px; font-size:12px; line-height:1.35; }
+.intake-page.intake-page .purchase-day small { margin-top:2px; font-size:11px; }
+.intake-page.intake-page .purchase-machine > :is(b,small) { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.intake-page.intake-page .purchase-supplier { vertical-align:top; background:#b1d7d2; }
+.intake-page.intake-page .purchase-supplier > b { display:inline; font-size:13px; }
+.intake-page.intake-page .purchase-supplier > small { display:inline; margin-left:5px; font-size:10px; }
+.intake-page.intake-page .purchase-supplier button { width:auto; display:inline-block; margin:4px 4px 0 0; padding:3px 8px; font-size:11px; }
+.intake-page.intake-page .purchase-day td > button { padding:5px 8px; }
+.intake-page.intake-page .purchase-day .intake-status { padding:3px 5px; font-size:11px; }
+.intake-page.intake-page .purchase-draft :is(input,select) { padding:5px 6px; margin-bottom:3px; font-size:12px; }

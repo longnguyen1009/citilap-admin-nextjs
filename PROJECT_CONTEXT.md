@@ -178,7 +178,7 @@ Các route chính còn hoạt động gồm inventory, orders, intake, purchases
 - `/api/order-allocation` cho ADMIN/SALES chọn, giải phóng hoặc chuyển máy. RPC kiểm tra chủ giữ hiện tại, khóa transaction và ghi audit; tiền đã thu vẫn thuộc đơn gốc.
 - Đơn `prepared`, `shipping`, `done` bắt buộc có máy và không chuyển bằng thao tác phân máy. Đơn chưa phân máy chưa hiển thị lợi nhuận.
 - List laptop hiển thị đơn đã thu tiền chờ phân theo cùng tên cấu hình và phân loại, đọc tất cả tháng. Các đơn cũ có `laptop_id` vẫn giữ phân bổ hiện tại.
-- Kiểm tra hồi quy: `node qa/order-allocation-verification.mjs`.
+- Kịch bản hồi quy phân máy đã được dọn khỏi checkout ngày 30/09/2026; kết quả trước đó chỉ là bằng chứng lịch sử.
 
 Reset toàn bộ môi trường phát triển:
 
@@ -189,18 +189,11 @@ Reset toàn bộ môi trường phát triển:
 Kiểm tra cục bộ:
 
 ```powershell
-node qa/clean-schema-db-verification.mjs
-node qa/validate-db-reset.mjs
 npm.cmd run lint
 npm.cmd run build
 git diff --check
 ```
 
-Kiểm tra live sau khi áp dụng schema lên Supabase:
-
-```powershell
-node qa/live-procurement-inventory-e2e.mjs
-node qa/live-full-regression-e2e.mjs
-```
+Các script kiểm thử local/live và ảnh QA đã được dọn theo yêu cầu ngày 30/09/2026. Các kết quả trong báo cáo cũ là bằng chứng lịch sử, không phải lệnh kiểm thử còn có sẵn. Sau khi áp dụng schema cần kiểm tra lại luồng nghiệp vụ trên môi trường test trước khi dùng thực tế.
 
 Luôn phân biệt rõ kết quả kiểm tra tĩnh/PGlite với kết quả Supabase live và kiểm tra trình duyệt.

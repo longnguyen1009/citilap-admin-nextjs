@@ -1,4 +1,5 @@
 "use client";
+import { useColumnResize } from '@/lib/useColumnResize';
 import { downloadExport } from '@/lib/downloadExport';
 import React, { useState, useMemo, useRef, useDeferredValue } from 'react';
 import Link from 'next/link';
@@ -136,6 +137,7 @@ export default function Orders() {
   const { 
     laptops, 
     orders: allOrders,
+    dataLoading,
     filteredOrders: orders,
     customers,
     selectedMonth,
@@ -225,11 +227,11 @@ export default function Orders() {
   // Form State cho Modal 20 trường thông tin
   const [formData, setFormData] = useState({
     createdDate: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    saleOnline: SALE_ONLINE_OPTIONS[0],
-    saleOffline: SALE_OFFLINE_OPTIONS[0],
+    saleOnline: '',
+    saleOffline: '',
     note: '',
     shippingMethod: SHIPPING_METHOD_OPTIONS[0],
-    orderStatus: ORDER_STATUS_OPTIONS[0],
+    orderStatus: getFormOptionLabel('orderStatus', 'new'),
     paymentStatus: PAYMENT_STATUS_OPTIONS[0],
     deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
     laptopId: '',
@@ -309,34 +311,7 @@ export default function Orders() {
 
   const orderColumnCount = orderColumnKeys.length + 1;
 
-  const startResizing = (e, colKey) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startX = e.clientX;
-    const startWidth = colWidths[colKey] || 100;
-
-    const onMouseMove = (moveEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(45, startWidth + delta);
-      setColWidths(prev => ({
-        ...prev,
-        [colKey]: newWidth
-      }));
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
+  const startResizing = useColumnResize(colWidths, setColWidths);
 
   const totalTableWidth = useMemo(() => {
     return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0) + 108;
@@ -402,12 +377,12 @@ export default function Orders() {
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setFormData({
-      createdDate: selectedMonth === 'ALL' ? new Date().toLocaleDateString('en-GB') : `01/${selectedMonth}`,
-      saleOnline: SALE_ONLINE_OPTIONS[0],
-      saleOffline: SALE_OFFLINE_OPTIONS[0],
+      createdDate: selectedMonth === 'ALL' || selectedMonth === new Date().toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }) ? new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' }) : '',
+      saleOnline: '',
+      saleOffline: '',
       note: '',
       shippingMethod: SHIPPING_METHOD_OPTIONS[0],
-      orderStatus: ORDER_STATUS_OPTIONS[0],
+      orderStatus: getFormOptionLabel('orderStatus', 'new'),
       paymentStatus: PAYMENT_STATUS_OPTIONS[0],
       deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
       laptopId: '',
@@ -446,8 +421,8 @@ export default function Orders() {
       ...order,
       id: order.id,
       createdDate: order.createdDate || '',
-      saleOnline: getFormOptionLabel('saleOnline', order.saleOnline, SALE_ONLINE_OPTIONS[0]),
-      saleOffline: getFormOptionLabel('saleOffline', order.saleOffline, SALE_OFFLINE_OPTIONS[0]),
+      saleOnline: getFormOptionLabel('saleOnline', order.saleOnline),
+      saleOffline: getFormOptionLabel('saleOffline', order.saleOffline),
       note: order.note || '',
       shippingMethod: getFormOptionLabel('shippingMethod', order.shippingMethod, SHIPPING_METHOD_OPTIONS[0]),
       orderStatus: getFormOptionLabel('orderStatus', order.orderStatus, ORDER_STATUS_OPTIONS[0]),
@@ -869,97 +844,97 @@ export default function Orders() {
               <tr>
                 <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative' }}>
                   ID Đơn
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột ID" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột ID" aria-valuemin={45} aria-valuenow={colWidths.id || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, id: Math.max(45, (previous.id || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột ID" />
                 </th>
                 <th className="sticky-col-2" style={{ width: `${colWidths.createdDate}px`, minWidth: `${colWidths.createdDate}px`, position: 'relative', left: `${colWidths.id}px` }}>
                   Ngày tạo & SALE
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'createdDate')} title="Kéo để chỉnh rộng hẹp cột Ngày tạo & SALE" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ngày tạo & SALE" aria-valuemin={45} aria-valuenow={colWidths.createdDate || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, createdDate: Math.max(45, (previous.createdDate || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'createdDate')} title="Kéo để chỉnh rộng hẹp cột Ngày tạo & SALE" />
                 </th>
                 
                 {/* 4. GỘP 2 CỘT GHI CHÚ THÀNH 1 CỘT "GHI CHÚ" */}
                 <th style={{ width: `${colWidths.note}px`, minWidth: `${colWidths.note}px`, position: 'relative' }}>
                   Ghi Chú
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'note')} title="Kéo để chỉnh rộng hẹp cột Ghi Chú" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ghi Chú" aria-valuemin={45} aria-valuenow={colWidths.note || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, note: Math.max(45, (previous.note || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'note')} title="Kéo để chỉnh rộng hẹp cột Ghi Chú" />
                 </th>
 
                 {/* 5. CỘT "MÁY" 2 DÒNG (DÒNG 1: SELECTOR ID, DÒNG 2: TÊN CẤU HÌNH) */}
                 <th style={{ width: `${colWidths.laptopId}px`, minWidth: `${colWidths.laptopId}px`, position: 'relative' }}>
                   Máy (ID & Cấu Hình)
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'laptopId')} title="Kéo để chỉnh rộng hẹp cột Máy" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Máy" aria-valuemin={45} aria-valuenow={colWidths.laptopId || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, laptopId: Math.max(45, (previous.laptopId || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'laptopId')} title="Kéo để chỉnh rộng hẹp cột Máy" />
                 </th>
 
                 {/* 6. TRẠNG THÁI ĐƠN HÀNG (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                 <th style={{ width: `${colWidths.orderStatus}px`, minWidth: `${colWidths.orderStatus}px`, position: 'relative' }}>
                   Trạng Thái Đơn
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'orderStatus')} title="Kéo để chỉnh rộng hẹp cột Trạng Thái Đơn" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Trạng Thái Đơn" aria-valuemin={45} aria-valuenow={colWidths.orderStatus || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, orderStatus: Math.max(45, (previous.orderStatus || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'orderStatus')} title="Kéo để chỉnh rộng hẹp cột Trạng Thái Đơn" />
                 </th>
 
                 {/* 7. THANH TOÁN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                 <th style={{ width: `${colWidths.paymentStatus}px`, minWidth: `${colWidths.paymentStatus}px`, position: 'relative' }}>
                   Thanh Toán
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'paymentStatus')} title="Kéo để chỉnh rộng hẹp cột Thanh Toán" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Thanh Toán" aria-valuemin={45} aria-valuenow={colWidths.paymentStatus || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, paymentStatus: Math.max(45, (previous.paymentStatus || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'paymentStatus')} title="Kéo để chỉnh rộng hẹp cột Thanh Toán" />
                 </th>
 
                 {/* PHƯƠNG THỨC THANH TOÁN */}
                 <th style={{ width: `${colWidths.paymentMethod}px`, minWidth: `${colWidths.paymentMethod}px`, position: 'relative' }}>
                   Phương Thức TT
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'paymentMethod')} title="Kéo để chỉnh rộng hẹp cột Phương Thức TT" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Phương Thức TT" aria-valuemin={45} aria-valuenow={colWidths.paymentMethod || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, paymentMethod: Math.max(45, (previous.paymentMethod || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'paymentMethod')} title="Kéo để chỉnh rộng hẹp cột Phương Thức TT" />
                 </th>
 
                 {/* 8. GIAO HÀNG (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
                 <th style={{ width: `${colWidths.deliveryStatus}px`, minWidth: `${colWidths.deliveryStatus}px`, position: 'relative' }}>
                   Giao Hàng
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'deliveryStatus')} title="Kéo để chỉnh rộng hẹp cột Giao Hàng" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Giao Hàng" aria-valuemin={45} aria-valuenow={colWidths.deliveryStatus || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, deliveryStatus: Math.max(45, (previous.deliveryStatus || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'deliveryStatus')} title="Kéo để chỉnh rộng hẹp cột Giao Hàng" />
                 </th>
 
                 {/* 9. NGÀY & GỬI HÀNG (GỘP CHUNG) */}
                 <th style={{ width: `${colWidths.shippingMethod}px`, minWidth: `${colWidths.shippingMethod}px`, position: 'relative' }}>
                   Ngày & Gửi Hàng
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'shippingMethod')} title="Kéo để chỉnh rộng hẹp cột Ngày & Gửi Hàng" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ngày & Gửi Hàng" aria-valuemin={45} aria-valuenow={colWidths.shippingMethod || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, shippingMethod: Math.max(45, (previous.shippingMethod || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'shippingMethod')} title="Kéo để chỉnh rộng hẹp cột Ngày & Gửi Hàng" />
                 </th>
 
                 {/* 10. GIÁ BÁN (TR) */}
                 <th style={{ width: `${colWidths.salePrice}px`, minWidth: `${colWidths.salePrice}px`, color: '#2563eb', position: 'relative' }}>
                   Giá Bán (tr)
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'salePrice')} title="Kéo để chỉnh rộng hẹp cột Giá bán" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Giá bán" aria-valuemin={45} aria-valuenow={colWidths.salePrice || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, salePrice: Math.max(45, (previous.salePrice || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'salePrice')} title="Kéo để chỉnh rộng hẹp cột Giá bán" />
                 </th>
 
                 {/* 10b. LỢI NHUẬN (TR) — chỉ ADMIN: giá bán - giá nhập */}
                 {user?.role === 'ADMIN' && (
                   <th style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, color: '#34d399', position: 'relative' }}>
                     Lợi Nhuận (tr)
-                    <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'profitVnd')} title="Kéo để chỉnh rộng hẹp cột Lợi nhuận" />
+                    <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Lợi nhuận" aria-valuemin={45} aria-valuenow={colWidths.profitVnd || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, profitVnd: Math.max(45, (previous.profitVnd || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'profitVnd')} title="Kéo để chỉnh rộng hẹp cột Lợi nhuận" />
                   </th>
                 )}
 
                 {/* 11. CỌC */}
                 <th style={{ width: `${colWidths.depositNote}px`, minWidth: `${colWidths.depositNote}px`, color: '#d97706', position: 'relative' }}>
                   Cọc
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'depositNote')} title="Kéo để chỉnh rộng hẹp cột Cọc" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Cọc" aria-valuemin={45} aria-valuenow={colWidths.depositNote || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, depositNote: Math.max(45, (previous.depositNote || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'depositNote')} title="Kéo để chỉnh rộng hẹp cột Cọc" />
                 </th>
 
                 {/* 12. THU HỘ COD */}
                 <th style={{ width: `${colWidths.codAmount}px`, minWidth: `${colWidths.codAmount}px`, color: '#059669', position: 'relative' }}>
                   Thu hộ COD
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'codAmount')} title="Kéo để chỉnh rộng hẹp cột Thu hộ" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Thu hộ" aria-valuemin={45} aria-valuenow={colWidths.codAmount || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, codAmount: Math.max(45, (previous.codAmount || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'codAmount')} title="Kéo để chỉnh rộng hẹp cột Thu hộ" />
                 </th>
 
                 <th style={{ width: `${colWidths.customerId}px`, minWidth: `${colWidths.customerId}px`, position: 'relative' }}>
                   Thông Tin Khách
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'customerId')} title="Kéo để chỉnh rộng hẹp cột Khách" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Khách" aria-valuemin={45} aria-valuenow={colWidths.customerId || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, customerId: Math.max(45, (previous.customerId || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'customerId')} title="Kéo để chỉnh rộng hẹp cột Khách" />
                 </th>
                 <th style={{ width: `${colWidths.customerAddress}px`, minWidth: `${colWidths.customerAddress}px`, position: 'relative' }}>
                   Địa Chỉ
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'customerAddress')} title="Kéo để chỉnh rộng hẹp cột Địa Chỉ" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Địa Chỉ" aria-valuemin={45} aria-valuenow={colWidths.customerAddress || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, customerAddress: Math.max(45, (previous.customerAddress || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'customerAddress')} title="Kéo để chỉnh rộng hẹp cột Địa Chỉ" />
                 </th>
 
                 <th style={{ width: `${colWidths.setupNote}px`, minWidth: `${colWidths.setupNote}px`, position: 'relative' }}>
                   Cài Đặt
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'setupNote')} title="Kéo để chỉnh rộng hẹp cột Cài Đặt" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Cài Đặt" aria-valuemin={45} aria-valuenow={colWidths.setupNote || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, setupNote: Math.max(45, (previous.setupNote || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'setupNote')} title="Kéo để chỉnh rộng hẹp cột Cài Đặt" />
                 </th>
                 <th style={{ width: `${colWidths.warranty}px`, minWidth: `${colWidths.warranty}px`, position: 'relative' }}>
                   Bảo Hành
-                  <div className="col-resizer" onMouseDown={(e) => startResizing(e, 'warranty')} title="Kéo để chỉnh rộng hẹp cột Bảo Hành" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Bảo Hành" aria-valuemin={45} aria-valuenow={colWidths.warranty || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, warranty: Math.max(45, (previous.warranty || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'warranty')} title="Kéo để chỉnh rộng hẹp cột Bảo Hành" />
                 </th>
                 <th style={{ width: '108px', minWidth: '108px' }}>Thao tác</th>
               </tr>
@@ -968,7 +943,7 @@ export default function Orders() {
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={orderColumnCount} className="empty-cell">
-                    Không tìm thấy đơn hàng nào phù hợp với bộ lọc.
+                    {dataLoading ? 'Đang tải đơn hàng…' : 'Không tìm thấy đơn hàng nào phù hợp với bộ lọc.'}
                   </td>
                 </tr>
               ) : (
@@ -1392,12 +1367,12 @@ export default function Orders() {
                 <div className="form-group">
                   <label htmlFor="order-field-8" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Online</label>
                   <select id="order-field-8"
-                    data-testid="order-sale-online-select"
+                    data-testid="order-sale-online-select" required
                     className="form-control" 
                     value={formData.saleOnline} 
                     onChange={e => setFormData({ ...formData, saleOnline: e.target.value })}
                   >
-                    {SALE_ONLINE_OPTIONS.map(s => (
+                    <option value="">Chọn SALE Online</option>{SALE_ONLINE_OPTIONS.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -1405,8 +1380,8 @@ export default function Orders() {
 
                 <div className="form-group">
                   <label htmlFor="order-sale-offline" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Offline</label>
-                  <select id="order-sale-offline" className="form-control" value={formData.saleOffline} onChange={e => setFormData({ ...formData, saleOffline: e.target.value })}>
-                    {SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  <select required id="order-sale-offline" className="form-control" value={formData.saleOffline} onChange={e => setFormData({ ...formData, saleOffline: e.target.value })}>
+                    <option value="">Chọn SALE Offline</option>{SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
 
@@ -1490,7 +1465,7 @@ export default function Orders() {
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
                     <label htmlFor="order-field-13" className="form-label" style={{ flex: 1, marginBottom: 0, fontWeight: 600, fontSize: '0.8rem', color: '#1d4ed8' }}>
-                      Máy Trong Kho (ID & Cấu hình)
+                      Cấu hình tham khảo (chưa phân máy)
                     </label>
                     <Input
                       data-testid="order-laptop-search"
@@ -1526,7 +1501,7 @@ export default function Orders() {
                     value={formData.orderStatus} 
                     onChange={e => handleDraftDepositFieldChange('orderStatus', e.target.value)}
                   >
-                    {ORDER_STATUS_OPTIONS.filter(st => formData.id || getFormOptionKey('orderStatus', st) !== 'deposited').map(st => (
+                    {ORDER_STATUS_OPTIONS.filter(st => formData.id || getFormOptionKey('orderStatus', st) === 'new').map(st => (
                       <option key={st} value={st}>{st}</option>
                     ))}
                   </select>

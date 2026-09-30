@@ -188,6 +188,9 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Logout ─────────────────────────────────────────────────────────
   const logout = async () => {
+    try {
+      Object.keys(sessionStorage).filter(key => key.startsWith('citilap_')).forEach(key => sessionStorage.removeItem(key));
+    } catch { /* Storage may be unavailable in private browsing. */ }
     // Chỉ xóa dữ liệu thuộc CitiLap, không ảnh hưởng ứng dụng khác cùng origin.
     Object.keys(localStorage)
       .filter(key => key.startsWith('citilap_') || key === 'sidebar_collapsed')

@@ -1,5 +1,7 @@
 # CitiLap Admin — rà soát sau các đợt sửa, 30/09/2026
 
+> **Bổ sung mới nhất:** [Rà soát UI và luồng vận hành 30/09/2026](ADMIN_UI_WORKFLOW_REVIEW_2026-09-30.md) có bằng chứng Chrome ADMIN, 40 mục đánh giá và trạng thái các sửa đã xác nhận. Các mô tả dưới đây giữ làm lịch sử; không coi A01/A03/A06/D07 là nguyên trạng chưa sửa. A02 và D01 có rủi ro còn lại, xem U04–U07/U25 trong báo cáo mới.
+
 ## Phạm vi và mức độ tin cậy
 
 Rà soát mã nguồn hiện tại, báo cáo cũ, schema dựng cô lập và các bộ kiểm tra local. Không sửa code sản phẩm, không ghi dữ liệu kinh doanh trong lượt audit này. Không khẳng định đã kiểm tra mọi pixel hoặc mọi nhánh nghiệp vụ: chưa chạy lại đầy đủ trình duyệt, năm vai trò, dữ liệu lớn, máy in vật lý và Supabase live trong lượt này.

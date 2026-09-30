@@ -47,22 +47,15 @@ account ledger và thành phần giá vốn dùng VND.
 ## Kiểm tra local
 
 ```powershell
-node qa/clean-schema-db-verification.mjs
-node qa/validate-db-reset.mjs
 npm.cmd run lint
 npm.cmd run build
 git diff --check
 ```
 
-PGlite kiểm tra schema sạch, reset, seed lặp lại, bảo toàn profile, inventory, ledger và số lượng theo tháng. Đây không phải bằng chứng đã áp dụng lên Supabase.
+Các script PGlite đã được dọn khỏi checkout theo yêu cầu ngày 30/09/2026. Kết quả kiểm tra schema/reset/seed trong báo cáo trước là lịch sử, không phải bằng chứng đã áp dụng lên Supabase.
 
 ## Kiểm tra live
 
-Sau khi chạy init trên Supabase:
-
-```powershell
-node qa/live-procurement-inventory-e2e.mjs
-node qa/live-full-regression-e2e.mjs
-```
+Các script E2E live đã được dọn. Sau khi dựng môi trường test, cần xác nhận lại luồng nhận hàng → QC → bán → thu tiền → hóa đơn và đối chiếu dữ liệu trước khi phát hành.
 
 Sau đó kiểm tra trình duyệt bằng phiên mới và xác nhận đúng role trước khi kết luận quyền hoặc giao diện hoạt động.

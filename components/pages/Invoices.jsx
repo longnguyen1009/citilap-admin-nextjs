@@ -7,13 +7,18 @@ import { useInventory } from '@/context/InventoryContext';
 import ListPagination, { useListPagination } from '../ui/ListPagination';
 
 import InvoiceDocument from './InvoiceDocument';
-import { invoiceOrderValue } from '@/lib/invoiceSnapshot';
+import { invoiceOrderValue, invoiceSettlement } from '@/lib/invoiceSnapshot';
 
 const code = id => `HD${String(id).padStart(6,'0')}`;
 const date = value => value ? new Date(value).toLocaleString('vi-VN') : '—';
 export default function Invoices({ id, query = '' }) {
+  return <InvoiceView key={`${id || 'list'}:${query}`} id={id} query={query} />;
+}
+
+function InvoiceView({ id, query }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
   const [search, setSearch] = useState('');
   const [a4InvoiceId, setA4InvoiceId] = useState(null);
   const { getLabel } = useInventory();
@@ -23,13 +28,13 @@ export default function Invoices({ id, query = '' }) {
     let active = true;
     invoiceRequest(`/api/invoices?${id ? `id=${encodeURIComponent(id)}` : query}`).then(data => { if (active) setRows(data); }).catch(e => { if (active) setError(e.message); });
     return () => { active = false; };
-  }, [id, query]);
-  if (error) return <div className="invoice-error" role="alert">{error} <Link href="/invoices">Danh sách hóa đơn</Link></div>;
+  }, [id, query, retry]);
+  if (error) return <div className="invoice-error" role="alert">{error} <button onClick={() => { setError(''); setRows(null); setRetry(value => value + 1); }}>Thử lại</button> <Link href="/invoices">Danh sách hóa đơn</Link></div>;
   if (!rows) return <p role="status">Đang tải hóa đơn…</p>;
   if (!id) {
     return <section className="invoice-workspace"><header className="invoice-toolbar"><div><p className="invoice-eyebrow">CITILAP · CHỨNG TỪ BÁN HÀNG</p><h1><FileText size={24} /> Quản lý hóa đơn</h1><p>{rows.length} hóa đơn đã xuất · Bản lưu tại thời điểm xuất</p></div><Link href="/orders" className="btn btn-primary">Đến đơn hàng</Link></header>
       <label className="invoice-search"><Search size={18} /><input aria-label="Tìm hóa đơn" placeholder="Tìm mã hóa đơn, đơn hàng, tên hoặc SĐT khách…" value={search} onChange={e => setSearch(e.target.value)} /></label>
-      <div className="invoice-paper invoice-table-scroll"><table className="invoice-table"><thead><tr><th>Hóa đơn</th><th>Khách hàng</th><th>Chi nhánh</th><th>Ngày tạo</th><th>Tổng tiền</th><th>Đã thu</th><th /></tr></thead><tbody>{invoicePages.pageRows.map(row => { const snapshot=row.snapshot || {}; const total=Number(snapshot.total || 0); const paid=Number(snapshot.paid || 0); const debt=Number(snapshot.order?.debt_amount ?? Math.max(total-paid,0)); return <tr key={row.id}><td><strong>{code(row.id)}</strong><small>Đơn #{row.order_id}</small></td><td>{snapshot.customer?.name || '—'}<small>{snapshot.customer?.phone || '—'}</small></td><td>{snapshot.branch?.name || '—'}</td><td>{date(row.created_at)}</td><td>{invoiceMoney(total)}</td><td>{invoiceMoney(paid)}<small>{debt <= 0 && total > 0 ? 'Đã hoàn tất nghĩa vụ' : `Còn ${invoiceMoney(debt)}`}</small></td><td><Link href={`/invoices/${row.id}`}>Xem chi tiết hóa đơn →</Link></td></tr>; })}</tbody></table>{!filtered.length && <p className="invoice-empty">Chưa có hóa đơn phù hợp. Có thể xuất khi đơn đang giao hoặc hoàn thành và đã nhận cọc.</p>}<ListPagination {...invoicePages} /></div>
+      <div className="invoice-paper invoice-table-scroll"><table className="invoice-table"><thead><tr><th>Hóa đơn</th><th>Khách hàng</th><th>Chi nhánh</th><th>Ngày tạo</th><th>Tổng tiền</th><th>Đã thu</th><th /></tr></thead><tbody>{invoicePages.pageRows.map(row => { const snapshot=row.snapshot || {}; const total=Number(snapshot.total || 0); const paid=Number(snapshot.paid || 0); const { debt } = invoiceSettlement(snapshot); return <tr key={row.id}><td><strong>{code(row.id)}</strong><small>Đơn #{row.order_id}</small></td><td>{snapshot.customer?.name || '—'}<small>{snapshot.customer?.phone || '—'}</small></td><td>{snapshot.branch?.name || '—'}</td><td>{date(row.created_at)}</td><td>{invoiceMoney(total)}</td><td>{invoiceMoney(paid)}<small>{debt <= 0 && total > 0 ? 'Đã hoàn tất nghĩa vụ' : `Còn ${invoiceMoney(debt)}`}</small></td><td><Link href={`/invoices/${row.id}`}>Xem chi tiết hóa đơn →</Link></td></tr>; })}</tbody></table>{!filtered.length && <p className="invoice-empty">Chưa có hóa đơn phù hợp. Có thể xuất khi đơn đang giao hoặc hoàn thành và đã nhận cọc.</p>}<ListPagination {...invoicePages} /></div>
     </section>;
   }
   const invoice = rows[0];
@@ -38,7 +43,7 @@ export default function Invoices({ id, query = '' }) {
   const s = invoice.snapshot || {}, o = s.order || {}, customer = s.customer || {};
   const total = Number(s.total || 0), paid = Number(s.paid || 0);
   const tradeInCredit = Number(o.trade_in_credit_vnd || 0);
-  const debt = Number(o.debt_amount ?? Math.max(total - paid, 0));
+  const { debt } = invoiceSettlement(s);
   const payments = Array.isArray(s.payments) ? s.payments : [];
   const items = Array.isArray(s.items) ? s.items : [];
   const financialRecords = Array.isArray(s.financial_records) ? s.financial_records : [];

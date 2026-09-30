@@ -8,7 +8,13 @@ const INVENTORY_EVENTS = new Set(['NHẬP KHO', 'CẬP NHẬT KHO', 'DEACTIVATED
 const isWarrantyEvent = value => value === 'TIẾP NHẬN BẢO HÀNH' || value.startsWith('BẢO HÀNH:');
 
 async function validateMovement(body, profile) {
+  const normalize = value => String(value ?? '').trim().toUpperCase();
+  if (body.movementType != null && body.type != null && normalize(body.movementType) !== normalize(body.type)) {
+    throw new Error('Loại lịch sử kho không nhất quán');
+  }
   const movementType = String(body.movementType || body.type || '').trim().toUpperCase();
+  body.movementType = movementType;
+  delete body.type;
   if (!movementType || movementType.length > 80) throw new Error('Loại lịch sử kho không hợp lệ');
   if (INVENTORY_EVENTS.has(movementType)) {
     if (profile.role !== 'ADMIN') throw Object.assign(new Error('Chỉ quản trị viên được ghi sự kiện kho thủ công'), { status: 403 });
