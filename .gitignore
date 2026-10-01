@@ -40,6 +40,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Cloudflare local data and generated bundle
+/.wrangler/
+/.open-next/
+.dev.vars*
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

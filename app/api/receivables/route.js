@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { financeAdmin } from '@/lib/financeApi';
+import { financeAdmin } from '@/lib/cloudflare/finance-api';
 
 export async function GET(request) {
   const context = await financeAdmin(request); if (context.response) return context.response;

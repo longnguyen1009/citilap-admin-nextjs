@@ -1,39 +1,24 @@
 import { NextResponse } from 'next/server';
-import { rollForwardMonth } from '../../../lib/services/dbService';
-import { requireUser } from '../../../lib/apiAuth';
+import { routeContext } from '../../../lib/cloudflare/route-helpers.mjs';
 
 export async function POST(request) {
-  // Chỉ ADMIN mới được chuyển tháng
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-  const { profile } = auth;
-
   try {
-    // Chức năng này luôn đưa dữ liệu tồn từ các tháng trước về tháng hiện tại,
-    // không cộng thêm một tháng dựa trên tháng đang xem hoặc giá trị client gửi.
+    const { DB, profile } = await routeContext(request, ['ADMIN']);
     await request.json().catch(() => ({}));
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Bangkok',
-      month: '2-digit',
-      year: 'numeric',
-    }).formatToParts(new Date());
-    const month = parts.find(part => part.type === 'month')?.value;
-    const year = parts.find(part => part.type === 'year')?.value;
-    const newMonthKey = `${month}/${year}`;
-
-    const result = await rollForwardMonth(newMonthKey);
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error || 'Chuyển tháng thất bại.' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      monthKey: newMonthKey,
-      laptopsMoved: result.laptopsMoved,
-      ordersMoved: result.ordersMoved,
-      by: profile.name,
-    });
-  } catch (error) {
-    return NextResponse.json({ error: error.message || 'Lỗi server.' }, { status: 500 });
-  }
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bangkok', month: '2-digit', year: 'numeric' }).formatToParts(new Date());
+    const monthKey = `${parts.find(part => part.type === 'month')?.value}/${parts.find(part => part.type === 'year')?.value}`;
+    const sortable = `${monthKey.slice(3)}${monthKey.slice(0, 2)}`;
+    const now = new Date().toISOString();
+    const [orders, laptops] = await DB.batch([
+      DB.prepare(`UPDATE orders SET month_key=?,updated_at=? WHERE is_active=1
+        AND order_status IN ('new','deposited','prepared') AND length(month_key)=7
+        AND substr(month_key,4,4)||substr(month_key,1,2)<? RETURNING id,laptop_id`).bind(monthKey, now, sortable),
+      DB.prepare(`UPDATE laptops SET month_key=?,updated_at=? WHERE is_active=1 AND length(month_key)=7
+        AND substr(month_key,4,4)||substr(month_key,1,2)<? AND (status IN
+        ('in_transit','waiting_qc','available','reserved','repair','supplier_return','ignored')
+        OR id IN (SELECT laptop_id FROM orders WHERE month_key=? AND order_status IN ('new','deposited','prepared')))
+        RETURNING id`).bind(monthKey, now, sortable, monthKey),
+    ]);
+    return NextResponse.json({ ok: true, monthKey, laptopsMoved: laptops.results.length, ordersMoved: orders.results.length, by: profile.name });
+  } catch (error) { return NextResponse.json({ error: error.message || 'Lỗi server.' }, { status: error.status || 500 }); }
 }

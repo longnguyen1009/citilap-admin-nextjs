@@ -1,0 +1,422 @@
+[
+  {
+    "name": "account_reconciliations_account_id_fkey",
+    "from": "account_reconciliations",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "account_transactions_account_id_fkey",
+    "from": "account_transactions",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "cod_receivables_order_id_fkey",
+    "from": "cod_receivables",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "cod_settlements_account_id_fkey",
+    "from": "cod_settlements",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "cod_settlements_cod_receivable_id_fkey",
+    "from": "cod_settlements",
+    "column": "cod_receivable_id",
+    "to": "cod_receivables",
+    "target": "id"
+  },
+  {
+    "name": "commissions_beneficiary_user_id_fkey",
+    "from": "commissions",
+    "column": "beneficiary_user_id",
+    "to": "user_profiles",
+    "target": "id"
+  },
+  {
+    "name": "commissions_laptop_id_fkey",
+    "from": "commissions",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "commissions_order_id_fkey",
+    "from": "commissions",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "commissions_payment_account_id_fkey",
+    "from": "commissions",
+    "column": "payment_account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "financial_records_laptop_id_fkey",
+    "from": "financial_records",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "financial_records_order_id_fkey",
+    "from": "financial_records",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "financial_records_payment_id_fkey",
+    "from": "financial_records",
+    "column": "payment_id",
+    "to": "payments",
+    "target": "id"
+  },
+  {
+    "name": "invoices_customer_id_fkey",
+    "from": "invoices",
+    "column": "customer_id",
+    "to": "customers",
+    "target": "id"
+  },
+  {
+    "name": "invoices_laptop_id_fkey",
+    "from": "invoices",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "invoices_order_id_fkey",
+    "from": "invoices",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "laptop_cost_components_laptop_id_fkey",
+    "from": "laptop_cost_components",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "laptops_purchase_batch_id_fkey",
+    "from": "laptops",
+    "column": "purchase_batch_id",
+    "to": "purchase_batches",
+    "target": "id"
+  },
+  {
+    "name": "orders_branch_id_fkey",
+    "from": "orders",
+    "column": "branch_id",
+    "to": "branches",
+    "target": "id"
+  },
+  {
+    "name": "orders_customer_id_fkey",
+    "from": "orders",
+    "column": "customer_id",
+    "to": "customers",
+    "target": "id"
+  },
+  {
+    "name": "orders_laptop_id_fkey",
+    "from": "orders",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "orders_requested_laptop_id_fkey",
+    "from": "orders",
+    "column": "requested_laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "orders_trade_in_laptop_id_fkey",
+    "from": "orders",
+    "column": "trade_in_laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "payments_account_id_fkey",
+    "from": "payments",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "payments_order_id_fkey",
+    "from": "payments",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "purchase_batches_supplier_id_fkey",
+    "from": "purchase_batches",
+    "column": "supplier_id",
+    "to": "suppliers",
+    "target": "id"
+  },
+  {
+    "name": "qc_check_items_qc_inspection_id_fkey",
+    "from": "qc_check_items",
+    "column": "qc_inspection_id",
+    "to": "qc_inspections",
+    "target": "id"
+  },
+  {
+    "name": "qc_inspections_laptop_id_fkey",
+    "from": "qc_inspections",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "repair_actions_repair_job_id_fkey",
+    "from": "repair_actions",
+    "column": "repair_job_id",
+    "to": "repair_jobs",
+    "target": "id"
+  },
+  {
+    "name": "repair_jobs_assigned_to_fkey",
+    "from": "repair_jobs",
+    "column": "assigned_to",
+    "to": "user_profiles",
+    "target": "id"
+  },
+  {
+    "name": "repair_jobs_laptop_id_fkey",
+    "from": "repair_jobs",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "repair_parts_repair_job_id_fkey",
+    "from": "repair_parts",
+    "column": "repair_job_id",
+    "to": "repair_jobs",
+    "target": "id"
+  },
+  {
+    "name": "reservations_customer_id_fkey",
+    "from": "reservations",
+    "column": "customer_id",
+    "to": "customers",
+    "target": "id"
+  },
+  {
+    "name": "reservations_deposit_payment_id_fkey",
+    "from": "reservations",
+    "column": "deposit_payment_id",
+    "to": "payments",
+    "target": "id"
+  },
+  {
+    "name": "reservations_laptop_id_fkey",
+    "from": "reservations",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "reservations_order_id_fkey",
+    "from": "reservations",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "reservations_reserved_by_fkey",
+    "from": "reservations",
+    "column": "reserved_by",
+    "to": "user_profiles",
+    "target": "id"
+  },
+  {
+    "name": "stock_movements_laptop_id_fkey",
+    "from": "stock_movements",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "stock_movements_order_id_fkey",
+    "from": "stock_movements",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "stock_movements_warranty_case_id_fkey",
+    "from": "stock_movements",
+    "column": "warranty_case_id",
+    "to": "warranty_cases",
+    "target": "id"
+  },
+  {
+    "name": "supplier_payments_account_id_fkey",
+    "from": "supplier_payments",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "supplier_payments_purchase_batch_id_fkey",
+    "from": "supplier_payments",
+    "column": "purchase_batch_id",
+    "to": "purchase_batches",
+    "target": "id"
+  },
+  {
+    "name": "supplier_payments_supplier_id_fkey",
+    "from": "supplier_payments",
+    "column": "supplier_id",
+    "to": "suppliers",
+    "target": "id"
+  },
+  {
+    "name": "supplier_refunds_account_id_fkey",
+    "from": "supplier_refunds",
+    "column": "account_id",
+    "to": "cash_accounts",
+    "target": "id"
+  },
+  {
+    "name": "supplier_refunds_supplier_id_fkey",
+    "from": "supplier_refunds",
+    "column": "supplier_id",
+    "to": "suppliers",
+    "target": "id"
+  },
+  {
+    "name": "supplier_refunds_supplier_return_id_fkey",
+    "from": "supplier_refunds",
+    "column": "supplier_return_id",
+    "to": "supplier_returns",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_events_supplier_return_id_fkey",
+    "from": "supplier_return_events",
+    "column": "supplier_return_id",
+    "to": "supplier_returns",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_items_laptop_id_fkey",
+    "from": "supplier_return_items",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_items_qc_inspection_id_fkey",
+    "from": "supplier_return_items",
+    "column": "qc_inspection_id",
+    "to": "qc_inspections",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_items_repair_job_id_fkey",
+    "from": "supplier_return_items",
+    "column": "repair_job_id",
+    "to": "repair_jobs",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_items_replacement_laptop_id_fkey",
+    "from": "supplier_return_items",
+    "column": "replacement_laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "supplier_return_items_supplier_return_id_fkey",
+    "from": "supplier_return_items",
+    "column": "supplier_return_id",
+    "to": "supplier_returns",
+    "target": "id"
+  },
+  {
+    "name": "supplier_returns_supplier_id_fkey",
+    "from": "supplier_returns",
+    "column": "supplier_id",
+    "to": "suppliers",
+    "target": "id"
+  },
+  {
+    "name": "trade_in_check_items_inspection_id_fkey",
+    "from": "trade_in_check_items",
+    "column": "inspection_id",
+    "to": "trade_in_inspections",
+    "target": "id"
+  },
+  {
+    "name": "trade_in_inspections_inspected_by_fkey",
+    "from": "trade_in_inspections",
+    "column": "inspected_by",
+    "to": "user_profiles",
+    "target": "id"
+  },
+  {
+    "name": "trade_in_inspections_trade_in_id_fkey",
+    "from": "trade_in_inspections",
+    "column": "trade_in_id",
+    "to": "trade_ins",
+    "target": "id"
+  },
+  {
+    "name": "trade_ins_customer_id_fkey",
+    "from": "trade_ins",
+    "column": "customer_id",
+    "to": "customers",
+    "target": "id"
+  },
+  {
+    "name": "trade_ins_inventory_laptop_id_fkey",
+    "from": "trade_ins",
+    "column": "inventory_laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "trade_ins_order_id_fkey",
+    "from": "trade_ins",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  },
+  {
+    "name": "warranty_cases_laptop_id_fkey",
+    "from": "warranty_cases",
+    "column": "laptop_id",
+    "to": "laptops",
+    "target": "id"
+  },
+  {
+    "name": "warranty_cases_order_id_fkey",
+    "from": "warranty_cases",
+    "column": "order_id",
+    "to": "orders",
+    "target": "id"
+  }
+]

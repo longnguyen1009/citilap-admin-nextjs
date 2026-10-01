@@ -1,0 +1,596 @@
+{
+  "scope": "Static source inventory; not proof of runtime coverage or live database schema. SQL names include historical definitions and must be reconciled against the final catalog.",
+  "routes": [
+    "app/api/account-reconciliations/route.js",
+    "app/api/account-transactions/route.js",
+    "app/api/activity-logs/route.js",
+    "app/api/auth/bootstrap/route.js",
+    "app/api/auth/session/route.js",
+    "app/api/cash-accounts/route.js",
+    "app/api/cod/route.js",
+    "app/api/costs/route.js",
+    "app/api/customers/route.js",
+    "app/api/exports/route.js",
+    "app/api/financial-operations/route.js",
+    "app/api/financial-records/route.js",
+    "app/api/images/route.js",
+    "app/api/images/[id]/route.js",
+    "app/api/intake/route.js",
+    "app/api/inventory/route.js",
+    "app/api/invoice-catalog/route.js",
+    "app/api/invoices/route.js",
+    "app/api/management-dashboard/route.js",
+    "app/api/month-roll/route.js",
+    "app/api/months/route.js",
+    "app/api/options/route.js",
+    "app/api/order-allocation/route.js",
+    "app/api/orders/route.js",
+    "app/api/payables/route.js",
+    "app/api/payments/route.js",
+    "app/api/presets/route.js",
+    "app/api/purchases/route.js",
+    "app/api/qc/route.js",
+    "app/api/receivables/route.js",
+    "app/api/repairs/route.js",
+    "app/api/sales-operations/route.js",
+    "app/api/settings/route.js",
+    "app/api/stock-movements/route.js",
+    "app/api/supplier-payments/route.js",
+    "app/api/supplier-returns/route.js",
+    "app/api/suppliers/route.js",
+    "app/api/users/route.js",
+    "app/api/warranty/route.js"
+  ],
+  "catalog": {
+    "tables": [
+      "accessories",
+      "account_reconciliations",
+      "account_transactions",
+      "activity_logs",
+      "app_options",
+      "app_settings",
+      "branches",
+      "cash_accounts",
+      "cod_receivables",
+      "cod_settlements",
+      "commissions",
+      "customers",
+      "financial_records",
+      "invoices",
+      "laptop_cost_components",
+      "laptops",
+      "operation_requests",
+      "orders",
+      "payments",
+      "purchase_batches",
+      "qc_check_items",
+      "qc_inspections",
+      "repair_actions",
+      "repair_jobs",
+      "repair_parts",
+      "reservations",
+      "stock_movements",
+      "supplier_payments",
+      "supplier_refunds",
+      "supplier_return_events",
+      "supplier_return_items",
+      "supplier_returns",
+      "suppliers",
+      "trade_in_check_items",
+      "trade_in_inspections",
+      "trade_ins",
+      "user_profiles",
+      "warranty_cases"
+    ],
+    "functions": [
+      "accept_trade_in",
+      "activate_user",
+      "add_laptop_to_purchase_batch",
+      "add_manual_laptop_cost",
+      "add_repair_action",
+      "add_repair_part",
+      "allocate_order_laptop",
+      "approve_commission",
+      "assert_cash_account",
+      "cancel_pending_commissions_for_order",
+      "cancel_repair_job",
+      "cancel_reservation",
+      "clear_order_allocation_expiry",
+      "complete_qc_inspection",
+      "complete_qc_with_details",
+      "complete_quick_qc",
+      "complete_repair_job",
+      "complete_trade_in_inspection",
+      "convert_reservation_to_order",
+      "convert_trade_in_to_inventory",
+      "create_cash_account",
+      "create_cod_receivable",
+      "create_order_before_invoice",
+      "create_order_with_inventory",
+      "create_purchase_batch",
+      "create_reservation",
+      "create_supplier_return",
+      "create_trade_in",
+      "deactivate_user",
+      "enforce_order_customer_obligation",
+      "enforce_warranty_case_integrity",
+      "expire_reservations",
+      "extend_reservation",
+      "generate_commission",
+      "get_financial_operations_summary",
+      "get_management_dashboard",
+      "guard_account_transaction_history",
+      "guard_active_reservation_order_assignment",
+      "guard_closed_supplier_return_history",
+      "guard_commission_history",
+      "guard_confirmed_purchase_batch",
+      "guard_laptop_cost_component_history",
+      "guard_laptop_status_transition",
+      "guard_order_cost_snapshot",
+      "guard_order_sellable_laptop",
+      "guard_repair_history",
+      "guard_repair_laptop_transition",
+      "guard_supplier_return_laptop_transition",
+      "guard_trade_in_economic_history",
+      "ignore_incoming_laptop",
+      "issue_invoice",
+      "link_supplier_replacement",
+      "list_data_months",
+      "next_direct_purchase_code",
+      "next_purchase_batch_code",
+      "next_qc_inspection_code",
+      "next_repair_code",
+      "next_salesops_code",
+      "next_supplier_return_code",
+      "normalize_order_financials",
+      "order_uses_laptop",
+      "pay_commission",
+      "post_manual_account_transaction",
+      "prevent_activity_log_mutation",
+      "prevent_completed_qc_mutation",
+      "prevent_laptop_double_reservation",
+      "prevent_supplier_payment_mutation",
+      "prevent_supplier_refund_mutation",
+      "receive_inventory",
+      "receive_purchase_laptops",
+      "receive_trade_in",
+      "receive_unknown_laptop",
+      "reconcile_cash_account",
+      "reconcile_unknown_laptop",
+      "record_cod_settlement",
+      "record_order_payment",
+      "record_order_payment_with_account",
+      "record_supplier_payment",
+      "record_supplier_payment_with_account",
+      "record_supplier_refund",
+      "record_supplier_refund_with_account",
+      "refresh_laptop_inventory",
+      "reject_trade_in",
+      "remove_repair_part",
+      "require_order_allocation",
+      "save_order_demand",
+      "save_order_invoice_fields",
+      "save_qc_checklist",
+      "seed_qc_checklist",
+      "set_updated_at",
+      "snapshot_order_cost",
+      "start_qc_inspection",
+      "start_repair_job",
+      "start_trade_in_inspection",
+      "sync_completed_qc_product",
+      "sync_invoice_order_payment_trigger",
+      "sync_invoice_payment_snapshot",
+      "sync_invoice_payment_trigger",
+      "sync_laptop_cost_components",
+      "sync_laptop_purchase_fields",
+      "sync_order_profit_from_import_price",
+      "sync_repair_cost_trigger",
+      "transfer_cash_accounts",
+      "transition_cod_receivable",
+      "transition_supplier_return",
+      "update_cash_account",
+      "update_incoming_tracking",
+      "update_laptop_procurement",
+      "update_order_before_invoice",
+      "update_order_with_inventory",
+      "update_repair_job",
+      "validate_product_qc_details",
+      "validate_repair_assignee",
+      "void_manual_laptop_cost"
+    ],
+    "triggers": [
+      "account_transactions_append_only",
+      "activity_logs_append_only_trigger",
+      "app_options_set_updated_at_trigger",
+      "app_settings_set_updated_at_trigger",
+      "cash_accounts_updated",
+      "cod_receivables_updated",
+      "cod_settlements_append_only",
+      "commissions_immutable",
+      "customers_set_updated_at_trigger",
+      "guard_confirmed_purchase_batch_trigger",
+      "guard_order_sellable_laptop_trigger",
+      "invoices_sync_from_financial_records",
+      "invoices_sync_from_order_payment",
+      "invoices_sync_from_payments",
+      "laptop_cost_components_immutable",
+      "laptops_qc_details",
+      "laptops_set_updated_at_trigger",
+      "laptops_status_workflow_guard",
+      "laptops_sync_order_profit_from_import_price",
+      "laptops_sync_purchase_fields_trigger",
+      "orders_active_reservation_gate",
+      "orders_cancel_pending_commissions",
+      "orders_clear_allocation_expiry",
+      "orders_cost_snapshot_immutable",
+      "orders_enforce_customer_obligation",
+      "orders_require_allocation",
+      "orders_set_updated_at_trigger",
+      "orders_snapshot_landed_cost",
+      "prevent_laptop_double_reservation_trigger",
+      "purchase_batches_set_updated_at_trigger",
+      "qc_check_items_immutable_trigger",
+      "qc_inspections_immutable_trigger",
+      "qc_inspections_set_updated_at_trigger",
+      "repair_actions_immutable",
+      "repair_jobs_immutable",
+      "repair_jobs_updated",
+      "repair_parts_immutable",
+      "repair_sync_landed_cost",
+      "supplier_payments_append_only_trigger",
+      "supplier_refunds_append_only",
+      "supplier_return_events_immutable",
+      "supplier_return_items_closed_immutable",
+      "supplier_return_items_updated_at",
+      "supplier_returns_closed_immutable",
+      "supplier_returns_updated_at",
+      "suppliers_set_updated_at_trigger",
+      "sync_completed_qc_product",
+      "trade_ins_economic_history",
+      "user_profiles_set_updated_at_trigger",
+      "warranty_cases_enforce_integrity",
+      "warranty_cases_set_updated_at_trigger"
+    ],
+    "views": [
+      "cash_account_balances",
+      "cod_receivable_summaries",
+      "customer_receivable_summaries",
+      "laptop_landed_costs",
+      "order_sales_operations_summary",
+      "purchase_batch_summaries",
+      "unified_inventory"
+    ]
+  },
+  "references": {
+    "tables": {
+      "account_reconciliations": [
+        "app/api/account-reconciliations/route.js"
+      ],
+      "account_transactions": [
+        "app/api/account-transactions/route.js"
+      ],
+      "activity_logs": [
+        "app/api/activity-logs/route.js"
+      ],
+      "cash_account_balances": [
+        "app/api/cash-accounts/route.js"
+      ],
+      "cod_receivable_summaries": [
+        "app/api/cod/route.js"
+      ],
+      "orders": [
+        "app/api/cod/route.js",
+        "app/api/order-allocation/route.js",
+        "app/api/orders/route.js",
+        "app/api/payments/route.js",
+        "app/api/warranty/route.js"
+      ],
+      "laptop_landed_costs": [
+        "app/api/costs/route.js"
+      ],
+      "laptop_cost_components": [
+        "app/api/costs/route.js"
+      ],
+      "laptops": [
+        "app/api/costs/route.js",
+        "app/api/intake/route.js",
+        "app/api/inventory/route.js",
+        "app/api/order-allocation/route.js",
+        "app/api/orders/route.js",
+        "app/api/payments/route.js",
+        "app/api/purchases/route.js",
+        "app/api/supplier-returns/route.js"
+      ],
+      "customers": [
+        "app/api/customers/route.js",
+        "app/api/inventory/route.js"
+      ],
+      "app_options": [
+        "app/api/exports/route.js",
+        "app/api/intake/route.js",
+        "app/api/options/route.js"
+      ],
+      "financial_records": [
+        "app/api/financial-records/route.js"
+      ],
+      "suppliers": [
+        "app/api/intake/route.js",
+        "app/api/supplier-returns/route.js",
+        "app/api/suppliers/route.js"
+      ],
+      "reservations": [
+        "app/api/inventory/route.js",
+        "app/api/management-dashboard/route.js",
+        "app/api/orders/route.js",
+        "app/api/sales-operations/route.js"
+      ],
+      "trade_ins": [
+        "app/api/inventory/route.js",
+        "app/api/management-dashboard/route.js",
+        "app/api/orders/route.js",
+        "app/api/sales-operations/route.js"
+      ],
+      "user_profiles": [
+        "app/api/inventory/route.js",
+        "app/api/repairs/route.js",
+        "lib/apiAuth.js"
+      ],
+      "branches": [
+        "app/api/invoice-catalog/route.js"
+      ],
+      "accessories": [
+        "app/api/invoice-catalog/route.js"
+      ],
+      "invoices": [
+        "app/api/invoices/route.js",
+        "app/api/orders/route.js"
+      ],
+      "commissions": [
+        "app/api/management-dashboard/route.js",
+        "app/api/orders/route.js",
+        "app/api/sales-operations/route.js"
+      ],
+      "order_sales_operations_summary": [
+        "app/api/orders/route.js"
+      ],
+      "purchase_batch_summaries": [
+        "app/api/payables/route.js",
+        "app/api/purchases/route.js"
+      ],
+      "payments": [
+        "app/api/payments/route.js",
+        "app/api/sales-operations/route.js"
+      ],
+      "app_settings": [
+        "app/api/presets/route.js",
+        "app/api/settings/route.js"
+      ],
+      "supplier_payments": [
+        "app/api/purchases/route.js",
+        "app/api/supplier-payments/route.js"
+      ],
+      "qc_inspections": [
+        "app/api/qc/route.js",
+        "app/api/repairs/route.js",
+        "app/api/supplier-returns/route.js"
+      ],
+      "qc_check_items": [
+        "app/api/qc/route.js"
+      ],
+      "customer_receivable_summaries": [
+        "app/api/receivables/route.js"
+      ],
+      "repair_jobs": [
+        "app/api/repairs/route.js",
+        "app/api/supplier-returns/route.js"
+      ],
+      "repair_parts": [
+        "app/api/repairs/route.js"
+      ],
+      "repair_actions": [
+        "app/api/repairs/route.js"
+      ],
+      "warranty_cases": [
+        "app/api/stock-movements/route.js",
+        "app/api/warranty/route.js"
+      ],
+      "stock_movements": [
+        "app/api/stock-movements/route.js"
+      ],
+      "supplier_returns": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "supplier_return_items": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "supplier_refunds": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "supplier_return_events": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "purchase_batches": [
+        "app/api/supplier-returns/route.js"
+      ]
+    },
+    "rpcs": {
+      "reconcile_cash_account": [
+        "app/api/account-reconciliations/route.js"
+      ],
+      "post_manual_account_transaction": [
+        "app/api/account-transactions/route.js"
+      ],
+      "transfer_cash_accounts": [
+        "app/api/account-transactions/route.js"
+      ],
+      "create_cash_account": [
+        "app/api/cash-accounts/route.js"
+      ],
+      "update_cash_account": [
+        "app/api/cash-accounts/route.js"
+      ],
+      "create_cod_receivable": [
+        "app/api/cod/route.js"
+      ],
+      "transition_cod_receivable": [
+        "app/api/cod/route.js"
+      ],
+      "record_cod_settlement": [
+        "app/api/cod/route.js"
+      ],
+      "sync_laptop_cost_components": [
+        "app/api/costs/route.js"
+      ],
+      "add_manual_laptop_cost": [
+        "app/api/costs/route.js"
+      ],
+      "void_manual_laptop_cost": [
+        "app/api/costs/route.js"
+      ],
+      "get_financial_operations_summary": [
+        "app/api/financial-operations/route.js",
+        "app/api/management-dashboard/route.js"
+      ],
+      "create_purchase_batch": [
+        "app/api/intake/route.js"
+      ],
+      "add_laptop_to_purchase_batch": [
+        "app/api/intake/route.js"
+      ],
+      "receive_inventory": [
+        "app/api/intake/route.js"
+      ],
+      "update_incoming_tracking": [
+        "app/api/intake/route.js"
+      ],
+      "update_laptop_procurement": [
+        "app/api/intake/route.js"
+      ],
+      "reconcile_unknown_laptop": [
+        "app/api/intake/route.js"
+      ],
+      "ignore_incoming_laptop": [
+        "app/api/intake/route.js"
+      ],
+      "issue_invoice": [
+        "app/api/invoices/route.js"
+      ],
+      "get_management_dashboard": [
+        "app/api/management-dashboard/route.js"
+      ],
+      "list_data_months": [
+        "app/api/months/route.js"
+      ],
+      "allocate_order_laptop": [
+        "app/api/order-allocation/route.js"
+      ],
+      "record_order_payment_with_account": [
+        "app/api/payments/route.js",
+        "lib/services/dbService.js"
+      ],
+      "complete_qc_with_details": [
+        "app/api/qc/route.js"
+      ],
+      "start_qc_inspection": [
+        "app/api/qc/route.js"
+      ],
+      "start_repair_job": [
+        "app/api/repairs/route.js"
+      ],
+      "update_repair_job": [
+        "app/api/repairs/route.js"
+      ],
+      "add_repair_part": [
+        "app/api/repairs/route.js"
+      ],
+      "remove_repair_part": [
+        "app/api/repairs/route.js"
+      ],
+      "add_repair_action": [
+        "app/api/repairs/route.js"
+      ],
+      "complete_repair_job": [
+        "app/api/repairs/route.js"
+      ],
+      "cancel_repair_job": [
+        "app/api/repairs/route.js"
+      ],
+      "expire_reservations": [
+        "app/api/sales-operations/route.js"
+      ],
+      "create_reservation": [
+        "app/api/sales-operations/route.js"
+      ],
+      "cancel_reservation": [
+        "app/api/sales-operations/route.js"
+      ],
+      "extend_reservation": [
+        "app/api/sales-operations/route.js"
+      ],
+      "convert_reservation_to_order": [
+        "app/api/sales-operations/route.js"
+      ],
+      "create_trade_in": [
+        "app/api/sales-operations/route.js"
+      ],
+      "start_trade_in_inspection": [
+        "app/api/sales-operations/route.js"
+      ],
+      "complete_trade_in_inspection": [
+        "app/api/sales-operations/route.js"
+      ],
+      "accept_trade_in": [
+        "app/api/sales-operations/route.js"
+      ],
+      "reject_trade_in": [
+        "app/api/sales-operations/route.js"
+      ],
+      "receive_trade_in": [
+        "app/api/sales-operations/route.js"
+      ],
+      "convert_trade_in_to_inventory": [
+        "app/api/sales-operations/route.js"
+      ],
+      "generate_commission": [
+        "app/api/sales-operations/route.js"
+      ],
+      "approve_commission": [
+        "app/api/sales-operations/route.js"
+      ],
+      "pay_commission": [
+        "app/api/sales-operations/route.js"
+      ],
+      "record_supplier_payment_with_account": [
+        "app/api/supplier-payments/route.js"
+      ],
+      "create_supplier_return": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "transition_supplier_return": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "record_supplier_refund_with_account": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "link_supplier_replacement": [
+        "app/api/supplier-returns/route.js"
+      ],
+      "record_order_payment": [
+        "lib/services/dbService.js"
+      ]
+    },
+    "dynamicRpcCalls": [
+      {
+        "file": "app/api/orders/route.js",
+        "expression": "operation"
+      }
+    ],
+    "providerFiles": [
+      "lib/apiAuth.js",
+      "lib/apiFetchers.js",
+      "context/InventoryContext.jsx",
+      "components/pages/Inventory.jsx",
+      "components/pages/Login.jsx"
+    ]
+  }
+}

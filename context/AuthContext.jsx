@@ -1,285 +1,100 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getSupabaseClient } from '../lib/supabaseClient';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { fetchUsersFromCloud, saveUserToCloud, updateUserStatus } from '../lib/apiFetchers';
 import { getMockUserRole, isMockAuthAllowed } from '../lib/authPolicy';
 
 const AuthContext = createContext();
 const AUTH_REQUEST_TIMEOUT_MS = 10000;
-
-const withTimeout = (request, timeoutMs, message) => {
-  let timeoutId;
-  const timeout = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
-  });
-  return Promise.race([Promise.resolve(request), timeout])
-    .finally(() => window.clearTimeout(timeoutId));
-};
-
-export const useAuth = () => useContext(AuthContext);
-
-// Mock auth fallback khi Supabase chưa kết nối
 const MOCK_USERS = {
   ADMIN: { id: 'mock-1', name: 'Quản Lý', role: 'ADMIN', email: 'admin@citilap.com' },
   TECH: { id: 'mock-2', name: 'Kỹ Thuật Viên', role: 'TECH', email: 'tech@citilap.com' },
   SALES: { id: 'mock-3', name: 'Nhân Viên Sale', role: 'SALES', email: 'sales@citilap.com' },
 };
 
+const withTimeout = async (url, options, message) => {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(message), AUTH_REQUEST_TIMEOUT_MS);
+  try { return await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...options, signal: controller.signal }); }
+  finally { window.clearTimeout(timer); }
+};
+
+export const useAuth = () => useContext(AuthContext);
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(() => Boolean(getSupabaseClient()));
-  const isSupabaseConnected = Boolean(getSupabaseClient());
-
-  // Kiểm tra Supabase kết nối và khôi phục session
-  const lastUserRef = React.useRef(null);
-  const loadingProfileRef = React.useRef(false);
-
-  const loadUserProfile = async (client, authUser) => {
-    // signInWithPassword và onAuthStateChange có thể đến gần như cùng lúc.
-    // Lời gọi sau phải chờ profile đang tải thay vì điều hướng khi user còn null.
-    if (loadingProfileRef.current === authUser.id) {
-      const startedAt = Date.now();
-      while (loadingProfileRef.current === authUser.id && Date.now() - startedAt < 15000) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-      return lastUserRef.current?.id === authUser.id ? lastUserRef.current : false;
-    }
-    loadingProfileRef.current = authUser.id;
-
-    try {
-      const { data: profile, error } = await withTimeout(
-        client.from('user_profiles').select('name, role, is_active').eq('id', authUser.id).single(),
-        AUTH_REQUEST_TIMEOUT_MS,
-        'Quá thời gian tải hồ sơ người dùng'
-      );
-
-      let newUser;
-
-      if (error || !profile) {
-        await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
-        lastUserRef.current = null;
-        loadingProfileRef.current = false;
-        setUser(null);
-        setLoading(false);
-        return false;
-      } else if (!profile.is_active) {
-        await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
-        lastUserRef.current = null;
-        loadingProfileRef.current = false;
-        setUser(null);
-        setLoading(false);
-        return false;
-      } else {
-        newUser = {
-          id: authUser.id,
-          name: profile.name || authUser.email,
-          role: profile.role,
-          email: authUser.email,
-        };
-      }
-
-      // Chỉ setUser nếu dữ liệu thực sự thay đổi
-      const prev = lastUserRef.current;
-      if (!prev || prev.id !== newUser.id || prev.name !== newUser.name || prev.role !== newUser.role) {
-        lastUserRef.current = newUser;
-        setUser(newUser);
-      }
-      return newUser;
-    } catch (err) {
-      console.error('Lỗi load user profile:', err);
-      await withTimeout(client.auth.signOut(), 3000, 'Quá thời gian đăng xuất').catch(() => {});
-      lastUserRef.current = null;
-      setUser(null);
-      return false;
-    } finally {
-      loadingProfileRef.current = false;
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const isAuthConfigured = true;
 
   useEffect(() => {
-    const client = getSupabaseClient();
-    if (!client) {
-      return;
-    }
-
-    // Luôn kết thúc bước khôi phục, kể cả khi storage/network của Supabase bị treo.
+    let active = true;
     void (async () => {
       try {
-        const { data: { session } } = await withTimeout(
-          client.auth.getSession(),
-          AUTH_REQUEST_TIMEOUT_MS,
-          'Quá thời gian khôi phục phiên đăng nhập'
-        );
-        if (session?.user) await loadUserProfile(client, session.user);
+        const response = await withTimeout('/api/auth/session', {}, 'Quá thời gian khôi phục phiên');
+        const data = await response.json().catch(() => ({}));
+        if (active) setUser(response.ok ? data.user || null : null);
       } catch (error) {
-        console.error('Không thể khôi phục phiên:', error);
-        lastUserRef.current = null;
-        loadingProfileRef.current = false;
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+        if (active && error?.name !== 'AbortError') console.error('Không thể khôi phục phiên:', error);
+        if (active) setUser(null);
+      } finally { if (active) setLoading(false); }
     })();
-
-    // Listen auth state changes — chỉ xử lý SIGNED_IN / SIGNED_OUT
-    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        void loadUserProfile(client, session.user);
-      } else if (event === 'SIGNED_OUT') {
-        lastUserRef.current = null;
-        setUser(null);
-        setLoading(false);
-      }
-      // Bỏ qua INITIAL_SESSION, TOKEN_REFRESHED, PASSWORD_RECOVERY, USER_UPDATED
-    });
-
-    return () => subscription?.unsubscribe();
+    return () => { active = false; };
   }, []);
 
-  // Load user profile (role, name) từ user_profiles table
-  // Dùng ref để tránh load trùng lặp khi onAuthStateChange fire nhiều lần
-  // ─── Login với Supabase Auth ───────────────────────────────────────
   const login = async (email, password) => {
-    const client = getSupabaseClient();
-    if (!client) {
-      if (!isMockAuthAllowed()) {
-        return { ok: false, message: 'Supabase chưa được cấu hình.' };
-      }
-      const role = getMockUserRole(email);
-      if (!role) {
-        return { ok: false, message: 'Tài khoản mock không nằm trong allowlist.' };
-      }
-      const mockUser = MOCK_USERS[role];
-      setUser(mockUser);
-      localStorage.setItem('citilap_user', JSON.stringify(mockUser));
-      return { ok: true };
-    }
-
     try {
-      const { data, error } = await client.auth.signInWithPassword({ email, password });
-      if (error) {
-        setLoading(false);
-        return { ok: false, message: error.message };
-      }
-      // Chờ profile load xong để user có giá trị trước khi navigate
-      if (data.session?.user) {
-        const profileReady = await loadUserProfile(client, data.session.user);
-        if (!profileReady) return { ok: false, message: 'Không thể tải hồ sơ người dùng hoặc tài khoản đã bị khóa.' };
-        return { ok: true, user: profileReady };
-      }
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
+      const response = await withTimeout('/api/auth/session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+      }, 'Quá thời gian đăng nhập');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return { ok: false, message: data.error || 'Không thể đăng nhập' };
+      setUser(data.user);
+      return { ok: true, user: data.user };
+    } catch (error) { return { ok: false, message: error.name === 'AbortError' ? 'Quá thời gian đăng nhập' : error.message }; }
   };
 
-  // ─── Mock login (fallback khi không có Supabase) ────────────────────
-  const mockLogin = (role) => {
+  const mockLogin = role => {
     if (!isMockAuthAllowed()) return false;
-    const mockUser = MOCK_USERS[role];
-    if (mockUser) {
-      setUser(mockUser);
-      localStorage.setItem('citilap_user', JSON.stringify(mockUser));
-      return true;
-    }
-    return false;
+    const mockUser = MOCK_USERS[getMockUserRole(role) || role];
+    if (!mockUser) return false;
+    setUser(mockUser);
+    localStorage.setItem('citilap_user', JSON.stringify(mockUser));
+    return true;
   };
 
-  // ─── Logout ─────────────────────────────────────────────────────────
   const logout = async () => {
+    setUser(null);
     try {
       Object.keys(sessionStorage).filter(key => key.startsWith('citilap_')).forEach(key => sessionStorage.removeItem(key));
-    } catch { /* Storage may be unavailable in private browsing. */ }
-    // Chỉ xóa dữ liệu thuộc CitiLap, không ảnh hưởng ứng dụng khác cùng origin.
-    Object.keys(localStorage)
-      .filter(key => key.startsWith('citilap_') || key === 'sidebar_collapsed')
-      .forEach(key => localStorage.removeItem(key));
-
-    // 2. Set null TRƯỚC để UI立即响应
-    lastUserRef.current = null;
-    setUser(null);
-
-    // 3. Sign out Supabase (async, không await — chạy nền)
-    const client = getSupabaseClient();
-    if (client) {
-      await client.auth.signOut().catch(() => {});
-    }
+      Object.keys(localStorage).filter(key => key.startsWith('citilap_') || key === 'sidebar_collapsed').forEach(key => localStorage.removeItem(key));
+    } catch { /* Storage can be unavailable. */ }
+    await fetch('/api/auth/session', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   };
 
-  // ─── Tạo user mới (chỉ ADMIN) ─────────────────────────────────────
-  const createUser = async (payload) => {
-    try {
-      const created = await saveUserToCloud(payload, false);
-      return { ok: true, user: created };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
+  const createUser = async payload => {
+    try { return { ok: true, user: await saveUserToCloud(payload, false) }; }
+    catch (error) { return { ok: false, message: error.message }; }
   };
-
-  // ─── Danh sách users ───────────────────────────────────────────────
   const listUsers = useCallback(async () => {
-    try {
-      return (await fetchUsersFromCloud()) || [];
-    } catch (error) {
-      console.error('Lỗi listing users:', error);
-      return [];
-    }
+    try { return (await fetchUsersFromCloud()) || []; }
+    catch (error) { console.error('Lỗi listing users:', error); return []; }
   }, []);
-
-  // ─── Vô hiệu hóa user ──────────────────────────────────────────────
-  const deactivateUser = async (targetUserId) => {
-    try {
-      await updateUserStatus(targetUserId, false);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
+  const setUserActive = async (id, isActive) => {
+    try { await updateUserStatus(id, isActive); return { ok: true }; }
+    catch (error) { return { ok: false, message: error.message }; }
+  };
+  const changeUserPassword = async (id, password) => {
+    try { await saveUserToCloud({ id, password }, true); return { ok: true }; }
+    catch (error) { return { ok: false, message: error.message }; }
   };
 
-  // ─── Kích hoạt user ────────────────────────────────────────────────
-  const activateUser = async (targetUserId) => {
-    try {
-      await updateUserStatus(targetUserId, true);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
-  };
-
-  // ─── Đổi mật khẩu user ────────────────────────────────────────────
-  const changeUserPassword = async (targetUserId, newPassword) => {
-    try {
-      await saveUserToCloud({ id: targetUserId, password: newPassword }, true);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: err.message };
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      isSupabaseConnected,
-      login,
-      mockLogin,
-      logout,
-      createUser,
-      listUsers,
-      deactivateUser,
-      activateUser,
-      changeUserPassword,
-    }}>
-      {loading ? (
-        <div className="auth-loading-screen" role="status" aria-live="polite">
-          <div className="auth-loading-card">
-            <span className="route-loading-mark"><span /></span>
-            <strong>Đang khôi phục phiên làm việc</strong>
-            <p>Đang xác thực tài khoản CitiLap…</p>
-          </div>
-        </div>
-      ) : children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{
+    user, loading, isAuthConfigured, login, mockLogin, logout, createUser, listUsers,
+    deactivateUser: id => setUserActive(id, false), activateUser: id => setUserActive(id, true), changeUserPassword,
+  }}>
+    {loading ? <div className="auth-loading-screen" role="status" aria-live="polite">
+      <div className="auth-loading-card"><span className="route-loading-mark"><span /></span>
+        <strong>Đang khôi phục phiên làm việc</strong><p>Đang xác thực tài khoản CitiLap…</p>
+      </div>
+    </div> : children}
+  </AuthContext.Provider>;
 };

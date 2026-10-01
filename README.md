@@ -1,74 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CitiLap Admin
 
-## Getting Started
+Ứng dụng vận hành nội bộ chạy Next.js full-stack trên Cloudflare Workers.
 
-First, run the development server:
+## Kiến trúc hiện tại
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Runtime và frontend: Next.js 16 qua OpenNext for Cloudflare.
+- Database và session: Cloudflare D1, binding `DB`.
+- Ảnh: Cloudflare R2, binding `IMAGES_BUCKET`.
+- Next.js incremental cache: R2, binding `NEXT_INC_CACHE_R2_BUCKET`.
+- Auth: session cookie HttpOnly; user, profile và session lưu trong D1.
+
+Ứng dụng không còn dependency runtime Vercel hoặc Supabase. Các migration PostgreSQL cũ chỉ được giữ làm nguồn lịch sử để xây schema và kiểm tra parity; không dùng để deploy runtime mới.
+
+## Phát triển
+
+```powershell
+npm.cmd install
+npm.cmd run cf:migrate:local
+npm.cmd run cf:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Kiểm tra
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```powershell
+npm.cmd run lint
+npm.cmd run cf:test
+npm.cmd run cf:test:runtime
+npm.cmd run cf:test:views
+npm.cmd run cf:coverage -- --require-complete
+npm.cmd run cf:build
+npx.cmd wrangler deploy --dry-run
+git diff --check
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Khởi tạo môi trường Cloudflare
 
-## Learn More
+Các tài nguyên và binding được khai báo trong `wrangler.jsonc`. Áp dụng D1 migrations trước khi chạy Worker:
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+npx.cmd wrangler d1 migrations apply DB --remote
+npx.cmd wrangler secret put BOOTSTRAP_TOKEN
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sau khi deploy, gọi `/api/auth/bootstrap` đúng một lần để tạo ADMIN đầu tiên, rồi xóa secret bootstrap:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```powershell
+npx.cmd wrangler secret delete BOOTSTRAP_TOKEN
+```
 
-## MIGRATION INCREMENTAL
-
-Với database đang có dữ liệu, không chạy lại `init_full_db.sql`. Chạy lần lượt các file trong `db/migrations/` bằng Supabase SQL Editor, đặc biệt:
-
-1. `20260907_security_and_schema.sql`
-2. `20260907_payments_finance_ledger.sql`
-3. `20260908_order_inventory_consistency.sql`
-4. `20260913_financial_guards.sql`
-5. `20260913_remove_cycle_count.sql`
-6. `20260914_manual_payment_status.sql`
-
-Migration thanh toán tạo RPC ghi giao dịch theo transaction, cập nhật công nợ và bổ sung bảng `payments`, `financial_records`.
-
-`create_admin.js` khong luu credential trong source. Truoc khi chay, can dat `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL` va `ADMIN_PASSWORD` trong environment cua terminal.
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## RESEED DATABASE (CHỈ DÙNG CHO MÔI TRƯỜNG DEV)
-
-`init_full_db.sql` sẽ xóa toàn bộ schema `public` và toàn bộ dữ liệu nghiệp vụ. Không chạy file này trên production hoặc database đang có dữ liệu cần giữ lại.
-
-Trình tự khởi tạo database dev:
-
-1. Mở lại Supabase SQL Editor và dán toàn bộ nội dung mới nhất của file init_full_db.sql vào chạy. (Thao tác này sẽ reset lại DB, tạo bảng và cấp quyền truy cập đầy đủ).
-2. Chạy tiếp file reseed_data.sql bên trong SQL Editor để chèn dữ liệu mẫu.
-3. Cuối cùng, gõ lại lệnh này ở Terminal của VSCode để tạo tài khoản Admin: node create_admin.js
-
-Các cột tiền trong `laptops`, `orders`, `payments` và `financial_records` dùng đơn vị triệu VNĐ, khớp với các form nhập liệu của ứng dụng.
-
-`reseed_data.sql` tạo dữ liệu có `month_key` đúng định dạng bộ lọc tháng:
-
-| Tháng | Laptop | Đơn hàng |
-| --- | ---: | ---: |
-| 07/2026 | 17 | 10 |
-| 08/2026 | 17 | 10 |
-
-Seed tạo 34 laptop và 20 đơn hàng, chia đều cho hai tháng lịch sử 07/2026 và 08/2026; tháng hiện tại 09/2026 để trống nhằm kiểm tra chuyển tháng. Mỗi tháng có 5 đơn hoàn thành, 1 đơn đã cọc, 1 đơn đã chuẩn bị, 1 đơn đang giao/COD, 1 đơn mới và 1 đơn hủy. Script tạo khách hàng, lịch sử nhập/xuất kho, thanh toán và sổ thu tương ứng; tự kiểm tra số lượng và công nợ trước khi commit.
-
-Nếu database đã có schema mới nhất, chỉ cần chạy `reseed_data.sql`; file này xóa dữ liệu nghiệp vụ và cấu hình mẫu, giữ tài khoản đăng nhập, `user_profiles` và danh mục `app_options`. Với schema cũ, áp dụng đủ migration, bao gồm `20260915_month_key.sql` và `20260915_rpc_month_key.sql`, trước khi reseed. Không cần chạy lại migration sau khi khởi tạo bằng `init_full_db.sql` mới nhất.
+Không ghi token, mật khẩu hoặc secret vào repository. Trạng thái chuyển đổi nằm tại `docs/cloudflare/STATUS.md`.

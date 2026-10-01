@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchAllSettings, saveSettings } from '../../../lib/services/dbService';
-import { requireUser } from '../../../lib/apiAuth';
-import { diffObject, logActivity } from '../../../lib/services/logger';
+import { routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
 
 const canonicalSettings = settings => {
   if (!settings?.formula || typeof settings.formula !== 'object') return settings;
@@ -9,64 +7,43 @@ const canonicalSettings = settings => {
   return { ...settings, formula: { shippingVnd, divisor, defaultRate } };
 };
 
+async function readSettings(db) {
+  const { data, error } = await db.from('app_settings').select('*');
+  if (error) throw new Error(error.message);
+  return Object.fromEntries(data.map(row => [row.key, row.value]));
+}
+
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-  const data = await fetchAllSettings();
-  if (!data) return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
-  return NextResponse.json(canonicalSettings(data));
+  try {
+    const { db } = await routeContext(request, ['ADMIN']);
+    return NextResponse.json(canonicalSettings(await readSettings(db)));
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-
   try {
+    const { DB, db, profile } = await routeContext(request, ['ADMIN']);
     const body = await request.json();
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => key !== 'formula')) {
       return NextResponse.json({ error: 'Settings không hợp lệ' }, { status: 400 });
     }
-    const allowedKeys = new Set(['formula']);
-    const unknownKey = Object.keys(body).find(key => !allowedKeys.has(key));
-    if (unknownKey) {
-      return NextResponse.json({ error: `Setting không được phép: ${unknownKey}` }, { status: 400 });
+    const formula = body.formula;
+    if (!formula || typeof formula !== 'object' || Array.isArray(formula)
+      || Object.keys(formula).some(key => !['shippingVnd', 'divisor', 'defaultRate'].includes(key))) {
+      return NextResponse.json({ error: 'Cấu hình công thức không hợp lệ' }, { status: 400 });
     }
-    if (body.formula !== undefined) {
-      const formula = body.formula;
-      if (!formula || typeof formula !== 'object' || Array.isArray(formula)) {
-        return NextResponse.json({ error: 'Cấu hình công thức không hợp lệ' }, { status: 400 });
-      }
-      const formulaKeys = Object.keys(formula);
-      const allowedFormulaKeys = ['shippingVnd', 'divisor', 'defaultRate'];
-      const unknown = formulaKeys.find(k => !allowedFormulaKeys.includes(k));
-      if (unknown) {
-        return NextResponse.json({ error: `Field không được phép trong formula: ${unknown}` }, { status: 400 });
-      }
-      if (!Number.isFinite(Number(formula.shippingVnd)) || Number(formula.shippingVnd) < 0 || Number(formula.shippingVnd) > 1e9
-        || !Number.isFinite(Number(formula.divisor)) || Number(formula.divisor) <= 0 || Number(formula.divisor) > 1e9
-        || !Number.isFinite(Number(formula.defaultRate)) || Number(formula.defaultRate) <= 0 || Number(formula.defaultRate) > 1e9) {
-        return NextResponse.json({ error: 'Cấu hình công thức không hợp lệ (giá trị ngoài phạm vi)' }, { status: 400 });
-      }
-      body.formula = {
-        shippingVnd: Number(formula.shippingVnd),
-        divisor: Number(formula.divisor),
-        defaultRate: Number(formula.defaultRate)
-      };
+    const value = {
+      shippingVnd: Number(formula.shippingVnd), divisor: Number(formula.divisor), defaultRate: Number(formula.defaultRate),
+    };
+    if (!Number.isFinite(value.shippingVnd) || value.shippingVnd < 0 || value.shippingVnd > 1e9
+      || !Number.isFinite(value.divisor) || value.divisor <= 0 || value.divisor > 1e9
+      || !Number.isFinite(value.defaultRate) || value.defaultRate <= 0 || value.defaultRate > 1e9) {
+      return NextResponse.json({ error: 'Cấu hình công thức có giá trị ngoài phạm vi' }, { status: 400 });
     }
-    const previousSettings = await fetchAllSettings() || {};
-    const data = await saveSettings(body);
-    if (!data) return NextResponse.json({ error: 'Không thể lưu settings' }, { status: 500 });
-    for (const [key, value] of Object.entries(body)) {
-      await logActivity(
-        'SETTING',
-        key,
-        previousSettings[key] === undefined ? 'CREATE' : 'UPDATE',
-        diffObject({ value: previousSettings[key] }, { value }, ['value']),
-        auth.profile.name
-      );
-    }
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
+    const previous = await readSettings(db);
+    const { error } = await db.from('app_settings').upsert({ key: 'formula', value }, { onConflict: 'key' }).select().single();
+    if (error) throw new Error(error.message);
+    await writeAudit(DB, 'SETTING', 'formula', previous.formula === undefined ? 'CREATE' : 'UPDATE', { before: previous.formula, after: value }, profile.name);
+    return NextResponse.json(true);
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 400 }); }
 }

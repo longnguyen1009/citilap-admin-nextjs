@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { parseListScope } from '../../../lib/listScope';
-import { fetchLaptopsFromCloud, saveLaptopToCloud, keysToCamel } from '../../../lib/services/dbService';
-import { logActivity, diffObject, pickAuditFields } from '../../../lib/services/logger';
-import { requireUser, filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin';
+import { filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { createTiming, timeAsync, markTiming, withServerTiming } from '../../../lib/apiTiming';
+import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
 
 const LAPTOP_AUDIT_FIELDS = [
   'sku', 'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
@@ -13,12 +11,14 @@ const LAPTOP_AUDIT_FIELDS = [
   'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth',
   'screenStatus', 'cameraMicStatus', 'mainboardStatus', 'partsHistory', 'qcDetails'
 ];
+const pickAuditFields = (value, fields) => Object.fromEntries(fields.filter(key => value?.[key] !== undefined).map(key => [key, value[key]]));
+const diffObject = (before, after, fields) => Object.fromEntries(fields.filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key]))
+  .map(key => [key, { before: before?.[key] ?? null, after: after?.[key] ?? null }]));
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
+  try {
+  const { db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
   const timing = createTiming();
-  const { profile } = auth;
   const isAdmin = profile.role === 'ADMIN';
 
   const { searchParams } = new URL(request.url);
@@ -36,13 +36,25 @@ export async function GET(request) {
     ...(status ? { status } : {}),
     ...(Number.isInteger(requestedLimit) && requestedLimit > 0 ? { limit: requestedLimit, offset: requestedOffset } : {})
   };
-  const result = await timeAsync(timing, 'query', () => fetchLaptopsFromCloud(query));
+  const result = await timeAsync(timing, 'query', async () => {
+    const paginated = Number.isInteger(query.limit) && query.limit > 0;
+    const limit = paginated ? Math.min(query.limit, 500) : null;
+    const offset = paginated ? Math.max(Number(query.offset) || 0, 0) : 0;
+    let q = db.from('laptops').select('*', paginated ? { count: 'exact' } : undefined);
+    if (query.monthKey && !query.all) q = q.eq('month_key', query.monthKey);
+    if (query.status) q = q.eq('status', query.status);
+    q = q.eq('is_active', true).order('id');
+    if (paginated) q = q.range(offset, offset + limit - 1);
+    const response = await q;
+    if (response.error) throw new Error(response.error.message);
+    const rows = keysToCamel(response.data);
+    return paginated ? { data: rows, total: response.count || 0, offset, limit, hasMore: offset + rows.length < (response.count || 0) } : rows;
+  });
   const paginated = result && !Array.isArray(result);
   const data = paginated ? result.data : result;
 
   if (!data) return NextResponse.json({ error: 'Failed to fetch laptops' }, { status: 500 });
 
-  const db = getSupabaseAdminClient();
   const laptopIds = data.map(item => Number(item.id)).filter(Number.isFinite);
   const enrichment = laptopIds.length ? await Promise.all([
     db.from('reservations').select('id,reservation_code,laptop_id,customer_id,reserved_by,expires_at,status').in('laptop_id', laptopIds).eq('status', 'ACTIVE').gt('expires_at', new Date().toISOString()),
@@ -89,15 +101,13 @@ export async function GET(request) {
     'X-Data-Count': String(responseData.length),
     'Cache-Control': 'private, no-store',
   } }), timing);
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
-  const { profile } = auth;
-  const isAdmin = profile.role === 'ADMIN';
-
   try {
+    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+    const isAdmin = profile.role === 'ADMIN';
     const rawPayload = await request.json();
     const { searchParams } = new URL(request.url);
     const isCreateRequest = searchParams.get('mode') === 'create';
@@ -143,8 +153,7 @@ export async function POST(request) {
     let oldData = null;
     let action = 'CREATE';
     if (!isCreateRequest && body.id) {
-      const adminClient = getSupabaseAdminClient();
-      const { data, error } = await adminClient.from('laptops').select('*').eq('id', Number(body.id)).maybeSingle();
+      const { data, error } = await db.from('laptops').select('*').eq('id', Number(body.id)).maybeSingle();
       if (error) throw error;
       if (!data) return NextResponse.json({ error: 'Không tìm thấy laptop.' }, { status: 404 });
       if (data) {
@@ -207,7 +216,12 @@ export async function POST(request) {
 
     let data;
     try {
-      data = await saveLaptopToCloud(body, { create: isCreateRequest });
+      const row = keysToSnake(body);
+      const id = Number(row.id);
+      delete row.id;
+      const result = await db.from('laptops').update(row).eq('id', id).select().single();
+      if (result.error) throw new Error(result.error.message);
+      data = keysToCamel(result.data);
     } catch (error) {
       if (/duplicate key|unique constraint|already reserved/i.test(error.message || '')) {
         return NextResponse.json({ error: 'Serial hoặc trạng thái máy bị trùng — kiểm tra lại dữ liệu.' }, { status: 409 });
@@ -225,7 +239,7 @@ export async function POST(request) {
       changes = pickAuditFields(data, LAPTOP_AUDIT_FIELDS);
     }
 
-    await logActivity('LAPTOP', data.id, action, changes, profile.name);
+    await writeAudit(DB, 'LAPTOP', data.id, action, changes, profile.name);
 
     const responseData = isAdmin ? data : filterSensitiveFields([data], SENSITIVE_LAPTOP_KEYS)[0];
     return NextResponse.json(responseData);

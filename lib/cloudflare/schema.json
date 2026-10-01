@@ -1,0 +1,2738 @@
+{
+  "accessories": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "sku",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "kind",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "price",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "generated": false
+    }
+  ],
+  "account_reconciliations": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "recorded_balance",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "actual_balance",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "difference",
+      "type": "numeric",
+      "generated": true
+    },
+    {
+      "name": "reconciled_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "account_transactions": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "direction",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "currency",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reference_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reference_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "transaction_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "occurred_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "transfer_group_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "activity_logs": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "entity_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "entity_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "action",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "changes",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "user_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "app_options": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "group_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "option_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "label",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "sort_order",
+      "type": "integer",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "app_settings": [
+    {
+      "name": "key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "value",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "branches": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "generated": false
+    }
+  ],
+  "cash_accounts": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "account_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "currency",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "opening_balance",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "opening_balance_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "cod_receivables": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "carrier",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "tracking_number",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "expected_cod_amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "shipped_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "delivered_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "expected_settlement_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "settled_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "cod_settlements": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "cod_receivable_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "reference",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "settled_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "commissions": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "beneficiary_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "beneficiary_user_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "beneficiary_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "commission_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "calculation_basis",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "calculation_snapshot_json",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "earned_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "approved_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "paid_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "payment_account_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "payment_reference",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "customers": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "financial_records": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "record_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "category",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "payment_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "occurred_on",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "payment_method",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "recorded_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "invoices": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "customer_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "snapshot",
+      "type": "jsonb",
+      "generated": false
+    }
+  ],
+  "laptop_cost_components": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "cost_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "amount_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "source_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "source_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "occurred_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "voided_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "voided_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "void_reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "laptops": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "serial",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "category",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "import_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "warehouse_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "location",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "charger_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "price_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "shipping_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "import_price_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "wholesale_price_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "retail_price_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "tracking_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "customer_note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "battery_health",
+      "type": "integer",
+      "generated": false
+    },
+    {
+      "name": "warranty_supplier",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "screen_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "camera_mic_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "mainboard_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "condition_note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "seller",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "parts_history",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "month_key",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "sku",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "available_for_sale_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "source_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "source_reference_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "purchase_batch_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "tracking_code_cn",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "purchase_price_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "purchase_exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "received_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "sold_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "ignored_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "ignored_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "ignore_reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "qc_details",
+      "type": "jsonb",
+      "generated": false
+    }
+  ],
+  "operation_requests": [
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "operation",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "result",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "orders": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "created_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "sale_online",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "sale_offline",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "order_type",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "order_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "payment_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "payment_method",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "delivery_status",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "shipping_method",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "requested_laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "sale_price",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "deposit_amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "deposit_note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cod_amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "amount_paid",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "debt_amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "credit_card_fee",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "profit_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "trade_in_laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "customer_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "customer_info",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "customer_address",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "tracking_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "ship_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "setup_note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "warranty",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "laptop_locked",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "reservation_expires_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "cancel_reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cancelled_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "month_key",
+      "type": "character varying",
+      "generated": false
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "returned_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "return_reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "branch_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "gift_accessory_ids",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "gift_preset",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cost_snapshot_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "gross_profit_snapshot_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "direct_cost_snapshot_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "net_contribution_snapshot_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "cost_snapshot_status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cost_snapshot_reasons",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "cost_snapshotted_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "payment_due_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "trade_in_credit_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "requested_configuration",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "requested_category",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "payments": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "payment_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "amount",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "payment_method",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "payment_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "reference_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "recorded_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "purchase_batches": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "batch_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "supplier_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "purchase_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "currency",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "subtotal_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "domestic_shipping_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "other_cost_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "destination",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "updated_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "procurement_flow",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "qc_check_items": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "qc_inspection_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "check_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "label",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "result",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "checked_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "checked_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "category",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "requirement",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "sort_order",
+      "type": "integer",
+      "generated": false
+    }
+  ],
+  "qc_inspections": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "inspection_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "result",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "started_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "started_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "completed_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "completed_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "overall_notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "mainboard_status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "charger_status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cosmetic_grade",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "completion_idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "disposition",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "detail_snapshot",
+      "type": "jsonb",
+      "generated": false
+    }
+  ],
+  "repair_actions": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "repair_job_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "action_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "performed_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "performed_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "repair_jobs": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "repair_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "source_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "source_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reported_issue",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "diagnosis",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "repair_plan",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "resolution",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "priority",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "assigned_to",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "started_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "completed_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "labor_cost_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "parts_cost_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "total_cost_vnd",
+      "type": "numeric",
+      "generated": true
+    },
+    {
+      "name": "requires_re_qc",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "completion_idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "outcome",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "recommended_action",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "repair_parts": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "repair_job_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "part_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "part_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "serial",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "quantity",
+      "type": "integer",
+      "generated": false
+    },
+    {
+      "name": "unit_cost_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "total_cost_vnd",
+      "type": "numeric",
+      "generated": true
+    },
+    {
+      "name": "source",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "reservations": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "reservation_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "customer_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reserved_by",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "reserved_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "expires_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "deposit_payment_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "converted_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "expired_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "cancelled_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "stock_movements": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "movement_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "from_location",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "to_location",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "warranty_case_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "performed_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "reference_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reference_id",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "supplier_payments": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "supplier_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "purchase_batch_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "amount_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "payment_method",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reference",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "payment_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "recorded_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    }
+  ],
+  "supplier_refunds": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "supplier_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "supplier_return_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "amount_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "amount_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "exchange_rate",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "refund_method",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reference",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "received_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "account_id",
+      "type": "uuid",
+      "generated": false
+    }
+  ],
+  "supplier_return_events": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "supplier_return_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "event_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "details",
+      "type": "jsonb",
+      "generated": false
+    },
+    {
+      "name": "performed_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "supplier_return_items": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "supplier_return_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "repair_job_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "qc_inspection_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "condition_notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "expected_refund_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "agreed_refund_rmb",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "replacement_laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "previous_laptop_status",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "supplier_returns": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "return_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "supplier_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "resolution_type",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reason",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "reason_notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "return_carrier",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "return_tracking_number",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "approved_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "approved_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "shipped_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "supplier_received_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "closed_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "suppliers": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "display_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "wechat_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "wechat_id",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "country",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "province",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "bank_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "bank_account_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "bank_account_number",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "alipay_account",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "preferred_shipping_destination",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "trade_in_check_items": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "inspection_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "check_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "result",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    }
+  ],
+  "trade_in_inspections": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "trade_in_id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "mainboard_status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "findings",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "inspected_by",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "started_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "completed_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "trade_ins": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "trade_in_code",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "customer_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "brand",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "model",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "serial",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "cpu",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "gpu",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "ram",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "ssd",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "estimated_value_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "agreed_value_vnd",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "reported_condition",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "received_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "inventory_laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "idempotency_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "user_profiles": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "generated": false
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "role",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ],
+  "warranty_cases": [
+    {
+      "name": "id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "reported_issue",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "received_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "resolved_date",
+      "type": "date",
+      "generated": false
+    },
+    {
+      "name": "repair_cost",
+      "type": "numeric",
+      "generated": false
+    },
+    {
+      "name": "parts_replaced",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "diagnosis",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "resolution",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "resolution_note",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "customer_info",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "handled_by",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "generated": false
+    }
+  ]
+}

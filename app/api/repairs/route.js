@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const ROLES = ['ADMIN', 'TECH', 'TECHNICAL'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,9 +13,12 @@ const money = value => {
 };
 
 export async function GET(request) {
-  const auth = await requireUser(request, ROLES);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let db;
+  try {
+    const { DB } = getCloudflareBindings();
+    await requireSession(DB, request, ROLES);
+    db = createDatabase(DB);
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const params = new URL(request.url).searchParams;
   const jobId = params.get('id');
 
@@ -48,11 +52,11 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ROLES);
-  if (!auth.ok) return auth.response;
   try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ROLES);
     const body = await request.json();
-    const db = getSupabaseAdminClient();
+    const db = createDatabase(DB);
     const jobId = String(body.jobId || '');
     let result;
     if (body.action === 'start') {
@@ -60,13 +64,13 @@ export async function POST(request) {
       const key = text(body.idempotencyKey, 100);
       if (!Number.isInteger(laptopId) || laptopId <= 0 || key.length < 8) throw new Error('Yêu cầu tạo phiếu sửa không hợp lệ');
       if (!['QC', 'INTERNAL'].includes(body.sourceType)) throw new Error('Phase 4 chỉ hỗ trợ nguồn QC hoặc INTERNAL');
-      result = await db.rpc('start_repair_job', { p_data: { laptop_id: laptopId, source_type: body.sourceType, source_id: body.sourceId || null, reported_issue: text(body.reportedIssue), priority: body.priority || 'NORMAL', assigned_to: body.assignedTo || null }, p_actor: auth.profile.name, p_idempotency_key: key });
+      result = await db.rpc('start_repair_job', { p_data: { laptop_id: laptopId, source_type: body.sourceType, source_id: body.sourceId || null, reported_issue: text(body.reportedIssue), priority: body.priority || 'NORMAL', assigned_to: body.assignedTo || null }, p_actor: profile.name, p_idempotency_key: key });
     } else {
       if (!UUID.test(jobId)) throw new Error('Mã phiếu sửa không hợp lệ');
-      if (body.action === 'update') result = await db.rpc('update_repair_job', { p_id: jobId, p_data: { reported_issue: text(body.reportedIssue), status: body.status, diagnosis: text(body.diagnosis), repair_plan: text(body.repairPlan), priority: body.priority, assigned_to: body.assignedTo || null, labor_cost_vnd: money(body.laborCostVnd), notes: text(body.notes) }, p_actor: auth.profile.name });
-      else if (body.action === 'addPart') result = await db.rpc('add_repair_part', { p_job: jobId, p_data: { part_type: body.partType, part_name: text(body.partName, 240), serial: text(body.serial, 100), quantity: Number(body.quantity), unit_cost_vnd: money(body.unitCostVnd), source: body.source, notes: text(body.notes, 3000) }, p_actor: auth.profile.name });
-      else if (body.action === 'removePart') result = await db.rpc('remove_repair_part', { p_part_id: Number(body.partId), p_actor: auth.profile.name });
-      else if (body.action === 'addAction') result = await db.rpc('add_repair_action', { p_job: jobId, p_data: { action_type: body.actionType, description: text(body.description) }, p_actor: auth.profile.name });
+      if (body.action === 'update') result = await db.rpc('update_repair_job', { p_id: jobId, p_data: { reported_issue: text(body.reportedIssue), status: body.status, diagnosis: text(body.diagnosis), repair_plan: text(body.repairPlan), priority: body.priority, assigned_to: body.assignedTo || null, labor_cost_vnd: money(body.laborCostVnd), notes: text(body.notes) }, p_actor: profile.name });
+      else if (body.action === 'addPart') result = await db.rpc('add_repair_part', { p_job: jobId, p_data: { part_type: body.partType, part_name: text(body.partName, 240), serial: text(body.serial, 100), quantity: Number(body.quantity), unit_cost_vnd: money(body.unitCostVnd), source: body.source, notes: text(body.notes, 3000) }, p_actor: profile.name });
+      else if (body.action === 'removePart') result = await db.rpc('remove_repair_part', { p_part_id: Number(body.partId), p_actor: profile.name });
+      else if (body.action === 'addAction') result = await db.rpc('add_repair_action', { p_job: jobId, p_data: { action_type: body.actionType, description: text(body.description) }, p_actor: profile.name });
       else if (body.action === 'complete') {
         const key = text(body.idempotencyKey, 100);
         if (key.length < 8) throw new Error('Idempotency key không hợp lệ');
@@ -74,8 +78,8 @@ export async function POST(request) {
         const recommendedAction = String(body.recommendedAction || '');
         if (!['REPAIRED','NOT_REPAIRED','PARTIALLY_REPAIRED','NO_FAULT_FOUND'].includes(outcome)) throw new Error('Kết quả sửa chữa không hợp lệ');
         if (!['RE_QC','SUPPLIER_RETURN','NO_FURTHER_ACTION','OTHER'].includes(recommendedAction)) throw new Error('Hành động đề xuất không hợp lệ');
-        result = await db.rpc('complete_repair_job', { p_id: jobId, p_resolution: text(body.resolution), p_outcome: outcome, p_recommended_action: recommendedAction, p_actor: auth.profile.name, p_idempotency_key: key });
-      } else if (body.action === 'cancel') result = await db.rpc('cancel_repair_job', { p_id: jobId, p_reason: text(body.reason, 1000), p_actor: auth.profile.name });
+        result = await db.rpc('complete_repair_job', { p_id: jobId, p_resolution: text(body.resolution), p_outcome: outcome, p_recommended_action: recommendedAction, p_actor: profile.name, p_idempotency_key: key });
+      } else if (body.action === 'cancel') result = await db.rpc('cancel_repair_job', { p_id: jobId, p_reason: text(body.reason, 1000), p_actor: profile.name });
       else throw new Error('Thao tác sửa chữa không hợp lệ');
     }
     if (result.error) throw new Error(result.error.message);

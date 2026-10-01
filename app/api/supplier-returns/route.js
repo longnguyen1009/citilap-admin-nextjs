@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const clean = (value, max = 3000) => String(value ?? '').trim().slice(0, max);
 const positive = value => { const number = Number(value); if (!Number.isFinite(number) || number <= 0) throw new Error('Số tiền phải lớn hơn 0'); return number; };
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let db;
+  try {
+    const { DB } = getCloudflareBindings();
+    await requireSession(DB, request, ['ADMIN']);
+    db = createDatabase(DB);
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const id = new URL(request.url).searchParams.get('id');
   if (id) {
     if (!UUID.test(id)) return NextResponse.json({ error: 'Mã phiếu trả không hợp lệ' }, { status: 400 });
@@ -61,32 +65,32 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
   try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ['ADMIN']);
     const body = await request.json();
-    const db = getSupabaseAdminClient();
+    const db = createDatabase(DB);
     let result;
     if (body.action === 'create') {
       if (!Array.isArray(body.items) || !body.items.length) throw new Error('Danh sách máy trả không hợp lệ');
       result = await db.rpc('create_supplier_return', {
         p_data: { reason: body.reason, reason_notes: clean(body.reasonNotes), notes: clean(body.notes) },
         p_items: body.items.map(item => ({ laptop_id: Number(item.laptopId), repair_job_id: item.repairJobId || null, qc_inspection_id: item.qcInspectionId || null, reason: item.reason || body.reason, condition_notes: clean(item.conditionNotes), expected_refund_rmb: item.expectedRefundRmb === '' ? null : Number(item.expectedRefundRmb), agreed_refund_rmb: item.agreedRefundRmb === '' ? null : Number(item.agreedRefundRmb) })),
-        p_actor: auth.profile.name, p_idempotency_key: clean(body.idempotencyKey, 100)
+        p_actor: profile.name, p_idempotency_key: clean(body.idempotencyKey, 100)
       });
     } else if (body.action === 'transition') {
       if (!UUID.test(String(body.id || ''))) throw new Error('Mã phiếu trả không hợp lệ');
-      result = await db.rpc('transition_supplier_return', { p_id: body.id, p_target: body.target, p_data: { carrier: clean(body.carrier, 160), tracking_number: clean(body.trackingNumber, 200), resolution_type: body.resolutionType || null }, p_actor: auth.profile.name });
+      result = await db.rpc('transition_supplier_return', { p_id: body.id, p_target: body.target, p_data: { carrier: clean(body.carrier, 160), tracking_number: clean(body.trackingNumber, 200), resolution_type: body.resolutionType || null }, p_actor: profile.name });
     } else if (body.action === 'refund') {
       if (!UUID.test(String(body.id || '')) || !UUID.test(String(body.accountId || ''))) throw new Error('Phiếu trả hoặc tài khoản không hợp lệ');
       const rate = body.exchangeRate === '' || body.exchangeRate == null ? null : positive(body.exchangeRate);
-      result = await db.rpc('record_supplier_refund_with_account', { p_return_id: body.id, p_amount_rmb: positive(body.amountRmb), p_exchange_rate: rate, p_method: body.method, p_reference: clean(body.reference, 300), p_received_at: body.receivedAt || new Date().toISOString(), p_actor: auth.profile.name, p_account_id: body.accountId, p_idempotency_key: clean(body.idempotencyKey, 90) });
+      result = await db.rpc('record_supplier_refund_with_account', { p_return_id: body.id, p_amount_rmb: positive(body.amountRmb), p_exchange_rate: rate, p_method: body.method, p_reference: clean(body.reference, 300), p_received_at: body.receivedAt || new Date().toISOString(), p_actor: profile.name, p_account_id: body.accountId, p_idempotency_key: clean(body.idempotencyKey, 90) });
     } else if (body.action === 'replacement') {
-      result = await db.rpc('link_supplier_replacement', { p_item_id: Number(body.itemId), p_replacement_laptop_id: Number(body.replacementLaptopId), p_actor: auth.profile.name });
+      result = await db.rpc('link_supplier_replacement', { p_item_id: Number(body.itemId), p_replacement_laptop_id: Number(body.replacementLaptopId), p_actor: profile.name });
     } else throw new Error('Thao tác Supplier Return không hợp lệ');
-    if (result.error) throw new Error(result.error.message);
+    if (result.error) throw Object.assign(new Error(result.error.message), { status: result.error.status });
     return NextResponse.json(result.data, { status: body.action === 'create' ? 201 : 200 });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'Không thể xử lý Supplier Return' }, { status: 400 });
+    return NextResponse.json({ error: error.message || 'Không thể xử lý Supplier Return' }, { status: error.status || 400 });
   }
 }

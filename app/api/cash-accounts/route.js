@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { clean, financeAdmin, financeError, UUID } from '@/lib/financeApi';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
+
+const clean = (value, max) => String(value ?? '').trim().slice(0, max);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const financeError = error => NextResponse.json({ error: error.message }, { status: error.status || 400 });
+async function financeAdmin(request, roles = ['ADMIN']) {
+  try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, roles);
+    return { auth: { profile }, db: createDatabase(DB) };
+  } catch (error) { return { response: financeError(error) }; }
+}
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES']);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  const context = await financeAdmin(request, ['ADMIN', 'SALES']);
+  if (context.response) return context.response;
+  const { auth, db } = context;
   const currency = new URL(request.url).searchParams.get('currency');
   let query = db.from('cash_account_balances').select(auth.profile.role === 'ADMIN' ? '*' : 'id,code,name,account_type,currency,is_active').eq('is_active', true).order('currency').order('code');
   if (currency && ['VND', 'CNY'].includes(currency)) query = query.eq('currency', currency);

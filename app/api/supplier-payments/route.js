@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { logActivity, pickAuditFields } from '@/lib/services/logger';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
+
+async function context(request) {
+  const { DB } = getCloudflareBindings();
+  const profile = await requireSession(DB, request, ['ADMIN']);
+  return { db: createDatabase(DB), profile };
+}
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN']); if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let db;
+  try { ({ db } = await context(request)); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const batchId = new URL(request.url).searchParams.get('batchId');
   // Hardening adds a composite batch/supplier FK, so PostgREST sees two paths
   // to purchase_batches. Pin the original single-column relationship.
@@ -18,8 +25,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']); if (!auth.ok) return auth.response;
   try {
+    const { db, profile } = await context(request);
     const body = await request.json();
     const batchId = /^\d+$/.test(String(body.purchaseBatchId || '')) ? Number(body.purchaseBatchId) : null;
     const amount = Number(body.amountRmb); const rate = Number(body.exchangeRate);
@@ -28,10 +35,8 @@ export async function POST(request) {
     const idempotencyKey = String(body.idempotencyKey || randomUUID());
     const accountId = String(body.accountId || '');
     if (idempotencyKey.length < 8 || idempotencyKey.length > 90 || !/^[0-9a-f-]{36}$/i.test(accountId)) throw new Error('Idempotency key hoặc tài khoản không hợp lệ');
-    const db = getSupabaseAdminClient();
-    const { data, error } = await db.rpc('record_supplier_payment_with_account', { p_batch_id: batchId, p_amount_rmb: amount, p_exchange_rate: rate, p_method: method, p_reference: String(body.reference || '').trim().slice(0, 200), p_date: date, p_notes: String(body.notes || '').trim().slice(0, 2000), p_actor: auth.profile.name, p_account_id: accountId, p_idempotency_key: idempotencyKey });
+    const { data, error } = await db.rpc('record_supplier_payment_with_account', { p_batch_id: batchId, p_amount_rmb: amount, p_exchange_rate: rate, p_method: method, p_reference: String(body.reference || '').trim().slice(0, 200), p_date: date, p_notes: String(body.notes || '').trim().slice(0, 2000), p_actor: profile.name, p_account_id: accountId, p_idempotency_key: idempotencyKey });
     if (error) throw new Error(error.message);
-    await logActivity('SUPPLIER_PAYMENT', data.id, 'CREATE', pickAuditFields(data, ['supplier_id','purchase_batch_id','amount_rmb','amount_vnd','exchange_rate','payment_method','reference','payment_date']), auth.profile.name);
     return NextResponse.json(data, { status: 201 });
-  } catch (error) { return NextResponse.json({ error: error.message || 'Không thể ghi nhận thanh toán' }, { status: 400 }); }
+  } catch (error) { return NextResponse.json({ error: error.message || 'Không thể ghi nhận thanh toán' }, { status: error.status || 400 }); }
 }

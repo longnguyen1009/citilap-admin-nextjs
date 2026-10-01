@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { requireUser } from '@/lib/apiAuth';
+import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
 
 const PRESET_KEY = 'preset_configs';
 
@@ -12,13 +11,9 @@ const isPresetMap = (value) => {
 };
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
-
-  const client = getSupabaseAdminClient();
-  if (!client) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-
-  const { data, error } = await client
+  try {
+  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  const { data, error } = await db
     .from('app_settings')
     .select('value')
     .eq('key', PRESET_KEY)
@@ -26,22 +21,18 @@ export async function GET(request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ presets: data?.value || {} });
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-
-  const client = getSupabaseAdminClient();
-  if (!client) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-
   try {
+    const { db } = await routeContext(request, ['ADMIN']);
     const body = await request.json();
     if (!isPresetMap(body?.presets)) {
       return NextResponse.json({ error: 'Presets không hợp lệ' }, { status: 400 });
     }
 
-    const { data, error } = await client
+    const { data, error } = await db
       .from('app_settings')
       .upsert({ key: PRESET_KEY, value: body.presets }, { onConflict: 'key' })
       .select('value')

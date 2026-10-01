@@ -1,12 +1,12 @@
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
 import { exportTable, csvTable } from '@/lib/exportData';
 import ExcelJS from 'exceljs';
 
 export const runtime = 'nodejs';
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
+  let db;
+  try { ({ db } = await routeContext(request, ['ADMIN'])); }
+  catch (error) { return Response.json({ error: error.message }, { status: error.status || 500 }); }
   let input;
   try { input = await request.json(); } catch { return Response.json({ error: 'Yêu cầu không hợp lệ' }, { status: 400 }); }
   const { type, format, ids } = input || {};
@@ -14,7 +14,6 @@ export async function POST(request) {
     return Response.json({ error: 'Chọn từ 1 đến 50.000 bản ghi và định dạng CSV/Excel hợp lệ' }, { status: 400 });
   }
   try {
-    const db = getSupabaseAdminClient();
     const readIds = async (table, values) => {
       const result = [], unique = [...new Set(values.filter(Boolean).map(String))];
       for (let start = 0; start < unique.length; start += 200) {

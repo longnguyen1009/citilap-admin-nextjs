@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { parseListScope, monthDateRange } from '@/lib/listScope';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const keyOf = value => {
@@ -20,9 +21,12 @@ async function allRows(query) {
 }
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let db;
+  try {
+    const { DB } = getCloudflareBindings();
+    await requireSession(DB, request, ['ADMIN']);
+    db = createDatabase(DB);
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const params = new URL(request.url).searchParams;
   let scope;
   try { scope = parseListScope(params); }
@@ -63,12 +67,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
   try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ['ADMIN']);
     const body = await request.json();
-    const db = getSupabaseAdminClient();
-    const actor = auth.profile.name || 'Admin';
+    const db = createDatabase(DB);
+    const actor = profile.name || 'Admin';
     let result;
     if (body.action === 'create') {
       result = await db.rpc('create_purchase_batch', {

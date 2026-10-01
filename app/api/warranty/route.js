@@ -1,36 +1,32 @@
 import { NextResponse } from 'next/server';
-import { fetchWarrantyCasesFromCloud, saveWarrantyCaseToCloud } from '../../../lib/services/dbService';
-import { requireUser, sanitizePayload, validateWarrantyPayload, WARRANTY_PAYLOAD_KEYS } from '../../../lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
-import { keysToCamel } from '@/lib/services/dbService';
+import { sanitizePayload, validateWarrantyPayload, WARRANTY_PAYLOAD_KEYS } from '../../../lib/apiAuth';
+import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
 
 const OPEN_STATUSES = ['received', 'checking', 'wait_parts', 'repairing'];
 const RESOLVED_STATUSES = ['done', 'swap_device', 'refunded'];
 const WARRANTY_STATUSES = [...OPEN_STATUSES, ...RESOLVED_STATUSES];
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
-  const data = await fetchWarrantyCasesFromCloud();
-  if (!data) return NextResponse.json({ error: 'Failed to fetch warranty cases' }, { status: 500 });
-  return NextResponse.json(data);
+  try {
+    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+    const { data, error } = await db.from('warranty_cases').select('*').order('id', { ascending: false }).limit(1000);
+    if (error) throw new Error(error.message);
+    return NextResponse.json(keysToCamel(data));
+  } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
   try {
+    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
     const body = sanitizePayload(await request.json(), WARRANTY_PAYLOAD_KEYS);
     // Server-set audit fields: ignore client-sent timestamps and actor
     delete body.createdAt;
     delete body.updatedAt;
-    body.handledBy = auth.profile.name;
+    body.handledBy = profile.name;
     validateWarrantyPayload(body);
-    const adminClient = getSupabaseAdminClient();
     let previous = null;
-    if (adminClient && body.id && /^\d+$/.test(String(body.id))) {
-      const { data: oldData, error: oldError } = await adminClient.from('warranty_cases').select('*').eq('id', Number(body.id)).maybeSingle();
+    if (body.id && /^\d+$/.test(String(body.id))) {
+      const { data: oldData, error: oldError } = await db.from('warranty_cases').select('*').eq('id', Number(body.id)).maybeSingle();
       if (oldError) return NextResponse.json({ error: oldError.message }, { status: 500 });
       previous = oldData ? keysToCamel(oldData) : null;
     }
@@ -41,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Trạng thái bảo hành không hợp lệ.' }, { status: 400 });
     }
     if (body.orderId) {
-      const { data: linkedOrder, error: orderError } = await adminClient.from('orders')
+      const { data: linkedOrder, error: orderError } = await db.from('orders')
         .select('id,laptop_id,requested_laptop_id,customer_info')
         .eq('id', Number(body.orderId)).maybeSingle();
       if (orderError) return NextResponse.json({ error: orderError.message }, { status: 500 });
@@ -50,7 +46,7 @@ export async function POST(request) {
       }
     }
     if (!previous && OPEN_STATUSES.includes(String(body.status))) {
-      const { data: openCase, error: openCaseError } = await adminClient.from('warranty_cases')
+      const { data: openCase, error: openCaseError } = await db.from('warranty_cases')
         .select('id').eq('laptop_id', Number(body.laptopId)).in('status', OPEN_STATUSES).limit(1).maybeSingle();
       if (openCaseError) return NextResponse.json({ error: openCaseError.message }, { status: 500 });
       if (openCase) return NextResponse.json({ error: `Máy đang có phiếu bảo hành #${openCase.id} chưa hoàn tất.` }, { status: 409 });
@@ -58,11 +54,15 @@ export async function POST(request) {
     body.resolvedDate = RESOLVED_STATUSES.includes(String(body.status))
       ? (body.resolvedDate || new Date().toLocaleDateString('vi-VN'))
       : '';
-    const data = await saveWarrantyCaseToCloud(body);
-    if (!data) return NextResponse.json({ error: 'Failed to save warranty case' }, { status: 500 });
-    const fields = ['orderId', 'laptopId', 'reportedIssue', 'status', 'receivedDate', 'resolvedDate', 'repairCost', 'partsReplaced', 'diagnosis', 'resolution', 'resolutionNote', 'notes', 'customerInfo', 'handledBy'];
-    await logActivity('WARRANTY', data.id, previous ? 'UPDATE' : 'CREATE', previous ? diffObject(previous, data, fields) : pickAuditFields(data, fields), auth.profile.name);
-    return NextResponse.json(data);
+    const row = keysToSnake(body);
+    const id = Number(row.id);
+    delete row.id;
+    const mutation = id ? db.from('warranty_cases').update(row).eq('id', id) : db.from('warranty_cases').insert(row);
+    const { data, error } = await mutation.select().single();
+    if (error) throw new Error(error.message);
+    const result = keysToCamel(data);
+    await writeAudit(DB, 'WARRANTY', data.id, previous ? 'UPDATE' : 'CREATE', { before: previous, after: result }, profile.name);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
-import { clean, financeAdmin, financeError, idempotency, positive, UUID } from '@/lib/financeApi';
+import { clean, financeAdmin, financeError, idempotency, positive, UUID } from '@/lib/cloudflare/finance-api';
 
 export async function GET(request) {
   const context = await financeAdmin(request); if (context.response) return context.response;
   const params = new URL(request.url).searchParams, page = Math.max(1, Number(params.get('page')) || 1), limit = Math.min(100, Math.max(10, Number(params.get('limit')) || 30));
-  let query = context.db.from('cod_receivable_summaries').select('*,orders(customer_info,tracking_code)', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * limit, page * limit - 1);
+  let query = context.db.from('cod_receivable_summaries').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * limit, page * limit - 1);
   if (params.get('status')) query = query.eq('status', params.get('status'));
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 503 });
-  return NextResponse.json({ data, page, limit, total: count });
+  const orderIds = [...new Set(data.map(row => row.order_id))];
+  const orders = orderIds.length
+    ? await context.db.from('orders').select('id,customer_info,tracking_code').in('id', orderIds)
+    : { data: [], error: null };
+  if (orders.error) return NextResponse.json({ error: orders.error.message }, { status: 503 });
+  const orderById = new Map(orders.data.map(order => [String(order.id), order]));
+  return NextResponse.json({ data: data.map(row => ({ ...row, orders: orderById.get(String(row.order_id)) || null })), page, limit, total: count });
 }
 
 export async function POST(request) {

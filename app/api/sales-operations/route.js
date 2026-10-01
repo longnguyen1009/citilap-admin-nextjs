@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allRoles = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL'];
 const salesRoles = ['ADMIN', 'SALES'];
 const technicalRoles = ['ADMIN', 'TECH', 'TECHNICAL'];
+
+async function context(request) {
+  const { DB } = getCloudflareBindings();
+  const profile = await requireSession(DB, request, allRoles);
+  return { db: createDatabase(DB), auth: { profile } };
+}
 
 function idempotencyKey(value) {
   const result = String(value || '').trim();
@@ -24,9 +31,9 @@ function assertRole(profile, roles) {
 }
 
 export async function GET(request) {
-  const auth = await requireUser(request, allRoles);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let auth, db;
+  try { ({ auth, db } = await context(request)); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const type = new URL(request.url).searchParams.get('type') || 'reservations';
   let result;
 
@@ -49,11 +56,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, allRoles);
-  if (!auth.ok) return auth.response;
   try {
+    const { auth, db } = await context(request);
     const body = await request.json();
-    const db = getSupabaseAdminClient();
     let result;
 
     if (body.action === 'expireReservations') {

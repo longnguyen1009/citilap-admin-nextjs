@@ -1,39 +1,47 @@
 import { NextResponse } from 'next/server';
-import { requireUser, isValidPositiveId } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { isValidPositiveId } from '@/lib/apiAuth';
 import { publicInvoice } from '@/lib/responseVisibility';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 function visibleInvoice(invoice, role) {
   return role === 'ADMIN' ? invoice : publicInvoice(invoice);
 }
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES']);
-  if (!auth.ok) return auth.response;
-  const params = new URL(request.url).searchParams;
-  const db = getSupabaseAdminClient();
-  let query = db.from('invoices').select('*').order('created_at', { ascending: false });
-  for (const [param, column] of [['id','id'],['orderId','order_id'],['laptopId','laptop_id'],['customerId','customer_id']]) {
-    if (params.has(param)) {
-      if (!isValidPositiveId(params.get(param))) return NextResponse.json({ error: 'Mã không hợp lệ' }, { status: 400 });
-      query = query.eq(column, params.get(param));
+  try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
+    const params = new URL(request.url).searchParams;
+    const db = createDatabase(DB);
+    let query = db.from('invoices').select('*').order('created_at', { ascending: false });
+    for (const [param, column] of [['id', 'id'], ['orderId', 'order_id'], ['laptopId', 'laptop_id'], ['customerId', 'customer_id']]) {
+      if (params.has(param)) {
+        if (!isValidPositiveId(params.get(param))) return NextResponse.json({ error: 'Mã không hợp lệ' }, { status: 400 });
+        query = query.eq(column, Number(params.get(param)));
+      }
     }
+    const { data, error } = await query.limit(500);
+    if (error) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json(data.map(row => visibleInvoice(row, profile.role)));
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: error.status || 500 });
   }
-  const { data, error } = await query.limit(500);
-  if (error) return NextResponse.json({ error: 'Không thể tải hóa đơn. Kiểm tra migration hóa đơn đã được áp dụng.' }, { status: 503 });
-  return NextResponse.json(data.map(row => visibleInvoice(row, auth.profile.role)));
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES']);
-  if (!auth.ok) return auth.response;
   try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
     const { orderId } = await request.json();
     if (!isValidPositiveId(orderId)) return NextResponse.json({ error: 'Mã đơn không hợp lệ' }, { status: 400 });
-    const { data, error } = await getSupabaseAdminClient().rpc('issue_invoice', { p_order_id: Number(orderId), p_actor: auth.profile.name });
-    if (error) return NextResponse.json({ error: error.code === 'P0001' ? error.message : 'Không thể xuất hóa đơn. Kiểm tra migration và dữ liệu đơn hàng.' }, { status: 409 });
-    return NextResponse.json(visibleInvoice(data, auth.profile.role), { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Yêu cầu xuất hóa đơn không hợp lệ' }, { status: 400 });
+    const { data, error } = await createDatabase(DB).rpc('issue_invoice', {
+      p_order_id: Number(orderId), p_actor: profile.name,
+    });
+    if (error) return NextResponse.json({ error: error.message }, { status: error.status || 409 });
+    return NextResponse.json(visibleInvoice(data, profile.role), { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: error.message || 'Yêu cầu xuất hóa đơn không hợp lệ' }, { status: error.status || 400 });
   }
 }

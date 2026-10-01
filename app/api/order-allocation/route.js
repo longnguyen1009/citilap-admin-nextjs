@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
-import { requireUser, filterSensitiveFields, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '@/lib/apiAuth';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import { filterSensitiveFields, SENSITIVE_ORDER_KEYS, SENSITIVE_LAPTOP_KEYS } from '@/lib/apiAuth';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
+
+async function context(request) {
+  const { DB } = getCloudflareBindings();
+  const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
+  return { db: createDatabase(DB), profile };
+}
 
 const toCamel = value => {
   if (Array.isArray(value)) return value.map(toCamel);
@@ -12,9 +20,9 @@ const toCamel = value => {
 };
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES']);
-  if (!auth.ok) return auth.response;
-  const db = getSupabaseAdminClient();
+  let db;
+  try { ({ db } = await context(request)); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   if (new URL(request.url).searchParams.has('demand')) {
     const { data, error } = await db.from('orders')
       .select('id,requested_configuration,requested_category,requested_laptop_id,customer_info,amount_paid')
@@ -32,8 +40,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES']);
-  if (!auth.ok) return auth.response;
+  let db, profile;
+  try { ({ db, profile } = await context(request)); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return NextResponse.json({ error: 'Dữ liệu phân máy không hợp lệ' }, { status: 400 });
@@ -42,14 +51,13 @@ export async function POST(request) {
   if (!validId(body.orderId) || (body.laptopId !== null && !validId(body.laptopId)) || (body.expectedOwner !== null && !validId(body.expectedOwner))) {
     return NextResponse.json({ error: 'Mã đơn hoặc máy không hợp lệ' }, { status: 400 });
   }
-  const db = getSupabaseAdminClient();
   const { data: currentOrder, error: currentError } = await db.from('orders')
     .select('id,laptop_id').eq('id', body.orderId).maybeSingle();
   if (currentError || !currentOrder) return NextResponse.json({ error: 'Không tìm thấy đơn hàng' }, { status: 404 });
 
   const { data, error } = await db.rpc('allocate_order_laptop', {
     p_order_id: body.orderId, p_laptop_id: body.laptopId,
-    p_expected_owner: body.expectedOwner, p_actor: auth.profile.name,
+    p_expected_owner: body.expectedOwner, p_actor: profile.name,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 409 });
 
@@ -65,7 +73,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Đã phân máy nhưng không thể tải dữ liệu cập nhật' }, { status: 503 });
   }
   const result = toCamel({ allocation: data, orders: orders.data, laptops: laptops.data });
-  if (auth.profile.role !== 'ADMIN') {
+  if (profile.role !== 'ADMIN') {
     result.orders = filterSensitiveFields(result.orders, SENSITIVE_ORDER_KEYS);
     result.laptops = filterSensitiveFields(result.laptops, SENSITIVE_LAPTOP_KEYS);
   }

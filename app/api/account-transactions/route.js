@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server';
-import { clean, financeAdmin, financeError, idempotency, positive, UUID } from '@/lib/financeApi';
+import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
+import { createDatabase } from '@/lib/cloudflare/database.mjs';
+import { requireSession } from '@/lib/cloudflare/session.mjs';
+
+const clean = (value, max=1000) => String(value ?? '').trim().slice(0,max);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const financeError = error => NextResponse.json({error:error.message},{status:error.status||400});
+const positive = value => { const n=Number(value); if(!Number.isFinite(n)||n<=0) throw new Error('Số tiền không hợp lệ'); return n; };
+const idempotency = value => { const key=String(value??'').trim(); if(key.length<8||key.length>90) throw new Error('Mã chống trùng không hợp lệ'); return key; };
+async function financeAdmin(request) {
+  try {
+    const {DB}=getCloudflareBindings();
+    const profile=await requireSession(DB,request,['ADMIN']);
+    return {db:createDatabase(DB),auth:{profile}};
+  } catch(error) { return {response:financeError(error)}; }
+}
 
 export async function GET(request) {
   const context = await financeAdmin(request); if (context.response) return context.response;

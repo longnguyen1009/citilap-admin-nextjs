@@ -6,14 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cf:dev": "node scripts/cloudflare-dev.mjs",
+    "cf:build": "node scripts/cloudflare-build.mjs",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:migrate:local": "wrangler d1 migrations apply DB --local",
+    "cf:test": "node --test qa/cloudflare-auth.test.mjs",
+    "cf:test:runtime": "node qa/cloudflare-runtime.mjs",
+    "cf:test:views": "node qa/cloudflare-view-parity.mjs",
+    "cf:coverage": "node qa/cloudflare-coverage.mjs",
+    "cf:inventory": "node qa/cloudflare-inventory.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-select": "^2.3.7",
     "@radix-ui/react-slot": "^1.3.3",
     "@radix-ui/react-tabs": "^1.1.21",
-    "@supabase/supabase-js": "^2.112.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exceljs": "4.4.0",
@@ -26,11 +34,16 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@opennextjs/cloudflare": "1.20.7",
     "@tailwindcss/postcss": "^4.3.3",
+    "esbuild": "0.25.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.7",
+    "miniflare": "5.20260930.0-alpha",
     "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "wrangler": "4.145.0"
   },
   "overrides": {
     "exceljs": {

@@ -1,5 +1,7 @@
 # CitiLap Admin — Project Context
 
+> Cập nhật Cloudflare 2026-10-01: runtime hiện tại là Next.js full-stack trên Cloudflare Workers, D1 cho dữ liệu/auth/session và R2 cho ảnh/cache. Mọi Route Handler dùng binding theo request và D1 session; dependency Supabase đã được gỡ. `db/migrations/`, `supabase/migrations/`, `init_full_db.sql` và các báo cáo Supabase bên dưới là tài liệu lịch sử để đối chiếu nghiệp vụ, không phải quy trình deploy hiện tại. Xem `docs/cloudflare/STATUS.md`, `db/d1/migrations/` và `wrangler.jsonc` để vận hành môi trường mới.
+
 ## Mục tiêu hệ thống
 
 CitiLap Admin là hệ thống vận hành nội bộ cho vòng đời laptop, từ mua hàng tại Trung Quốc, nhận hàng, QC, bán hàng, thanh toán, bảo hành, sửa chữa, trả nhà cung cấp đến báo cáo tài chính.

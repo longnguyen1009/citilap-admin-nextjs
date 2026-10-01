@@ -25,7 +25,6 @@ import {
   D,
 } from '../lib/fieldOptions';
 import { getOptionLabels, labelToKey, getOptions, getLabel, resolveLabel } from '../lib/useFieldOptions';
-import { getSupabaseCredentials, getSupabaseClient } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 
 const InventoryContext = createContext();
@@ -494,23 +493,9 @@ export const InventoryProvider = ({ children }) => {
         setLoadingStage('Đang kiểm tra phiên đăng nhập…');
       }
       setCloudStatus('checking');
-      const { url, anonKey } = getSupabaseCredentials();
-      if (!url || !anonKey) {
-        setCloudStatus('disconnected');
-        if (!background) setDataLoading(false);
-        return;
-      }
+      if (cancelled) return;
 
       // Kiểm tra session Supabase trực tiếp — prevents leak khi logout
-      const client = getSupabaseClient();
-      if (client) {
-        const { data: { session } } = await client.auth.getSession();
-        if (!session || cancelled) {
-          if (!background) setDataLoading(false);
-          return;
-        }
-      }
-
       const safeFetch = (fn) => fn().catch(() => null);
       const needsWarranty = pathname === '/' || pathname.startsWith('/warranty');
       const needsCustomers = pathname === '/' || ['/orders', '/warranty', '/customers'].some(route => pathname.startsWith(route));

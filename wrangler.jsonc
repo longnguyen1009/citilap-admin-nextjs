@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "citilap-admin",
+  "account_id": "8952957f4eed25a74e19a3e273c4a589",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-30",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "citilap-admin" }],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "citilap-admin",
+    "database_id": "a771bd4e-34fb-40a3-86ef-80f31acde278",
+    "migrations_dir": "db/d1/migrations"
+  }],
+  "r2_buckets": [
+    { "binding": "IMAGES_BUCKET", "bucket_name": "citilap-admin-images" },
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "citilap-admin-cache" }
+  ]
+}

@@ -11,7 +11,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMockLogin, setShowMockLogin] = useState(false);
-  const { login, mockLogin, isSupabaseConnected, user } = useAuth();
+  const { login, mockLogin, isAuthConfigured, user } = useAuth();
   const router = useRouter();
   const canUseMockAuth = process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH === 'true';
 
@@ -169,7 +169,7 @@ export default function Login() {
         </form>
 
         {/* Mock login toggle */}
-        {!isSupabaseConnected && canUseMockAuth && (
+        {!isAuthConfigured && canUseMockAuth && (
           <div className="citilap-login-demo" style={{ marginTop: '20px', textAlign: 'center' }}>
             <button
               onClick={() => setShowMockLogin(!showMockLogin)}

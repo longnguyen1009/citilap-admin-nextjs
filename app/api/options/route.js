@@ -1,28 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { requireUser } from '@/lib/apiAuth';
-import { diffObject, pickAuditFields, logActivity } from '@/lib/services/logger';
+import { routeContext, writeAudit } from '@/lib/cloudflare/route-helpers.mjs';
 import { ALLOWED_OPTION_GROUPS, isExtensibleOptionGroup, isSystemOptionGroup } from '@/lib/optionPolicy';
 import { repairMojibake } from '@/lib/textEncoding';
 
 export async function GET(request) {
-  const auth = await requireUser(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
-  if (!auth.ok) return auth.response;
-
-  const supabase = getSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  const { data, error } = await supabase.from('app_options').select('*').order('sort_order', { ascending: true });
+  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  const { data, error } = await db.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data.map(option => ({ ...option, label: repairMojibake(option.label) })));
 }
 
 export async function POST(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-
-  const supabase = getSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  const { DB, db, profile } = await routeContext(request, ['ADMIN']);
   const payload = await request.json();
   const groupKey = String(payload.group_key || '').trim();
   const optionKey = String(payload.option_key || '').trim();
@@ -43,7 +33,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'label không được quá 120 ký tự' }, { status: 400 });
   }
 
-  const { data: duplicate } = await supabase
+  const { data: duplicate } = await db
     .from('app_options')
     .select('id')
     .eq('group_key', groupKey)
@@ -53,7 +43,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'option_key đã tồn tại trong nhóm này' }, { status: 409 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('app_options')
     .insert([{
       group_key: groupKey,
@@ -66,29 +56,19 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await logActivity(
-    'OPTION',
-    data.id,
-    'CREATE',
-    pickAuditFields(data, ['group_key', 'option_key', 'label', 'is_active', 'sort_order']),
-    auth.profile.name
-  );
+  await writeAudit(DB, 'OPTION', data.id, 'CREATE', data, profile.name);
   return NextResponse.json(data);
 }
 
 export async function PUT(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
-
-  const supabase = getSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  const { DB, db, profile } = await routeContext(request, ['ADMIN']);
   const payload = await request.json();
 
   if (!payload.id) {
     return NextResponse.json({ error: 'Missing option ID' }, { status: 400 });
   }
 
-  const { data: previous, error: previousError } = await supabase
+  const { data: previous, error: previousError } = await db
     .from('app_options')
     .select('*')
     .eq('id', payload.id)
@@ -132,7 +112,7 @@ export async function PUT(request) {
 
   // Tránh đổi option_key thành key trùng với option khác trong cùng nhóm
   if (updates.option_key && updates.option_key !== previous.option_key) {
-    const { data: duplicate } = await supabase
+    const { data: duplicate } = await db
       .from('app_options')
       .select('id')
       .eq('group_key', previous.group_key)
@@ -144,7 +124,7 @@ export async function PUT(request) {
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('app_options')
     .update(updates)
     .eq('id', payload.id)
@@ -152,19 +132,12 @@ export async function PUT(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await logActivity(
-    'OPTION',
-    data.id,
-    'UPDATE',
-    diffObject(previous, data, ['group_key', 'option_key', 'label', 'is_active', 'sort_order']),
-    auth.profile.name
-  );
+  await writeAudit(DB, 'OPTION', data.id, 'UPDATE', { before: previous, after: data }, profile.name);
   return NextResponse.json(data);
 }
 
 export async function DELETE(request) {
-  const auth = await requireUser(request, ['ADMIN']);
-  if (!auth.ok) return auth.response;
+  const { DB, db, profile } = await routeContext(request, ['ADMIN']);
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -173,9 +146,7 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Missing option ID' }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  const { data: previous, error: previousError } = await supabase
+  const { data: previous, error: previousError } = await db
     .from('app_options')
     .select('*')
     .eq('id', id)
@@ -185,18 +156,12 @@ export async function DELETE(request) {
   if (isSystemOptionGroup(previous.group_key)) {
     return NextResponse.json({ error: 'Không thể xóa tùy chọn hệ thống.' }, { status: 400 });
   }
-  const { error } = await supabase
+  const { error } = await db
     .from('app_options')
     .delete()
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await logActivity(
-    'OPTION',
-    id,
-    'DELETE',
-    pickAuditFields(previous, ['group_key', 'option_key', 'label', 'is_active', 'sort_order']),
-    auth.profile.name
-  );
+  await writeAudit(DB, 'OPTION', id, 'DELETE', previous, profile.name);
   return NextResponse.json({ success: true });
 }
