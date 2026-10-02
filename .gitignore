@@ -46,6 +46,9 @@ yarn-error.log*
 /.open-next/
 .dev.vars*
 
+# Local Claude agent worktrees must never be committed as Git submodules
+/.claude/worktrees/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
