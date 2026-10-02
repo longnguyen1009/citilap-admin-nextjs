@@ -4,7 +4,7 @@ import { keysToCamel, routeContext, writeAudit } from '@/lib/cloudflare/route-he
 
 export async function GET(request) {
   try {
-    const { db } = await routeContext(request, ['ADMIN', 'SALES']);
+    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const params = new URL(request.url).searchParams;
     const page = Math.max(1, parseInt(params.get('page') || '1', 10));
     const limit = Math.min(200, Math.max(1, parseInt(params.get('limit') || '50', 10)));
@@ -20,7 +20,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES']);
+    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const payload = sanitizePayload(await request.json(), CUSTOMER_PAYLOAD_KEYS);
     const name = String(payload.name || '').trim();
     if (!name) return NextResponse.json({ error: 'Tên khách hàng là bắt buộc' }, { status: 400 });

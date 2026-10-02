@@ -3,7 +3,7 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
-const ROLES = ['ADMIN', 'TECH', 'TECHNICAL'];
+const ROLES = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const text = (value, max = 5000) => String(value ?? '').trim().slice(0, max);
 const money = value => {

@@ -697,7 +697,7 @@ export default function Orders() {
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {user?.role === 'ADMIN' && <><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('csv')}><Download size={14} /> CSV</Button><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('xlsx')}><Download size={14} /> Excel (.xlsx)</Button></>}
 
-          {(user?.role === 'ADMIN' || user?.role === 'SALES' || !user) && (
+          {(['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) || !user) && (
             <Button data-testid="order-add-button" variant="default" size="sm" onClick={handleOpenAdd}>
               <Plus size={16} /> Tạo Đơn Hàng Mới
             </Button>

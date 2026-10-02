@@ -4,9 +4,9 @@ import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allRoles = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL'];
-const salesRoles = ['ADMIN', 'SALES'];
-const technicalRoles = ['ADMIN', 'TECH', 'TECHNICAL'];
+const allRoles = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'];
+const salesRoles = ['ADMIN', 'SALES', 'SALES_TECH'];
+const technicalRoles = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'];
 
 async function context(request) {
   const { DB } = getCloudflareBindings();

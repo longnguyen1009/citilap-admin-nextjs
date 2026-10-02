@@ -44,6 +44,13 @@ const toVnFormat = (ymd) => {
   return ymd;
 };
 
+const supplierNameOf = laptop => laptop?.supplierName || laptop?.domesticSourceName || laptop?.seller || '';
+const DOMESTIC_SUPPLIERS = [
+  { id: '1', name: 'Nhập thợ VN' },
+  { id: '2', name: 'Thu lại khách lẻ' },
+];
+const DIRECT_CREATE_ROLES = new Set(['SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
+
 export default function Inventory() {
   const [demandOrders, setDemandOrders] = useState([]);
   const [allocationOrder, setAllocationOrder] = useState(null);
@@ -206,13 +213,14 @@ export default function Inventory() {
     retailPriceVnd: '',
     importPriceVnd: '',
     importPriceManuallyEdited: false,
-    trackingCode: ''
+    trackingCode: '',
+    sourceReferenceId: '1'
   };
 
   const [formData, setFormData] = useState(emptyForm);
 
   const supplierOptions = useMemo(() => [...new Set(
-    laptops.map(laptop => String(laptop.seller || '').trim()).filter(Boolean)
+    laptops.map(laptop => String(laptop.supplierName || laptop.seller || '').trim()).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b, 'vi')), [laptops]);
 
   // Formula Form State
@@ -329,7 +337,7 @@ export default function Inventory() {
         String(laptop.name || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.id || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.serial || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
-        String(laptop.seller || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(supplierNameOf(laptop)).toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.trackingCode || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.conditionNote || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.importDate || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
@@ -339,7 +347,7 @@ export default function Inventory() {
       const matchCat = selectedCats.length === 0 || selectedCats.includes(laptopCatKey);
       const matchLoc = selectedLoc === 'ALL' || laptop.location === selectedLoc || labelToKey('laptopLocation', laptop.location, fieldOptionsConfig) === selectedLoc;
       const matchStatus = selectedStatus === 'ALL' || laptop.status === selectedStatus || labelToKey('laptopStatus', laptop.status, fieldOptionsConfig) === selectedStatus;
-      const matchSeller = selectedSeller === 'ALL' || String(laptop.seller || '') === String(selectedSeller);
+      const matchSeller = selectedSeller === 'ALL' || String(supplierNameOf(laptop)) === String(selectedSeller);
 
       const matchWarehouseDate = (() => {
         if (!warehouseDateFrom && !warehouseDateTo) return true;
@@ -401,7 +409,7 @@ export default function Inventory() {
       warrantySupplier: laptop.warrantySupplier || '',
       conditionNote: laptop.conditionNote || '',
       chargerStatus: laptop.chargerStatus || 'with_charger',
-      seller: laptop.seller || '',
+      seller: laptop.supplierName || laptop.seller || '',
       status: laptop.status || 'available',
       priceRmb: laptop.priceRmb || '',
       shippingRmb: laptop.shippingRmb ?? 0,
@@ -410,19 +418,35 @@ export default function Inventory() {
       retailPriceVnd: laptop.retailPriceVnd || '',
       importPriceVnd: laptop.importPriceVnd || '',
       importPriceManuallyEdited: Boolean(laptop.importPriceVnd && Number(laptop.importPriceVnd) !== computeImportPrice(laptop.priceRmb, laptop.shippingRmb, laptop.exchangeRate || formulaConfig.defaultRate, formulaConfig)),
-      trackingCode: laptop.trackingCode || ''
+      trackingCode: laptop.trackingCode || '',
+      sourceReferenceId: laptop.sourceReferenceId || ''
     });
     setIsAddModalOpen(true);
     setShowTimeline(false);
+  };
+
+  const handleOpenAdd = () => {
+    setSaveError('');
+    setEditingLaptop(null);
+    setFormData({
+      ...emptyForm,
+      priceRmb: 0,
+      shippingRmb: 0,
+      exchangeRate: '',
+      importPriceVnd: '',
+      importPriceManuallyEdited: true,
+      sourceReferenceId: '1',
+    });
+    setShowTimeline(false);
+    setIsAddModalOpen(true);
   };
 
   // Lưu Form Thêm / Sửa
   const handleSaveLaptop = async (e) => {
     e.preventDefault();
     if (savingRef.current) return;
-    if (!editingLaptop && user?.role !== 'ADMIN') {
-      setSaveError('Chỉ quản trị viên được tạo laptop mới.');
-      setIsAddModalOpen(false);
+    if (!editingLaptop && !DIRECT_CREATE_ROLES.has(user?.role)) {
+      setSaveError('Tài khoản này không có quyền tạo laptop mới.');
       return;
     }
     setSaveError('');
@@ -434,9 +458,10 @@ export default function Inventory() {
     savingRef.current = true;
     setIsSaving(true);
     try {
-    const computedPayload = !formData.importPriceManuallyEdited && liveImportPrice > 0
+    const computedPayloadWithUiState = !formData.importPriceManuallyEdited && liveImportPrice > 0
       ? { ...formData, importPriceVnd: liveImportPrice }
       : formData;
+    const { importPriceManuallyEdited: _importPriceManuallyEdited, ...computedPayload } = computedPayloadWithUiState;
     if (editingLaptop) {
       const result = await updateLaptop(editingLaptop.id, computedPayload);
       if (!result.ok) {
@@ -642,7 +667,8 @@ export default function Inventory() {
         )}
       </div>
 
-        {user?.role === 'ADMIN' && <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {(user?.role === 'ADMIN' || DIRECT_CREATE_ROLES.has(user?.role)) && <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {user?.role === 'ADMIN' && <>
           <Button variant="secondary" size="sm" onClick={() => setIsSyncModalOpen(true)}>
             <RefreshCw size={14} /> Google Sheet
           </Button>
@@ -650,6 +676,10 @@ export default function Inventory() {
           <Button data-testid="product-add-button" variant="default" size="sm" asChild>
             <Link href="/purchases"><Plus size={16} /> Nhập Máy Mới</Link>
           </Button>
+          </>}
+          {DIRECT_CREATE_ROLES.has(user?.role) && <Button data-testid="product-add-button" variant="default" size="sm" onClick={handleOpenAdd}>
+            <Plus size={16} /> Thêm Laptop
+          </Button>}
         </div>}
       </div>
 
@@ -976,7 +1006,7 @@ export default function Inventory() {
                     </th>
                   </>
                 )}
-                {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+                {['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) && (
                   <>
                   </>
                 )}
@@ -1071,12 +1101,13 @@ export default function Inventory() {
                       </div>
                       <div className="inventory-condition-text" title={l.conditionNote}>{l.conditionNote || '-'}</div>
                     </td>
-                    <td className="inventory-seller-cell" style={{ width: `${colWidths.seller}px`, minWidth: `${colWidths.seller}px` }} title={l.seller}>
+                    <td className="inventory-seller-cell" style={{ width: `${colWidths.seller}px`, minWidth: `${colWidths.seller}px` }} title={supplierNameOf(l)}>
                       {(() => {
-                        const sc = getSellerBadgeClass(l.seller);
-                        return l.seller ? (
+                        const supplierName = supplierNameOf(l);
+                        const sc = getSellerBadgeClass(supplierName);
+                        return supplierName ? (
                           <span className="inventory-seller-badge" style={{ '--seller-color': sc.color, background: sc.bg }}>
-                            {getLabel('seller', l.seller)}
+                            {getLabel('seller', supplierName)}
                           </span>
                         ) : <span className="inventory-seller-empty">-</span>;
                       })()}
@@ -1105,7 +1136,7 @@ export default function Inventory() {
                       </>
                     )}
 
-                    {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+                    {['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) && (
                       <>
                       </>
                     )}
@@ -1196,8 +1227,11 @@ export default function Inventory() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Nguồn nhập</label>
-                    <div className="form-control" aria-readonly="true">{formData.seller || 'Chưa xác định'}</div>
+                    <label htmlFor="inventory-source-supplier">Nguồn nhập</label>
+                    {!editingLaptop && DIRECT_CREATE_ROLES.has(user?.role) ? <select id="inventory-source-supplier" className="form-control" required
+                      value={formData.sourceReferenceId} onChange={e => setFormData({ ...formData, sourceReferenceId: e.target.value })}>
+                      {DOMESTIC_SUPPLIERS.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
+                    </select> : <div className="form-control" aria-readonly="true">{formData.seller || 'Chưa xác định'}</div>}
                     {editingLaptop?.batchCode && <small style={{ display: 'block', marginTop: '4px' }}><Link href={`/purchases/${editingLaptop.purchaseBatchId}`}>{editingLaptop.batchCode} ↗</Link></small>}
                   </div>
 
@@ -1397,6 +1431,16 @@ export default function Inventory() {
                 </div>
 
                 </>)}
+                {!editingLaptop && DIRECT_CREATE_ROLES.has(user?.role) && <section className="inventory-domestic-cost">
+                  <h4><Calculator size={16} /> 3. Giá nhập nội địa</h4>
+                  <p>Giá mua RMB và phí vận chuyển được cố định bằng 0. Nhập trực tiếp tổng giá vốn bằng triệu VNĐ.</p>
+                  <div className="form-group">
+                    <label htmlFor="inventory-direct-cost">Giá nhập (triệu VNĐ) *</label>
+                    <Input id="inventory-direct-cost" type="number" min="0.01" step="any" required
+                      data-testid="product-import-price-input" value={formData.importPriceVnd}
+                      onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })} />
+                  </div>
+                </section>}
               </div>
 
               <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

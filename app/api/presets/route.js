@@ -12,7 +12,7 @@ const isPresetMap = (value) => {
 
 export async function GET(request) {
   try {
-  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
   const { data, error } = await db
     .from('app_settings')
     .select('value')
@@ -34,7 +34,7 @@ export async function POST(request) {
 
     const { data, error } = await db
       .from('app_settings')
-      .upsert({ key: PRESET_KEY, value: body.presets }, { onConflict: 'key' })
+      .upsert({ key: PRESET_KEY, value: body.presets, updated_at: new Date().toISOString() }, { onConflict: 'key' })
       .select('value')
       .single();
 

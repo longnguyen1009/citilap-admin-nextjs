@@ -17,8 +17,18 @@
 ```powershell
 npm.cmd install
 npm.cmd run cf:migrate:local
+npm.cmd run cf:admin:local
 npm.cmd run cf:dev
 ```
+
+`npm run dev` không có binding D1/R2. Khi phát triển local phải dùng `npm run cf:dev`.
+Lệnh `cf:admin:local` đọc `ADMIN_EMAIL` và `ADMIN_PASSWORD` từ `.env`/`.env.local`
+và chỉ tạo ADMIN khi local D1 chưa có user nào.
+
+Migration `0006_roles_and_catalog_seed.sql` là seed khởi tạo chuẩn cho D1: role `SALES_TECH`,
+hai nguồn nội địa ID `1`/`2`, category, vị trí kho, thanh toán và vận chuyển. Seed này không
+tạo laptop, order, user hoặc nhân viên Sale. `reseed_data.sql` là bộ dữ liệu thử PostgreSQL cũ,
+không được dùng cho runtime Cloudflare D1.
 
 ## Kiểm tra
 
@@ -41,6 +51,23 @@ Các tài nguyên và binding được khai báo trong `wrangler.jsonc`. Áp d�
 npx.cmd wrangler d1 migrations apply DB --remote
 npx.cmd wrangler secret put BOOTSTRAP_TOKEN
 ```
+
+## Để cập nhật production, chạy tại thư mục dự án
+
+```powershell
+npx.cmd wrangler whoami
+npx.cmd wrangler d1 migrations list DB --remote
+npx.cmd wrangler d1 migrations apply DB --remote
+```
+
+Hãy tạo migration mới, ví dụ:
+
+```powershell
+npx.cmd wrangler d1 migrations create DB update_catalog_options
+```
+
+Wrangler sẽ tạo file mới trong db/d1/migrations, ví dụ:
+0007_update_catalog_options.sql
 
 Sau khi deploy, gọi `/api/auth/bootstrap` đúng một lần để tạo ADMIN đầu tiên, rồi xóa secret bootstrap:
 

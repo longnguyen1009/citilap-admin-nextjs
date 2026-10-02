@@ -12,7 +12,7 @@ function visibleInvoice(invoice, role) {
 export async function GET(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
+    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const params = new URL(request.url).searchParams;
     const db = createDatabase(DB);
     let query = db.from('invoices').select('*').order('created_at', { ascending: false });
@@ -33,7 +33,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
+    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const { orderId } = await request.json();
     if (!isValidPositiveId(orderId)) return NextResponse.json({ error: 'Mã đơn không hợp lệ' }, { status: 400 });
     const { data, error } = await createDatabase(DB).rpc('issue_invoice', {

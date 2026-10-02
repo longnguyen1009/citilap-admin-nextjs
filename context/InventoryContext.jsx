@@ -476,13 +476,6 @@ export const InventoryProvider = ({ children }) => {
       return;
     }
 
-    let unsubscribe = () => {};
-    // These pages own their API data; do not also load inventory metadata,
-    // poll every minute or subscribe to unrelated inventory/order events.
-    if (['/suppliers', '/supplier-payments', '/purchases', '/receiving'].some(route => pathname === route || pathname.startsWith(`${route}/`))) {
-      setDataLoading(false);
-      return;
-    }
     let cancelled = false;
     const monthQuery = selectedMonth === 'ALL'
       ? { all: true }
@@ -492,18 +485,20 @@ export const InventoryProvider = ({ children }) => {
         setDataLoading(true);
         setLoadingStage('Đang kiểm tra phiên đăng nhập…');
       }
-      setCloudStatus('checking');
+      if (!background) setCloudStatus('checking');
       if (cancelled) return;
 
-      // Kiểm tra session Supabase trực tiếp — prevents leak khi logout
+      // Mỗi request vẫn được Route Handler kiểm tra bằng D1 session cookie.
       const safeFetch = (fn) => fn().catch(() => null);
       const needsWarranty = pathname === '/' || pathname.startsWith('/warranty');
       const needsCustomers = pathname === '/' || ['/orders', '/warranty', '/customers'].some(route => pathname.startsWith(route));
-      const needsSettings = pathname.startsWith('/inventory');
+      const needsSettings = ['/inventory', '/settings', '/purchases', '/receiving'].some(route => pathname.startsWith(route));
       const needsPayments = pathname.startsWith('/payments');
       const needsLaptops = pathname === '/' || ['/inventory', '/orders', '/warranty', '/settings'].some(route => pathname.startsWith(route));
       const needsOrders = pathname === '/' || ['/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route));
-      // Lấy token một lần rồi khởi chạy đồng thời mọi request độc lập của route.
+      const needsOptions = pathname === '/' || ['/inventory', '/orders', '/payments', '/warranty', '/settings', '/invoices'].some(route => pathname.startsWith(route));
+      const needsMonths = pathname === '/' || ['/inventory', '/orders', '/payments', '/settings'].some(route => pathname.startsWith(route));
+      // Dùng chung headers và khởi chạy đồng thời các request độc lập của route.
       // Các API nghiệp vụ vẫn tự kiểm tra quyền ở server.
       const sharedHeaders = await getAuthHeaders();
       const sharedQuery = { ...monthQuery, headers: sharedHeaders };
@@ -516,16 +511,18 @@ export const InventoryProvider = ({ children }) => {
       let cloudPayments = null;
       let cloudMonths = null;
       if (!background) setLoadingStage('Đang tải đồng thời dữ liệu màn hình…');
-      const secondaryTasks = [
-        ['options', () => safeFetch(() => fetchAppOptionsFromCloud({ headers: sharedHeaders }))],
-        ['months', async () => {
+      // Metadata changes infrequently. Load it when entering a route that uses it,
+      // then refresh it explicitly after a mutation instead of on every poll.
+      const secondaryTasks = background ? [] : [
+        ...(needsOptions ? [['options', () => safeFetch(() => fetchAppOptionsFromCloud({ headers: sharedHeaders }))]] : []),
+        ...(needsMonths ? [['months', async () => {
           try {
             const response = await fetch('/api/months', { headers: sharedHeaders });
             return response.ok ? response.json() : null;
           } catch {
             return null;
           }
-        }],
+        }]] : []),
         ...(needsPayments ? [['payments', () => safeFetch(() => fetchPaymentsFromCloud({ headers: sharedHeaders }))]] : []),
         ...(needsWarranty ? [['warranty', () => safeFetch(() => fetchWarrantyCasesFromCloud({ headers: sharedHeaders }))]] : []),
         ...(needsCustomers ? [['customers', () => safeFetch(() => fetchCustomersFromCloud({ headers: sharedHeaders }))]] : []),
@@ -622,7 +619,11 @@ export const InventoryProvider = ({ children }) => {
     };
 
     loadCloudData();
-    const refreshIntervalId = window.setInterval(() => loadCloudData({ background: true }), 60 * 1000);
+    const shouldPollPrimaryData = pathname === '/'
+      || ['/inventory', '/orders', '/payments', '/warranty', '/settings'].some(route => pathname.startsWith(route));
+    const refreshIntervalId = shouldPollPrimaryData
+      ? window.setInterval(() => loadCloudData({ background: true }), 60 * 1000)
+      : null;
 
     // Realtime: patch trực tiếp từ payload thay vì refetch toàn bộ
     // Cross-fetch (laptop↔orders) cần throttle để tránh chain reaction
@@ -676,7 +677,7 @@ export const InventoryProvider = ({ children }) => {
       }
     };
 
-    unsubscribe = subscribeRealtimeChanges(
+    const unsubscribe = subscribeRealtimeChanges(
       handleRealtimeLaptop,
       handleRealtimeOrder,
       () => fetchWarrantyCasesFromCloud().then(d => d !== null && setWarrantyCases(d)),
@@ -698,7 +699,11 @@ export const InventoryProvider = ({ children }) => {
       }
     );
 
-    return () => { cancelled = true; window.clearInterval(refreshIntervalId); unsubscribe(); };
+    return () => {
+      cancelled = true;
+      if (refreshIntervalId !== null) window.clearInterval(refreshIntervalId);
+      unsubscribe();
+    };
   }, [userId, selectedMonth, pathname]);
 
   // Trích xuất danh sách tất cả các tháng có dữ liệu
@@ -1296,6 +1301,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       conditionNote: laptopData.conditionNote || '',
       chargerStatus: labelToKey('chargerStatus', laptopData.chargerStatus, _cfg()) || laptopData.chargerStatus || 'with_charger',
       seller: laptopData.seller || '',
+      sourceReferenceId: laptopData.sourceReferenceId || undefined,
       status: labelToKey('laptopStatus', laptopData.status, _cfg()) || laptopData.status || 'available',
       priceRmb: parseFlexibleFloat(laptopData.priceRmb),
       shippingRmb: parseFlexibleFloat(laptopData.shippingRmb),

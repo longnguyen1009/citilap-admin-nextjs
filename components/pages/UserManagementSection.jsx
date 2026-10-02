@@ -139,8 +139,8 @@ export default function UserManagementSection() {
                       <td style={{ padding: '12px' }}>
                         <span style={{
                           padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
-                          background: u.role === 'ADMIN' ? '#fee2e2' : u.role === 'TECHNICAL' ? '#fef3c7' : '#dbeafe',
-                          color: u.role === 'ADMIN' ? '#b91c1c' : u.role === 'TECHNICAL' ? '#b45309' : '#1d4ed8'
+                          background: u.role === 'ADMIN' ? '#fee2e2' : ['TECHNICAL', 'SALES_TECH'].includes(u.role) ? '#fef3c7' : '#dbeafe',
+                          color: u.role === 'ADMIN' ? '#b91c1c' : ['TECHNICAL', 'SALES_TECH'].includes(u.role) ? '#b45309' : '#1d4ed8'
                         }}>
                           {u.role}
                         </span>

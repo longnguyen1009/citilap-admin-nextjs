@@ -4,7 +4,7 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
-const ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF'];
+const ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF'];
 const ENTITY_TYPES = new Set([
   'LAPTOP', 'ORDER', 'CUSTOMER', 'WARRANTY', 'STOCK_MOVEMENT', 'SETTING', 'OPTION', 'PAYMENT', 'FINANCIAL_RECORD',
 ]);

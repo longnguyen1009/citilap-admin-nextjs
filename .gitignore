@@ -42,6 +42,7 @@ yarn-error.log*
 
 # Cloudflare local data and generated bundle
 /.wrangler/
+/.wrangler-config/
 /.open-next/
 .dev.vars*
 

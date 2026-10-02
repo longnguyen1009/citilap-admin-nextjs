@@ -15,7 +15,7 @@ async function financeAdmin(request, roles = ['ADMIN']) {
 }
 
 export async function GET(request) {
-  const context = await financeAdmin(request, ['ADMIN', 'SALES']);
+  const context = await financeAdmin(request, ['ADMIN', 'SALES', 'SALES_TECH']);
   if (context.response) return context.response;
   const { auth, db } = context;
   const currency = new URL(request.url).searchParams.get('currency');

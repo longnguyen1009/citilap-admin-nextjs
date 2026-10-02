@@ -43,7 +43,19 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
   const [addingToBatch, setAddingToBatch] = useState(null);
   const busy = useRef(false), receiptKey = useRef(null);
 
-  const load = useCallback(async () => { setLoading(true); try { const result = await callApi(null, batchId ? `?batchId=${encodeURIComponent(batchId)}` : receiving ? '?all=true&mode=receiving' : selectedMonth === 'ALL' ? '?all=true' : `?monthKey=${encodeURIComponent(selectedMonth)}`); setData(current => ({ ...current, ...result, categories: result.categories || [] })); setError(''); } catch (e) { setError(e.message); } finally { setLoading(false); } }, [batchId, receiving, selectedMonth]);
+  const load = useCallback(async (options) => {
+    const background = options?.background === true;
+    if (!background) setLoading(true);
+    try {
+      const result = await callApi(null, batchId ? `?batchId=${encodeURIComponent(batchId)}` : receiving ? '?all=true&mode=receiving' : selectedMonth === 'ALL' ? '?all=true' : `?monthKey=${encodeURIComponent(selectedMonth)}`);
+      setData(current => ({ ...current, ...result, categories: result.categories || [] }));
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      if (!background) setLoading(false);
+    }
+  }, [batchId, receiving, selectedMonth]);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
@@ -71,7 +83,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
   async function mutate(payload, success) {
     if (busy.current) return;
     busy.current = true; setPending(true); setError(''); setMessage('');
-    try { await callApi(payload); success?.(); await load(); } catch (e) { setError(e.message); } finally { busy.current = false; setPending(false); }
+    try { await callApi(payload); success?.(); await load({ background: true }); } catch (e) { setError(e.message); } finally { busy.current = false; setPending(false); }
   }
   const updateRow = (index, key, value) => setRows(current => current.map((row, i) => i === index ? { ...row, [key]: value } : row));
   const calculatedImportPrice = row => computeImportPrice(

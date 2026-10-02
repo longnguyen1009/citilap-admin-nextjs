@@ -8,7 +8,7 @@ const WARRANTY_STATUSES = [...OPEN_STATUSES, ...RESOLVED_STATUSES];
 
 export async function GET(request) {
   try {
-    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
     const { data, error } = await db.from('warranty_cases').select('*').order('id', { ascending: false }).limit(1000);
     if (error) throw new Error(error.message);
     return NextResponse.json(keysToCamel(data));
@@ -17,7 +17,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
     const body = sanitizePayload(await request.json(), WARRANTY_PAYLOAD_KEYS);
     // Server-set audit fields: ignore client-sent timestamps and actor
     delete body.createdAt;

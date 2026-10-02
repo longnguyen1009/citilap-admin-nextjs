@@ -3,7 +3,7 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
-const ROLES = ['ADMIN', 'TECH', 'TECHNICAL'];
+const ROLES = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'];
 const numericId = value => /^\d+$/.test(String(value || '')) && Number(value) > 0 ? Number(value) : null;
 
 export async function GET(request) {

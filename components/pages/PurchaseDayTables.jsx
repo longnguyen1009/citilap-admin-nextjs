@@ -29,7 +29,19 @@ function PurchaseDraftTable({ storageKey, groups, categories, formulaConfig, mut
     catch { queueMicrotask(() => setStorageError('Không thể lưu nháp trong trình duyệt. Hãy lưu máy trước khi rời trang.')); }
   }, [drafts, storageKey]);
   const update = (key, field, value) => setDrafts(current => ({ ...current, [key]: { ...current[key], [field]: value } }));
-  const remove = key => setDrafts(current => { const next = { ...current }; delete next[key]; return next; });
+  const remove = key => {
+    const next = { ...drafts };
+    delete next[key];
+    // Persist immediately because the parent refresh can otherwise unmount this table
+    // before the state effect has written the cleared draft.
+    try {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(next));
+      setStorageError('');
+    } catch {
+      setStorageError('Không thể cập nhật bản nháp trong trình duyệt.');
+    }
+    setDrafts(next);
+  };
   return <section className="purchase-days">{storageError && <p role="alert">{storageError}</p>}{groups.map(group => {
     const suppliers = new Map();
     for (const entry of group.batches) {

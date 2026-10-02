@@ -1,5 +1,13 @@
 # Cloudflare migration status
 
+## Operations UI update — 2026-10-02
+
+- Purchases, receiving, QC and actual costs now use compact spacing, navy headers, strong outer borders and visible table separators.
+- QC has waiting/history views and client-side search; supplier names use the enriched inventory field.
+- Actual costs have aligned numeric columns, an emphasized total and an explicit detail button.
+- Validation: targeted ESLint and diff checks passed; OpenNext build generated 68/68 pages. Authenticated desktop browser checks covered all four screens, QC filtering and history switching. Receiving currently has no pending machines, so its populated selection workflow was not exercised.
+- Production version: `be7c5d2a-1f29-469d-978b-b3c6effb9069`. Final screenshot confirms white header text, compact metrics and a single-row cost toolbar. An existing browser cache referenced prior CSS assets after deployment; a fresh URL loaded the new styles correctly. Reload old tabs with Ctrl+Shift+R.
+
 Updated 2026-10-01. The Worker is deployed to production and the initial ADMIN is active; authenticated browser workflow verification remains.
 
 ## Agreed target
@@ -12,12 +20,14 @@ Updated 2026-10-01. The Worker is deployed to production and the initial ADMIN i
 
 - D1 `citilap-admin`, ID `a771bd4e-34fb-40a3-86ef-80f31acde278`, APAC.
 - R2 `citilap-admin-images` and `citilap-admin-cache`.
-- Migrations 0001, 0002 and 0003 applied successfully.
+- Migrations 0001 through 0005 applied successfully. Migration 0004 makes `app_settings` a validated two-key JSON store, seeds the canonical import-price formula when absent and preserves existing presets. Migration 0005 seeds the canonical Settings catalog in `app_options` without overwriting existing administrator customizations.
 - Remote foreign key check returned no violations.
-- Worker `citilap-admin` deployed at `https://citilap-admin.restless-snowflake-aaae.workers.dev`, version `20bbf0ad-a565-4413-80f9-9058c039d7f4`.
+- Worker `citilap-admin` deployed at `https://citilap-admin.restless-snowflake-aaae.workers.dev`, version `591a7406-5bb6-4141-9c1b-99e0628ea5cd`.
 - Production HTTP checks: `/login` returned 200, `/api/auth/session` returned `{"user":null}`, and unauthenticated `/api/inventory` returned 401.
 - Initial ADMIN was bootstrapped from the local `.env`; production sign-in and session restoration both returned role `ADMIN`.
 - Remote D1 has exactly one `auth_users` row and one active ADMIN profile. `BOOTSTRAP_TOKEN` was deleted after creation; the bootstrap endpoint now returns 404 `Bootstrap is not configured`.
+- Production Settings verification returned the canonical formula (`shippingVnd=400000`, `divisor=1000000`, `defaultRate=3990`) and all eight existing presets; `PRAGMA foreign_key_check` returned no rows.
+- Production `app_options` contains 78 active defaults across all 14 supported Settings groups; the group counts match `lib/fieldOptions.js` and `PRAGMA foreign_key_check` remains clean.
 
 ## Implemented locally
 
@@ -57,6 +67,10 @@ Updated 2026-10-01. The Worker is deployed to production and the initial ADMIN i
 
 All API route modules now use request-scoped D1/R2 bindings and D1 sessions. The remaining customer, export, inventory, invoice-catalog, options, presets, stock-movement, warranty, settings and month-roll paths were migrated, and the browser inventory context no longer checks Supabase Auth. The Supabase client modules and npm dependency have been removed. Cloudflare Access is intentionally deferred.
 
+- `InventoryContext` now loads route-specific metadata only when entering a page that uses it. Its 60-second refresh is limited to the current route's laptop/order datasets; options, months, settings, payments, warranties and customers are no longer polled. Background refresh also leaves connection state stable, preventing the Dashboard from refetching its management aggregate every minute.
+- Inline purchase drafts are removed from state and `sessionStorage` immediately after `addToBatch` succeeds. The subsequent purchase-list refresh runs in the background so it cannot unmount the table before draft cleanup; failed saves continue to retain their draft.
+- Inventory rows now derive supplier display name and batch code from the canonical `laptops.purchase_batch_id -> purchase_batches.supplier_id -> suppliers` lineage. The edit modal displays the supplier and links its purchase batch. Client-only `importPriceManuallyEdited` and derived `profitVnd` values are excluded from laptop writes, preventing nonexistent D1-column errors.
+
 ## Verification
 
 - `node --test qa/cloudflare-auth.test.mjs`: 11/11 tests, including the single-use initial-admin transaction.
@@ -67,6 +81,8 @@ All API route modules now use request-scoped D1/R2 bindings and D1 sessions. The
 - Supplier-return workerd checks pass for transition guards, shipment tracking requirements, partial/full refunds, cash ledger replay, audit-failure rollback, closed-return replay and replacement linking. Browser/HTTP role coverage for these routes remains pending.
 - Supplier-payment workerd checks cover ledger replay, conversion to VND, audit rollback, overpayment and date/account guards.
 - Full Next.js/OpenNext build completed on 2026-10-01 after all API routes and browser auth/data callers were moved off Supabase: 68/68 pages generated and `.open-next/worker.js` produced.
+- Next.js production build passed on 2026-10-02 after route-scoped polling changes: 68/68 pages generated.
+- Production browser verification on 2026-10-02 confirmed laptop #2 displays supplier `We-莫名`, links batch `PO-20261002-001`, and saves successfully from the Inventory edit modal without a D1 column error.
 - Fresh `wrangler deploy --dry-run` passed with D1, both R2 buckets, assets and the Worker self-reference bound.
 - Scripts import PGlite from this repository's pinned dependency; no external temporary installation required.
 - Tests above are local; they do not prove browser flows or production Worker behavior.

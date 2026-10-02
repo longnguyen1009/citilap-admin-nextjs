@@ -4,7 +4,7 @@ import { isValidPositiveId } from '@/lib/apiAuth';
 import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
 
 export async function GET(request) {
-  const { db } = await routeContext(request, ['ADMIN', 'SALES']);
+  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'SALES_TECH']);
   const [branches, accessories] = await Promise.all([
     db.from('branches').select('*').order('id'), db.from('accessories').select('*').order('id')
   ]);

@@ -33,7 +33,7 @@ async function saveOrder(db, order, actor, persisted) {
 
 export async function GET(request) {
   try {
-    const { db, profile } = await context(request, ['ADMIN', 'SALES']);
+    const { db, profile } = await context(request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const timing = createTiming();
     const isAdmin = profile.role === 'ADMIN';
 
@@ -116,7 +116,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { db, profile } = await context(request, ['ADMIN', 'SALES']);
+    const { db, profile } = await context(request, ['ADMIN', 'SALES', 'SALES_TECH']);
     const isAdmin = profile.role === 'ADMIN';
     const rawPayload = await request.json();
     const protectedCostFields = ['costSnapshotVnd', 'grossProfitSnapshotVnd', 'directCostSnapshotVnd', 'netContributionSnapshotVnd', 'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt', 'tradeInCreditVnd'];

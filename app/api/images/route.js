@@ -5,7 +5,7 @@ import { readImage } from '@/lib/cloudflare/images.mjs';
 export async function POST(request) {
   try {
     const { DB, IMAGES_BUCKET } = getCloudflareBindings();
-    const user = await requireSession(DB, request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL']);
+    const user = await requireSession(DB, request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
     const { bytes, contentType } = await readImage(request);
     const id = crypto.randomUUID();
     const objectKey = `images/${id}`;

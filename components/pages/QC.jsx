@@ -61,6 +61,8 @@ async function request(url, options = {}) {
 }
 export default function QC() {
   const [laptops, setLaptops] = useState([]), [history, setHistory] = useState([]);
+  const [view, setView] = useState('waiting');
+  const [search, setSearch] = useState('');
   const [active, setActive] = useState(null), [items, setItems] = useState([]);
   const [choice, setChoice] = useState(''), [notes, setNotes] = useState('');
   const [details, setDetails] = useState({});
@@ -90,7 +92,8 @@ export default function QC() {
     if (nextPage === historyPage || nextPage < 1) return;
     setHistoryPage(nextPage); loadHistory(nextPage).catch(e => setError(e.message));
   };
-  const laptopPages = useListPagination(laptops);
+  const visibleLaptops = useMemo(() => laptops.filter(laptop => [laptop.id, laptop.name, laptop.serial, laptop.supplierName, laptop.seller].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))), [laptops, search]);
+  const laptopPages = useListPagination(visibleLaptops, search);
   const historyPageCount = Math.max(1, Math.ceil(historyTotal / QC_HISTORY_PAGE_SIZE));
   const laptopsByReceivedDay = useMemo(() => laptopPages.pageRows.reduce((groups, laptop) => {
     const receivedAt = laptopReceivedTime(laptop);
@@ -135,26 +138,30 @@ export default function QC() {
   return <div className="qc-page">
     <header className="qc-header"><div><span>KIỂM TRA CHẤT LƯỢNG</span><h1>QC sản phẩm</h1><p>Chọn kết quả để hoàn tất QC và chuyển máy sang bước tiếp theo.</p></div><div className="qc-score"><ClipboardCheck /><strong>{laptops.length}</strong><small>máy chờ QC</small></div></header>
     {!active && error && <p role="alert" className="error-message">{error}</p>}{message && <p role="status" className="quick-qc-success">{message}</p>}
-    <section className="qc-grid"><div className="qc-panel"><div className="qc-panel-title"><h2>Hàng chờ QC</h2><span>{laptops.length} máy</span></div>
+    <div className="operations-toolbar" aria-label="QC">
+      <button type="button" aria-pressed={view === 'waiting'} onClick={() => setView('waiting')}>Hàng chờ QC · {laptops.length}</button>
+      <button type="button" aria-pressed={view === 'history'} onClick={() => setView('history')}>Lịch sử · {historyTotal}</button>
+      {view === 'waiting' && <input aria-label="Tìm máy chờ QC" placeholder="Tìm tên máy, serial, nhà cung cấp…" value={search} onChange={event => setSearch(event.target.value)} />}
+    </div><section className="qc-grid">{view === 'waiting' && <div className="qc-panel"><div className="qc-panel-title"><h2>Hàng chờ QC</h2><span>{visibleLaptops.length} máy</span></div>
       <div className="qc-waiting-days">{laptopsByReceivedDay.map(group => <section className="qc-waiting-day" key={group.key}>
         <header><strong>{group.label}</strong><span>{group.items.length} máy</span></header>
         {group.items.map(l => {
-          const tone = supplierTone(l.seller);
+          const tone = supplierTone(l.supplierName || l.seller);
           return <article className="qc-machine" key={l.id}>
             <div>
               <strong className="qc-machine-title">#{l.id} <i>·</i> {l.name}</strong>
               <small className="qc-machine-meta">
                 <span>Serial: {l.serial || 'Chưa có'}</span>
-                <span className="qc-supplier-badge" style={{ '--seller-bg': tone.bg, '--seller-color': tone.color }}>{l.seller || 'Chưa rõ nhà cung cấp'}</span>
+                <span className="qc-supplier-badge" style={{ '--seller-bg': tone.bg, '--seller-color': tone.color }}>{l.supplierName || l.seller || 'Chưa rõ nhà cung cấp'}</span>
               </small>
             </div>
             <button disabled={saving} onClick={() => inspect(l)}>Chọn kết quả</button>
           </article>;
         })}
       </section>)}</div>
-      {!laptops.length && <div className="qc-empty">{loading ? 'Đang tải…' : 'Không có máy chờ QC.'}</div>}<ListPagination {...laptopPages} /></div>
-      <div className="qc-panel"><div className="qc-panel-title"><h2>Lịch sử QC</h2><span>{historyTotal} phiên</span></div>
-      <div className="qc-history-days">{historyByDay.map(group => <section className="qc-history-day" key={group.key}><header><strong>{group.label}</strong><span>{group.items.length} phiên</span></header>{group.items.map(q => { const visual = historyVisual(q); const ResultIcon = visual.icon; return <button className={`qc-history ${visual.key}`} key={q.id} disabled={saving} onClick={() => open(q).catch(e => setError(e.message))}><span className={`qc-result ${visual.key}`}><ResultIcon /></span><span className="qc-history-main"><strong className="qc-history-title">#{q.laptop_id} <i>·</i> {q.laptops?.name || 'Laptop'}</strong><small className="qc-history-meta"><b>Serial: {q.laptops?.serial || q.laptops?.sku || 'Chưa có'}</b><i>·</i><span>{q.completed_by || q.started_by || 'Không rõ người thực hiện'}</span><i>·</i><time>{formatQcHour(qcTime(q))}</time></small></span><b className={`qc-history-status ${visual.key}`}>{visual.label || 'Đang kiểm tra'}</b></button>})}</section>)}</div><ListPagination page={historyPage} setPage={changeHistoryPage} pageCount={historyPageCount} total={historyTotal} pageSize={QC_HISTORY_PAGE_SIZE} /></div></section>
+      {!visibleLaptops.length && <div className="qc-empty">{loading ? 'Đang tải…' : 'Không có máy chờ QC.'}</div>}<ListPagination {...laptopPages} /></div>}
+      {view === 'history' && <div className="qc-panel"><div className="qc-panel-title"><h2>Lịch sử QC</h2><span>{historyTotal} phiên</span></div>
+      <div className="qc-history-days">{historyByDay.map(group => <section className="qc-history-day" key={group.key}><header><strong>{group.label}</strong><span>{group.items.length} phiên</span></header>{group.items.map(q => { const visual = historyVisual(q); const ResultIcon = visual.icon; return <button className={`qc-history ${visual.key}`} key={q.id} disabled={saving} onClick={() => open(q).catch(e => setError(e.message))}><span className={`qc-result ${visual.key}`}><ResultIcon /></span><span className="qc-history-main"><strong className="qc-history-title">#{q.laptop_id} <i>·</i> {q.laptops?.name || 'Laptop'}</strong><small className="qc-history-meta"><b>Serial: {q.laptops?.serial || q.laptops?.sku || 'Chưa có'}</b><i>·</i><span>{q.completed_by || q.started_by || 'Không rõ người thực hiện'}</span><i>·</i><time>{formatQcHour(qcTime(q))}</time></small></span><b className={`qc-history-status ${visual.key}`}>{visual.label || 'Đang kiểm tra'}</b></button>})}</section>)}</div><ListPagination page={historyPage} setPage={changeHistoryPage} pageCount={historyPageCount} total={historyTotal} pageSize={QC_HISTORY_PAGE_SIZE} /></div>}</section>
     {active && <div className="modal-backdrop active"><form className="qc-modal quick-qc-modal" onSubmit={complete} role="dialog" aria-modal="true" aria-labelledby="quick-qc-title">
       <header><div><small>{active.inspection_code}</small><h2 id="quick-qc-title">{active.laptops?.name}</h2><p>{active.laptops?.serial || 'Chưa có serial'} · {active.started_by}</p></div><button type="button" aria-label="Đóng QC" disabled={saving} onClick={() => setActive(null)}><X /></button></header>
       {error && <p className="quick-qc-error" role="alert">{error}</p>}

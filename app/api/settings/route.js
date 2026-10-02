@@ -41,7 +41,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Cấu hình công thức có giá trị ngoài phạm vi' }, { status: 400 });
     }
     const previous = await readSettings(db);
-    const { error } = await db.from('app_settings').upsert({ key: 'formula', value }, { onConflict: 'key' }).select().single();
+    const { error } = await db.from('app_settings').upsert({ key: 'formula', value, updated_at: new Date().toISOString() }, { onConflict: 'key' }).select().single();
     if (error) throw new Error(error.message);
     await writeAudit(DB, 'SETTING', 'formula', previous.formula === undefined ? 'CREATE' : 'UPDATE', { before: previous.formula, after: value }, profile.name);
     return NextResponse.json(true);

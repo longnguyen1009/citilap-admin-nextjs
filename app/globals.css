@@ -2738,6 +2738,12 @@ body {
 .list-pagination > div { display: flex; align-items: center; gap: 8px; }
 .list-pagination button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #cbd5e1; border-radius: 8px; color: #334155; background: #fff; cursor: pointer; }
 .list-pagination button:hover:not(:disabled) { border-color: #2457d6; color: #2457d6; background: #eef3ff; }
+
+.inventory-domestic-cost { margin-top: 18px; padding: 14px 16px; border: 2px solid #1f6f62; border-radius: 10px; background: #eef8f5; }
+.inventory-domestic-cost h4 { display: flex; align-items: center; gap: 7px; margin: 0 0 5px; color: #145c50; font-size: .92rem; }
+.inventory-domestic-cost p { margin: 0 0 12px; color: #49665f; font-size: .77rem; line-height: 1.45; }
+.inventory-domestic-cost .form-group { max-width: 320px; }
+.inventory-domestic-cost input { border-color: #478b80; background: #fff; color: #123f38; font-size: 1rem; font-weight: 800; }
 .list-pagination button:disabled { opacity: .38; cursor: default; }
 .list-pagination strong { min-width: 92px; color: #334155; text-align: center; }
 

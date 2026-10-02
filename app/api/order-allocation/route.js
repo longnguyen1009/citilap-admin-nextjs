@@ -6,7 +6,7 @@ import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 async function context(request) {
   const { DB } = getCloudflareBindings();
-  const profile = await requireSession(DB, request, ['ADMIN', 'SALES']);
+  const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
   return { db: createDatabase(DB), profile };
 }
 

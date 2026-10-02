@@ -11,6 +11,7 @@
     "cf:build": "node scripts/cloudflare-build.mjs",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:migrate:local": "wrangler d1 migrations apply DB --local",
+    "cf:admin:local": "node scripts/create-local-admin.mjs",
     "cf:test": "node --test qa/cloudflare-auth.test.mjs",
     "cf:test:runtime": "node qa/cloudflare-runtime.mjs",
     "cf:test:views": "node qa/cloudflare-view-parity.mjs",

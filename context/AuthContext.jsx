@@ -9,6 +9,7 @@ const MOCK_USERS = {
   ADMIN: { id: 'mock-1', name: 'Quản Lý', role: 'ADMIN', email: 'admin@citilap.com' },
   TECH: { id: 'mock-2', name: 'Kỹ Thuật Viên', role: 'TECH', email: 'tech@citilap.com' },
   SALES: { id: 'mock-3', name: 'Nhân Viên Sale', role: 'SALES', email: 'sales@citilap.com' },
+  SALES_TECH: { id: 'mock-4', name: 'Sale + Kỹ Thuật', role: 'SALES_TECH', email: 'sales-tech@citilap.com' },
 };
 
 const withTimeout = async (url, options, message) => {

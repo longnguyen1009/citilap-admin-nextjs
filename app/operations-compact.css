@@ -1,0 +1,107 @@
+/* Scoped operational workspace: purchases, receiving, QC and actual costs. */
+body :is(.intake-page.intake-page, .qc-page.qc-page, .cost-page.cost-page) {
+  padding: 12px; color: #243647; font-size: 13px;
+}
+body :is(.intake-page.intake-page .intake-header, .qc-page.qc-page .qc-header, .cost-page.cost-page .cost-hero) {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 0; margin:0 0 10px; border:0; border-bottom:1px solid #52718c;
+  border-radius:0; background:transparent; box-shadow:none; color:#203548;
+}
+body :is(.intake-page.intake-page .intake-header, .qc-page.qc-page .qc-header, .cost-page.cost-page .cost-hero) h1 {
+  margin:0; font-size:22px; line-height:1.4; letter-spacing:-.5px; color:#203548;
+}
+body :is(.intake-header > div > p:first-child, .qc-header > div > span, .cost-hero > div > span) { display:none; }
+body :is(.qc-page.qc-page .qc-header p, .cost-page.cost-page .cost-hero p) { margin:4px 0 0; color:#607383; font-size:12px; max-width:700px; }
+body .intake-page.intake-page .intake-header > div > span { display:none; }
+body .intake-page.intake-page .intake-header nav { display:flex; flex-wrap:wrap; gap:5px; }
+body .intake-page.intake-page .intake-header nav a { background:#fff; color:#365369; border:1px solid #52718c; padding:7px 11px; border-radius:6px; font-size:12px; }
+body :is(.intake-page.intake-page .intake-stats, .cost-page.cost-page .cost-metrics) { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0 0 10px; border:1px solid #52718c; border-radius:8px; overflow:hidden; background:#fff; }
+body :is(.intake-page.intake-page .intake-stats > div, .cost-page.cost-page .cost-metrics article) { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; margin:0; border:0; border-right:1px solid #829aaf; border-radius:0; box-shadow:none; background:#fff; }
+body :is(.intake-page.intake-page .intake-stats b, .cost-page.cost-page .cost-metrics b) { font-size:19px; line-height:1.3; font-variant-numeric:tabular-nums; }
+body :is(.intake-page.intake-page .intake-stats small, .cost-page.cost-page .cost-metrics span) { font-size:11px; color:#607383; }
+body .cost-page.cost-page .cost-metrics article { flex-direction:row-reverse; min-height:48px; }
+body .cost-page.cost-page .cost-toolbar > label { flex:1; min-width:200px; width:auto; }
+body .cost-page.cost-page .cost-toolbar > select { width:auto; flex:0 1 220px; }
+body .cost-page.cost-page .cost-metrics article > div { display:flex; flex:1; align-items:center; justify-content:space-between; flex-direction:row-reverse; gap:10px; }
+body .cost-page.cost-page .cost-metrics svg { display:none; }
+body :is(.intake-page.intake-page .intake-toolbar, .cost-page.cost-page .cost-toolbar, .qc-page .operations-toolbar) { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px; margin:0 0 10px; border:1px solid #52718c; border-radius:8px; background:#fff; box-shadow:none; }
+body :is(.intake-page.intake-page, .cost-page.cost-page, .qc-page.qc-page) :is(input:not([type=checkbox]):not([type=radio]),select) { min-height:34px; padding:6px 9px; border:1px solid #66839b; border-radius:5px; font-size:13px; box-shadow:none; }
+body :is(.intake-page.intake-page, .cost-page.cost-page, .qc-page.qc-page) :is(button,a):focus-visible { outline:2px solid #167c70; outline-offset:3px; }
+body :is(.intake-page.intake-page .intake-toolbar, .cost-page.cost-page .cost-toolbar, .qc-page .operations-toolbar) > input { flex:1; min-width:180px; }
+body .intake-page.intake-page button { font-size:12px; border-radius:5px; }
+body .intake-page.intake-page :is(.purchase-day,.intake-date-group,.intake-batch) { border:1px solid #52718c; border-radius:7px; box-shadow:none; overflow:hidden; }
+body .intake-page.intake-page :is(.purchase-day-heading,.intake-date-head,.intake-batch-head) { background:#f0f5f7; color:#29495c; border:0; border-radius:0; padding:8px 12px; min-height:36px; }
+body .intake-page.intake-page .purchase-day-heading { background:#f0f5f7; color:#29495c; }
+body .intake-page.intake-page :is(.purchase-day,.intake-batch) th { background:#f8fafb; color:#637786; border:0; border-bottom:1px solid #829aaf; font-size:11px; padding:8px; }
+body .intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr) > td:not(.purchase-supplier) { background:#fff; color:#263d4d; border:0; border-bottom:1px solid #9aafbf; padding:8px; }
+body .intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr):hover > td:not(.purchase-supplier) { background:#f4f9fa; }
+body .intake-page.intake-page .purchase-supplier { background:#f5f9f8; border:0; border-right:1px solid #729c95; }
+body .intake-page.intake-page .purchase-machine > b { white-space:normal; line-height:1.45; }
+body .intake-page.intake-page .purchase-machine > small { white-space:pre-wrap; color:#647786; }
+body .intake-page.intake-page .purchase-draft > td { background:#fffbea; border-color:#e6dbaf; }
+body .intake-page.intake-page .intake-selected-row > td:not(.purchase-supplier) { background:#eaf7f3; }
+body .intake-page.intake-page .intake-batch { margin:8px; }
+body .intake-page.intake-page .intake-batch-head { background:#fff; }
+body .intake-page.intake-page .intake-batch-actions { padding:6px 10px; }
+body .intake-page.intake-page .intake-status { border:1px solid #66839b; background:#f5f7f9; color:#435968; padding:3px 7px; border-radius:4px; font-size:11px; white-space:nowrap; }
+body .intake-page.intake-page .intake-status-available { background:#eaf7f0; color:#176b49; border-color:#c8e7d7; }
+body .intake-page.intake-page :is(.intake-status-waiting_qc,.intake-status-reserved) { background:#fff5df; color:#8b6019; border-color:#efdfba; }
+body .intake-page.intake-page .intake-status-repair { background:#fff0ee; color:#a33b32; border-color:#f0d5d0; }
+body .qc-page.qc-page .qc-score { display:flex; align-items:center; gap:8px; padding:6px 12px; border:1px solid #d6e6e1; border-radius:6px; background:#f0f8f5; }
+body .qc-page.qc-page .qc-score strong { font-size:20px; }
+body .qc-page.qc-page .qc-grid { grid-template-columns:minmax(0,1fr); gap:0; }
+body .qc-page.qc-page .qc-panel { border-radius:7px; box-shadow:none; }
+body .qc-page.qc-page .qc-panel-title { padding:9px 12px; background:#fff; }
+body .qc-page.qc-page :is(.qc-machine,.qc-history) { padding:10px 12px; background:#fff; filter:none; min-height:62px; }
+body .qc-page.qc-page :is(.qc-machine,.qc-history):hover { background:#f5f9fa; }
+body .qc-page.qc-page .qc-machine > div { min-width:0; flex:1; }
+body .qc-page.qc-page :is(.qc-machine-title,.qc-history-title) { white-space:normal; font-size:13px; line-height:1.45; }
+body .qc-page.qc-page .qc-machine button { flex-shrink:0; padding:7px 12px; font-size:12px; }
+body .qc-page .operations-toolbar button { padding:7px 12px; border:1px solid transparent; border-radius:5px; background:#f3f6f8; color:#516575; font-size:12px; font-weight:700; }
+body .qc-page .operations-toolbar button[aria-pressed=true] { background:#176d60; color:#fff; }
+body .qc-page.qc-page .qc-history .qc-result { width:28px; height:28px; border-radius:6px; box-shadow:none; }
+body .cost-page.cost-page .cost-hero button { background:#fff; color:#315468; border:1px solid #cbd8e0; padding:8px 12px; border-radius:6px; font-size:12px; white-space:nowrap; }
+body .cost-page.cost-page .cost-table-wrap { border:1px solid #52718c; border-radius:7px; box-shadow:none; overflow-x:auto; }
+body .cost-page.cost-page .cost-table { width:100%; min-width:860px; }
+body .cost-page.cost-page .cost-table th { background:#f3f7f9; color:#586f80; font-size:11px; padding:10px; white-space:nowrap; }
+body .cost-page.cost-page .cost-table td { padding:10px; font-size:12px; border-bottom:1px solid #9aafbf; }
+body .cost-page.cost-page .cost-table :is(th,td):nth-child(n+2):nth-child(-n+5) { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+body .cost-page.cost-page .cost-table td:first-child { min-width:240px; max-width:380px; }
+body .cost-page.cost-page .cost-table td:first-child b { line-height:1.5; }
+body .cost-page.cost-page .cost-table td:nth-child(5) { color:#126b5c; background:#f5fbf8; }
+body .cost-page.cost-page .cost-table tr:hover td { background:#f0f7f8; }
+body .cost-page.cost-page .cost-status { font-size:10px; padding:4px 7px; border-radius:4px; white-space:nowrap; }
+body .cost-page .cost-open { color:#176d60; background:#fff; border:1px solid #bfd6cf; border-radius:5px; padding:6px 9px; white-space:nowrap; }
+/* Strong section hierarchy and visible row/column boundaries. */
+body :is(.intake-page.intake-page .intake-header, .qc-page.qc-page .qc-header, .cost-page.cost-page .cost-hero) {
+  background:#173e60; color:#fff; padding:12px 16px; border:2px solid #10304b; border-radius:7px;
+}
+body :is(.intake-page.intake-page .intake-header, .qc-page.qc-page .qc-header, .cost-page.cost-page .cost-hero) h1 { color:#fff !important; }
+body :is(.qc-page.qc-page .qc-header p, .cost-page.cost-page .cost-hero p) { color:#e0edf8 !important; }
+body .qc-page.qc-page .qc-score { color:#145c50; }
+body :is(.intake-page.intake-page .intake-stats, .intake-page.intake-page .intake-toolbar, .intake-page.intake-page .purchase-day, .intake-page.intake-page .intake-date-group, .intake-page.intake-page .intake-batch, .qc-page.qc-page .qc-panel, .qc-page.qc-page .operations-toolbar, .cost-page.cost-page .cost-metrics, .cost-page.cost-page .cost-toolbar, .cost-page.cost-page .cost-table-wrap) { border:2px solid #52718c; }
+body .intake-page.intake-page :is(.purchase-day-heading,.intake-date-head),
+body .qc-page.qc-page :is(.qc-waiting-day > header,.qc-history-day > header,.qc-panel-title) { background:#245477; color:#fff; border-bottom:2px solid #173e60; }
+body .qc-page.qc-page .qc-panel-title :is(h2,span) { color:#fff; }
+body .intake-page.intake-page :is(.purchase-day,.intake-batch) th,
+body .cost-page.cost-page .cost-table th { background:#d8e7f3; color:#173e60; font-weight:800; border-bottom:2px solid #52718c; }
+body .intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr) > td:not(.purchase-supplier),
+body .cost-page.cost-page .cost-table td { border-right:1px solid #9aafbf; }
+body .intake-page.intake-page .purchase-supplier { background:#d4eae5; color:#124c43; border-right:2px solid #588e83; }
+body .intake-page.intake-page .purchase-draft > td { background:#fff0ba; border-top:2px solid #b98214; }
+body :is(.intake-page.intake-page .intake-stats > div,.cost-page.cost-page .cost-metrics article) { background:#edf4fa; color:#173e60; }
+body :is(.intake-page.intake-page .intake-stats small,.cost-page.cost-page .cost-metrics span) { color:#324f66; font-weight:700; }
+body .intake-page.intake-page .intake-status { border:1px solid currentColor; font-weight:800; }
+body .qc-page.qc-page :is(.qc-machine,.qc-history) { border-bottom:1px solid #829aaf; }
+body .qc-page .operations-toolbar button { border:1px solid #52718c; color:#173e60; }
+body .qc-page .operations-toolbar button[aria-pressed=true] { background:#145c50; border-color:#0e443b; color:#fff; }
+body .cost-page .cost-open { background:#145c50; border:1px solid #0e443b; color:#fff; font-weight:700; }
+body .cost-page.cost-page .cost-table td:nth-child(5) { background:#e0f0e8; color:#105443; font-weight:800; }
+@media(max-width:760px) {
+  body :is(.intake-page.intake-page .intake-header,.qc-page.qc-page .qc-header,.cost-page.cost-page .cost-hero) { flex-wrap:wrap; gap:8px; }
+  body :is(.intake-page.intake-page .intake-stats,.cost-page.cost-page .cost-metrics) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body :is(.intake-page.intake-page .intake-stats > div,.cost-page.cost-page .cost-metrics article) { border-bottom:1px solid #829aaf; padding:9px; }
+  body .qc-page .operations-toolbar > input { flex-basis:100%; }
+  body .qc-page.qc-page .qc-machine { flex-wrap:wrap; }
+  body .cost-page.cost-page .cost-hero button { margin:0; }
+}

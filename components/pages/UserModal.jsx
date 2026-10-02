@@ -176,6 +176,7 @@ export default function UserModal({ isOpen, onClose, onSuccess, initialData }) {
               >
                 <option value="SALES">Sales (Bán hàng)</option>
                 <option value="TECHNICAL">Technical (Kỹ thuật)</option>
+                <option value="SALES_TECH">Sale + Kỹ thuật</option>
                 <option value="ADMIN">Admin (Quản trị viên)</option>
               </select>
             </div>

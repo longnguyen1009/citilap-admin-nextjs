@@ -4,7 +4,7 @@ import { ALLOWED_OPTION_GROUPS, isExtensibleOptionGroup, isSystemOptionGroup } f
 import { repairMojibake } from '@/lib/textEncoding';
 
 export async function GET(request) {
-  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
   const { data, error } = await db.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

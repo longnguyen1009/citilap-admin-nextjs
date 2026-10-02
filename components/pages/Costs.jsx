@@ -150,7 +150,7 @@ export default function Costs() {
 
     <section className="cost-toolbar">
       <label><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm tên, serial, vị trí" /></label>
-      <select value={status} onChange={event => setStatus(event.target.value)}>
+      <select aria-label="Lọc giá vốn" value={status} onChange={event => setStatus(event.target.value)}>
         <option value="">Tất cả trạng thái</option>
         <option value="COMPLETE">Đủ dữ liệu</option>
         <option value="INCOMPLETE">Thiếu dữ liệu</option>
@@ -160,7 +160,7 @@ export default function Costs() {
     <div className="cost-layout cost-layout-wide">
       <section className="cost-table-wrap">
         <table className="cost-table">
-          <thead><tr><th>Laptop</th><th>Giá mua</th><th>Vận chuyển</th><th>Sửa / nâng cấp</th><th>Giá vốn</th><th>Độ đầy đủ</th></tr></thead>
+          <thead><tr><th>Laptop</th><th>Giá mua</th><th>Vận chuyển</th><th>Sửa / nâng cấp</th><th>Giá vốn</th><th>Độ đầy đủ</th><th>Thao tác</th></tr></thead>
           <tbody>{costPages.pageRows.map(row => <tr key={row.laptop_id} onClick={() => open(row)}>
             <td><b>{row.laptops?.name || `Laptop #${row.laptop_id}`}</b><small>{row.laptops?.serial || 'Chưa có serial'} · {row.laptops?.location || '—'}</small></td>
             <td>{vnd(row.purchase_cost_vnd)}</td>
@@ -168,6 +168,7 @@ export default function Costs() {
             <td>{vnd(Number(row.repair_cost_vnd) + Number(row.upgrade_cost_vnd) + Number(row.accessory_cost_vnd) + Number(row.other_cost_vnd))}</td>
             <td><strong>{vnd(row.landed_cost_vnd)}</strong></td>
             <td><span className={`cost-status ${row.cost_status}`}>{row.cost_status === 'COMPLETE' ? 'ĐỦ DỮ LIỆU' : 'CẦN BỔ SUNG'}</span>{row.reasons?.map(reason => <small key={reason}>{REASON_LABELS[reason] || reason}</small>)}</td>
+            <td><button className="cost-open" onClick={event => { event.stopPropagation(); open(row); }}>Chi tiết</button></td>
           </tr>)}</tbody>
         </table>
         {!visible.length && <div className="cost-empty">Không có laptop phù hợp bộ lọc.</div>}

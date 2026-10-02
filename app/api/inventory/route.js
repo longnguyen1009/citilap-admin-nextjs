@@ -17,7 +17,7 @@ const diffObject = (before, after, fields) => Object.fromEntries(fields.filter(k
 
 export async function GET(request) {
   try {
-  const { db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+  const { db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
   const timing = createTiming();
   const isAdmin = profile.role === 'ADMIN';
 
@@ -74,15 +74,36 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Không thể tải thông tin người giữ máy. Vui lòng thử lại.' }, { status: 503 });
   }
   const [{ data: customers }, { data: users }] = people;
+  const purchaseBatchIds = [...new Set(data.map(item => Number(item.purchaseBatchId)).filter(Number.isSafeInteger))];
+  const batchResult = purchaseBatchIds.length
+    ? await db.from('purchase_batches').select('id,batch_code,supplier_id').in('id', purchaseBatchIds)
+    : { data: [], error: null };
+  if (batchResult.error) {
+    return NextResponse.json({ error: 'Không thể tải nguồn nhập của laptop. Vui lòng thử lại.' }, { status: 503 });
+  }
+  const supplierIds = [...new Set((batchResult.data || []).map(batch => batch.supplier_id).filter(Boolean))];
+  const supplierResult = supplierIds.length
+    ? await db.from('suppliers').select('id,name,display_name').in('id', supplierIds)
+    : { data: [], error: null };
+  if (supplierResult.error) {
+    return NextResponse.json({ error: 'Không thể tải nhà cung cấp của laptop. Vui lòng thử lại.' }, { status: 503 });
+  }
+  const batchById = new Map((batchResult.data || []).map(batch => [String(batch.id), batch]));
+  const supplierById = new Map((supplierResult.data || []).map(supplier => [String(supplier.id), supplier]));
   const customerById = new Map((customers || []).map(item => [String(item.id), item]));
   const userById = new Map((users || []).map(item => [String(item.id), item]));
   const reservationByLaptop = new Map((reservations || []).map(item => [String(item.laptop_id), item]));
   const tradeInByLaptop = new Map((tradeIns || []).map(item => [String(item.inventory_laptop_id), item.trade_in_code]));
-  const canSeeCustomer = ['ADMIN', 'SALES'].includes(profile.role);
+  const canSeeCustomer = ['ADMIN', 'SALES', 'SALES_TECH'].includes(profile.role);
   const enriched = data.map(item => {
     const reservation = reservationByLaptop.get(String(item.id));
+    const batch = batchById.get(String(item.purchaseBatchId));
+    const supplier = batch ? supplierById.get(String(batch.supplier_id)) : null;
     return {
       ...item,
+      supplierName: supplier ? (supplier.display_name || supplier.name) : (item.seller || null),
+      domesticSourceName: ['1', '2'].includes(String(item.sourceReferenceId)) ? (item.seller || null) : undefined,
+      batchCode: batch?.batch_code || null,
       activeReservation: reservation ? {
         id: reservation.id,
         code: reservation.reservation_code,
@@ -106,26 +127,36 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'STAFF']);
+    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
     const isAdmin = profile.role === 'ADMIN';
     const rawPayload = await request.json();
     const { searchParams } = new URL(request.url);
     const isCreateRequest = searchParams.get('mode') === 'create';
-    if (isCreateRequest && !isAdmin) {
-      return NextResponse.json({ error: 'Chỉ quản trị viên được tạo laptop mới.' }, { status: 403 });
+    const canCreateDomestic = ['SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role);
+    if (isCreateRequest && isAdmin) {
+      return NextResponse.json({ error: 'ADMIN tạo laptop mới qua màn hình Lô mua hàng.' }, { status: 400 });
     }
-    if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL'].includes(profile.role)) {
+    if (isCreateRequest && !canCreateDomestic) {
+      return NextResponse.json({ error: 'Bạn không có quyền tạo laptop mới.' }, { status: 403 });
+    }
+    if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
-    const body = sanitizePayload(rawPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS, isAdmin);
-    if (body.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL'].includes(profile.role)) {
+    const directSensitiveKeys = SENSITIVE_LAPTOP_KEYS.filter(key => key !== 'importPriceVnd');
+    const payloadForSanitize = isCreateRequest ? { ...rawPayload } : rawPayload;
+    if (isCreateRequest) directSensitiveKeys.forEach(key => { delete payloadForSanitize[key]; });
+    const body = sanitizePayload(payloadForSanitize, LAPTOP_PAYLOAD_KEYS,
+      isCreateRequest ? directSensitiveKeys : SENSITIVE_LAPTOP_KEYS, isAdmin);
+    if (body.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
     delete body.createdAt;
     delete body.updatedAt;
 
     // P0.4: Trả lỗi nếu non-admin gửi field nhạy cảm
-    if (!isAdmin && SENSITIVE_LAPTOP_KEYS.some(k => rawPayload?.[k] !== undefined && rawPayload[k] !== null && rawPayload[k] !== '')) {
+    const forbiddenSensitiveKeys = isCreateRequest ? directSensitiveKeys : SENSITIVE_LAPTOP_KEYS;
+    if (!isAdmin && forbiddenSensitiveKeys.some(k => rawPayload?.[k] !== undefined && rawPayload[k] !== null
+      && rawPayload[k] !== '' && Number(rawPayload[k]) !== 0)) {
       return NextResponse.json({ error: 'Bạn không có quyền thay đổi các trường tài chính nhạy cảm.' }, { status: 403 });
     }
 
@@ -142,7 +173,36 @@ export async function POST(request) {
     }
 
     if (isCreateRequest) {
-      return NextResponse.json({ error: 'Hãy tạo máy qua Lô mua, Nhận máy chưa rõ nguồn hoặc Thu cũ đổi mới.' }, { status: 400 });
+      const supplierId = String(body.sourceReferenceId || '');
+      if (!['1', '2'].includes(supplierId)) {
+        return NextResponse.json({ error: 'Nguồn nhập nội địa không hợp lệ.' }, { status: 400 });
+      }
+      if (body.importPriceVnd === undefined || body.importPriceVnd === '' || Number(body.importPriceVnd) <= 0) {
+        return NextResponse.json({ error: 'Vui lòng nhập giá vốn VNĐ lớn hơn 0.' }, { status: 400 });
+      }
+      const supplier = await db.from('suppliers').select('id,name,display_name').eq('id', supplierId).eq('active', 1).maybeSingle();
+      if (supplier.error || !supplier.data) {
+        return NextResponse.json({ error: 'Nguồn nhập nội địa chưa được khởi tạo.' }, { status: 400 });
+      }
+      const row = keysToSnake({
+        ...body,
+        id: undefined,
+        seller: supplier.data.display_name || supplier.data.name,
+        sourceReferenceId: supplierId,
+        priceRmb: 0,
+        shippingRmb: 0,
+        status: 'available',
+        isActive: true,
+        createdBy: profile.name,
+      });
+      delete row.id;
+      delete row.exchange_rate;
+      const result = await db.from('laptops').insert(row).select().single();
+      if (result.error) throw new Error(result.error.message);
+      const created = keysToCamel(result.data);
+      created.domesticSourceName = supplier.data.display_name || supplier.data.name;
+      await writeAudit(DB, 'LAPTOP', created.id, 'CREATE', pickAuditFields(created, LAPTOP_AUDIT_FIELDS), profile.name);
+      return NextResponse.json(filterSensitiveFields([created], SENSITIVE_LAPTOP_KEYS)[0], { status: 201 });
     }
 
     if (!Number.isSafeInteger(Number(body.id)) || Number(body.id) <= 0) {
@@ -166,6 +226,12 @@ export async function POST(request) {
           return NextResponse.json({ error: 'Chỉ admin được đổi tháng dữ liệu.' }, { status: 403 });
         }
         delete body.isActive;
+
+        // Supplier lineage is derived from purchase_batch_id. Do not copy a display
+        // name from the Inventory form back into the laptop row.
+        if (['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
+          delete body.seller;
+        }
 
         if (!isAdmin && ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
           const oldLaptop = keysToCamel(oldData);
