@@ -142,7 +142,10 @@ export async function POST(request) {
     if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
-    const directSensitiveKeys = SENSITIVE_LAPTOP_KEYS.filter(key => key !== 'importPriceVnd');
+    // The browser includes its exchange-rate default and supplier warranty text.
+    // Domestic intake ignores the exchange rate because RMB and shipping are fixed at 0.
+    const directCreateAllowedSensitiveKeys = new Set(['importPriceVnd', 'warrantySupplier', 'exchangeRate']);
+    const directSensitiveKeys = SENSITIVE_LAPTOP_KEYS.filter(key => !directCreateAllowedSensitiveKeys.has(key));
     const payloadForSanitize = isCreateRequest ? { ...rawPayload } : rawPayload;
     if (isCreateRequest) directSensitiveKeys.forEach(key => { delete payloadForSanitize[key]; });
     const body = sanitizePayload(payloadForSanitize, LAPTOP_PAYLOAD_KEYS,

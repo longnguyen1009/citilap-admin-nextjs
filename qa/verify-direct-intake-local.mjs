@@ -43,6 +43,8 @@ try {
       importPriceVnd: 12.34,
       priceRmb: 0,
       shippingRmb: 0,
+      exchangeRate: 3990,
+      warrantySupplier: 'Bao test 7 ngày',
       sourceReferenceId: '1',
       status: 'available',
       monthKey: new Intl.DateTimeFormat('en-GB', { month: '2-digit', year: 'numeric' }).format(new Date()),
