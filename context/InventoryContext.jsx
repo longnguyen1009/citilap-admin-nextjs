@@ -30,7 +30,7 @@ import { useAuth } from './AuthContext';
 const InventoryContext = createContext();
 
 // ─── Phân quyền data: ẩn thông tin nhạy cảm theo role ─────────────────
-const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'warrantySupplier', 'purchasePriceRmb', 'purchaseExchangeRate'];
+const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'customProfit', 'purchasePriceRmb', 'purchaseExchangeRate'];
 const SENSITIVE_ORDER_KEYS = [
   'profitVnd', 'costSnapshotVnd', 'grossProfitSnapshotVnd',
   'directCostSnapshotVnd', 'netContributionSnapshotVnd',
@@ -1249,7 +1249,11 @@ const mapLabelsToKeys = (fields, appOpts) => {
     // Wait for the API so database validation errors remain visible and the modal
     // only closes after battery_health/qc_details have both been persisted.
     try {
-      const saved = await saveLaptopToCloud(finalLaptop);
+      const apiPayload = { ...finalLaptop };
+      if (user?.role !== 'ADMIN') {
+        SENSITIVE_LAPTOP_KEYS.forEach(key => { delete apiPayload[key]; });
+      }
+      const saved = await saveLaptopToCloud(apiPayload);
       setLaptops(prev => prev.map(laptop => laptop.id == id ? { ...finalLaptop, ...saved } : laptop));
     } catch (error) {
       setLaptops(prev => prev.map(laptop => laptop.id == id ? currentLaptop : laptop));

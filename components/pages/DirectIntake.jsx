@@ -48,6 +48,11 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
   const busy = useRef(false), receiptKey = useRef(null);
 
   const load = useCallback(async (options) => {
+    if (!receiving && !batchId && !isAdmin) {
+      setLoading(false);
+      setError('');
+      return;
+    }
     const background = options?.background === true;
     if (!background) setLoading(true);
     try {
@@ -59,7 +64,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
     } finally {
       if (!background) setLoading(false);
     }
-  }, [batchId, receiving, selectedMonth]);
+  }, [batchId, receiving, selectedMonth, isAdmin]);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
@@ -117,6 +122,14 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
       setMessage(`Đã nhận ${expected.length + unknown.length} máy và chuyển sang Chờ QC.`);
     });
   }
+
+  if (!receiving && !batchId && !isAdmin) return <main className="intake-page">
+    <section className="intake-panel" style={{ margin: '24px' }}>
+      <h2>Không có quyền truy cập</h2>
+      <p>Lô mua hàng và thông tin giá nhập chỉ dành cho tài khoản Admin.</p>
+      <Link className="btn btn-primary" href="/receiving">Đi đến Nhận hàng</Link>
+    </section>
+  </main>;
 
   return <main className={`intake-page ${receiving ? 'intake-receiving-page' : ''}`}>
     <header className="intake-header"><div><p>PROCUREMENT / CITILAP</p><h1>{receiving ? 'Nhận hàng' : 'Lô mua hàng'}</h1><span>{receiving ? 'Tìm mã kiện · Chọn máy · Chuyển QC' : 'Theo dõi nhà cung cấp, giá mua và tiến độ nhận hàng.'}</span></div><nav>{isAdmin && <Link href="/purchases">Lô mua</Link>}<Link href="/receiving">Nhận hàng</Link>{canUseQc && <Link href="/qc">QC →</Link>}{isAdmin && <Link href="/suppliers">Nhà cung cấp</Link>}</nav></header>
