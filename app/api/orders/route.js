@@ -14,13 +14,35 @@ const keysToSnake = value => {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [snakeKey(key), keysToSnake(item)]));
 };
 
+const normalizeGiftAccessoryIds = value => {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null || value === '') return [];
+  if (typeof value !== 'string') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : value;
+  } catch {
+    return value;
+  }
+};
+
+const normalizeOrderJsonFields = order => {
+  if (!order || typeof order !== 'object') return order;
+  if (!Object.hasOwn(order, 'giftAccessoryIds')) return { ...order };
+  return { ...order, giftAccessoryIds: normalizeGiftAccessoryIds(order.giftAccessoryIds) };
+};
+
 async function context(request, roles) {
   const { DB } = getCloudflareBindings();
   return { DB, db: createDatabase(DB), profile: await requireSession(DB, request, roles) };
 }
 
 async function saveOrder(db, order, actor, persisted) {
-  const dbRow = keysToSnake(order);
+  const normalizedOrder = normalizeOrderJsonFields(order);
+  for (const key of ['laptopId', 'requestedLaptopId', 'tradeInLaptopId', 'customerId', 'branchId']) {
+    if (normalizedOrder[key] === '') normalizedOrder[key] = null;
+  }
+  const dbRow = keysToSnake(normalizedOrder);
   if (!persisted) {
     delete dbRow.id;
     if (!dbRow.month_key) dbRow.month_key = businessMonthKey();
@@ -28,7 +50,9 @@ async function saveOrder(db, order, actor, persisted) {
   const operation = persisted ? 'update_order_with_inventory' : 'create_order_with_inventory';
   const { data, error } = await db.rpc(operation, { p_order: dbRow, p_recorded_by: actor });
   if (error) throw Object.assign(new Error(error.message), { status: error.status || 400 });
-  return keysToCamel(data);
+  const saved = keysToCamel(data);
+  if (saved?.order) return { ...saved, order: normalizeOrderJsonFields(saved.order) };
+  return normalizeOrderJsonFields(saved);
 }
 
 export async function GET(request) {
@@ -57,7 +81,7 @@ export async function GET(request) {
     if (paginated) requestQuery = requestQuery.range(offset, offset + limit - 1);
     const response = await requestQuery;
     if (response.error) throw new Error(response.error.message);
-    const rows = keysToCamel(response.data);
+    const rows = keysToCamel(response.data).map(normalizeOrderJsonFields);
     return paginated
       ? { data: rows, total: response.count || 0, offset, limit, hasMore: offset + rows.length < (response.count || 0) }
       : rows;
@@ -126,6 +150,9 @@ export async function POST(request) {
     }
     for (const key of protectedCostFields) delete rawPayload[key];
     const body = sanitizePayload(rawPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
+    if (body.giftAccessoryIds !== undefined) {
+      body.giftAccessoryIds = normalizeGiftAccessoryIds(body.giftAccessoryIds);
+    }
     delete body.createdAt;
     delete body.updatedAt;
     delete body.laptopLocked;
@@ -205,6 +232,14 @@ export async function POST(request) {
       const tradeInCredit = Number(body.tradeInCreditVnd || 0) / 1000000;
       body.debtAmount = Math.max(0, salePrice - body.amountPaid - tradeInCredit);
       body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount ?? oldData.cod_amount ?? 0), 0));
+
+      const storedGiftAccessoryIds = normalizeGiftAccessoryIds(oldData.gift_accessory_ids);
+      if (Array.isArray(body.giftAccessoryIds)
+        && Array.isArray(storedGiftAccessoryIds)
+        && JSON.stringify(body.giftAccessoryIds) === JSON.stringify(storedGiftAccessoryIds)) {
+        delete body.giftAccessoryIds;
+      }
+
     }
 
     // P0.4: Trả lỗi nếu non-admin gửi profitVnd
@@ -247,7 +282,8 @@ export async function POST(request) {
         .select('id, order_status, payment_status')
         .eq('laptop_id', laptopId)
         .eq('is_active', true)
-        .not('order_status', 'in', '(cancelled,returned)')
+        .neq('order_status', 'cancelled')
+        .neq('order_status', 'returned')
         .not('payment_status', 'eq', 'refunded')
         .maybeSingle();
       if (conflictOrder && (!persistedId || conflictOrder.id !== body.id)) {
@@ -266,14 +302,12 @@ export async function POST(request) {
       }
     }
 
-    const reservationTargets = [...new Set([body.laptopId]
-      .filter(value => /^\d+$/.test(String(value)))
-      .map(Number))];
-    if (reservationTargets.length) {
+    const reservationLaptopId = /^\d+$/.test(String(body.laptopId)) ? Number(body.laptopId) : null;
+    if (reservationLaptopId) {
       const { data: activeReservations, error: reservationError } = await db
         .from('reservations')
         .select('reservation_code,order_id,laptop_id')
-        .in('laptop_id', reservationTargets)
+        .eq('laptop_id', reservationLaptopId)
         .eq('status', 'ACTIVE')
         .gt('expires_at', new Date().toISOString());
       if (reservationError) throw new Error(reservationError.message);

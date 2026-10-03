@@ -4,6 +4,8 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
+const RECEIVING_ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'];
+const RECEIVING_PRICE_FIELDS = ['purchase_price_rmb', 'shipping_rmb', 'purchase_exchange_rate', 'import_price_vnd'];
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const keyOf = value => {
   const key = String(value || '').trim();
@@ -21,26 +23,45 @@ async function allRows(query) {
 }
 
 export async function GET(request) {
-  let db;
+  let db, profile;
+  const params = new URL(request.url).searchParams;
+  const receiving = params.get('mode') === 'receiving';
   try {
     const { DB } = getCloudflareBindings();
-    await requireSession(DB, request, ['ADMIN']);
+    profile = await requireSession(DB, request, receiving ? RECEIVING_ROLES : ['ADMIN']);
     db = createDatabase(DB);
   } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
-  const params = new URL(request.url).searchParams;
   let scope;
   try { scope = parseListScope(params); }
   catch (error) { return NextResponse.json({ error: error.message }, { status: 400 }); }
   const batchId = params.get('batchId');
   if (batchId && !validId(batchId)) return NextResponse.json({ error: 'Mã lô không hợp lệ' }, { status: 400 });
-  const receiving = params.get('mode') === 'receiving';
+  const isAdmin = profile.role === 'ADMIN';
   const purchaseRange = !batchId && !scope.all && !receiving ? monthDateRange(scope.monthKey) : null;
+  const laptopFields = batchJoin => `id,sku,purchase_batch_id,source_type,name,category,serial,tracking_code_cn,purchase_price_rmb,shipping_rmb,purchase_exchange_rate,import_price_vnd,status,received_at,condition_note,month_key,${batchJoin}`;
+  const baseLaptopQuery = batchJoin => db.from('laptops')
+    .select(laptopFields(batchJoin))
+    .eq('is_active', true)
+    .in('source_type', ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT', 'UNKNOWN'])
+    .order('id', { ascending: false });
   const [laptops, suppliers, options] = await Promise.all([
-    allRows(() => {
-      const batchJoin = `purchase_batches${purchaseRange ? '!inner' : ''}(id,batch_code,supplier_id,purchase_date,exchange_rate,suppliers(name))`;
-      let query = db.from('laptops').select(`id,sku,purchase_batch_id,source_type,name,category,serial,tracking_code_cn,purchase_price_rmb,shipping_rmb,purchase_exchange_rate,import_price_vnd,status,received_at,condition_note,month_key,${batchJoin}`).eq('is_active', true).in('source_type', ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT', 'UNKNOWN']).order('id', { ascending: false });
+    purchaseRange ? (async () => {
+      const batchJoin = 'purchase_batches!inner(id,batch_code,supplier_id,purchase_date,exchange_rate,suppliers(name))';
+      const [dated, unresolved] = await Promise.all([
+        allRows(() => baseLaptopQuery(batchJoin)
+          .gte('purchase_batches.purchase_date', purchaseRange.start)
+          .lt('purchase_batches.purchase_date', purchaseRange.end)),
+        allRows(() => baseLaptopQuery('purchase_batches(id,batch_code,supplier_id,purchase_date,exchange_rate,suppliers(name))')
+          .eq('source_type', 'UNKNOWN')
+          .eq('month_key', scope.monthKey)),
+      ]);
+      if (dated.error) return dated;
+      if (unresolved.error) return unresolved;
+      const unique = new Map([...dated.data, ...unresolved.data].map(row => [String(row.id), row]));
+      return { data: [...unique.values()].sort((a, b) => Number(b.id) - Number(a.id)), error: null };
+    })() : allRows(() => {
+      let query = baseLaptopQuery('purchase_batches(id,batch_code,supplier_id,purchase_date,exchange_rate,suppliers(name))');
       if (batchId) query = query.eq('purchase_batch_id', Number(batchId));
-      if (purchaseRange) query = query.gte('purchase_batches.purchase_date', purchaseRange.start).lt('purchase_batches.purchase_date', purchaseRange.end);
       if (receiving) query = query.eq('status', 'in_transit');
       return query;
     }),
@@ -53,15 +74,16 @@ export async function GET(request) {
   const batches = new Map();
   const rows = laptops.data.map(({ purchase_batches: batch, ...laptop }) => {
     if (batch) batches.set(batch.id, { id: batch.id, batch_code: batch.batch_code, supplier_id: batch.supplier_id,
-      purchase_date: batch.purchase_date, exchange_rate: batch.exchange_rate,
+      purchase_date: batch.purchase_date, ...(isAdmin ? { exchange_rate: batch.exchange_rate } : {}),
       supplier_name: batch.suppliers?.name || '' });
-    return laptop;
+    if (isAdmin) return laptop;
+    return Object.fromEntries(Object.entries(laptop).filter(([key]) => !RECEIVING_PRICE_FIELDS.includes(key)));
   });
   return NextResponse.json({
     batches: [...batches.values()],
     laptops: rows,
     unresolved: rows.filter(row => row.source_type === 'UNKNOWN'),
-    suppliers: suppliers.data,
+    suppliers: isAdmin ? suppliers.data : [],
     categories
   }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
@@ -69,8 +91,11 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN']);
+    const profile = await requireSession(DB, request, RECEIVING_ROLES);
     const body = await request.json();
+    if (profile.role !== 'ADMIN' && body.action !== 'receive') {
+      return NextResponse.json({ error: 'Bạn chỉ có quyền xác nhận nhận hàng.' }, { status: 403 });
+    }
     const db = createDatabase(DB);
     const actor = profile.name || 'Admin';
     let result;

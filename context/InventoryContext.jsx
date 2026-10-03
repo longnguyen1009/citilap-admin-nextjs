@@ -30,7 +30,7 @@ import { useAuth } from './AuthContext';
 const InventoryContext = createContext();
 
 // ─── Phân quyền data: ẩn thông tin nhạy cảm theo role ─────────────────
-const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'seller', 'warrantySupplier', 'purchasePriceRmb', 'purchaseExchangeRate'];
+const SENSITIVE_LAPTOP_KEYS = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'profitVnd', 'warrantySupplier', 'purchasePriceRmb', 'purchaseExchangeRate'];
 const SENSITIVE_ORDER_KEYS = [
   'profitVnd', 'costSnapshotVnd', 'grossProfitSnapshotVnd',
   'directCostSnapshotVnd', 'netContributionSnapshotVnd',
@@ -1059,6 +1059,14 @@ const mapLabelsToKeys = (fields, appOpts) => {
 
     // Converting a deposit into a committed order allocates the requested
     // machine. The normal laptop conflict check below then makes this atomic.
+    const committingRequestedLaptop = !isOrderCommitted(currentOrder, appOptions)
+      && isOrderCommitted(merged, appOptions)
+      && !merged.laptopId
+      && merged.requestedLaptopId;
+    if (committingRequestedLaptop) {
+      merged.laptopId = merged.requestedLaptopId;
+      merged.laptopLocked = true;
+    }
 
     const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
     if (isLocked && !releasingPhysicalLaptop && merged.laptopId !== currentOrder.laptopId) {
@@ -1206,10 +1214,16 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const duplicatedSerial = serial && laptops.some(laptop => laptop.id !== id && String(laptop.serial || '').trim().toLowerCase() === serial.toLowerCase());
     if (duplicatedSerial) return { ok: false, message: `Serial ${serial} đã tồn tại ở một máy khác.` };
 
+    const normalizedBatteryHealth = updatedFields.batteryHealth === '' || updatedFields.batteryHealth === null
+      ? null
+      : updatedFields.batteryHealth;
+    const normalizedUpdatedFields = updatedFields.batteryHealth !== undefined
+      ? { ...updatedFields, batteryHealth: normalizedBatteryHealth }
+      : updatedFields;
     const qcDetails = updatedFields.batteryHealth !== undefined
-      ? { ...(currentLaptop.qcDetails || {}), batteryHealth: updatedFields.batteryHealth === '' ? '' : String(updatedFields.batteryHealth) }
+      ? { ...(currentLaptop.qcDetails || {}), batteryHealth: normalizedBatteryHealth === null ? null : String(normalizedBatteryHealth) }
       : currentLaptop.qcDetails;
-    const merged = { ...currentLaptop, ...updatedFields, qcDetails, serial, updatedAt: new Date().toISOString() };
+    const merged = { ...currentLaptop, ...normalizedUpdatedFields, qcDetails, serial, updatedAt: new Date().toISOString() };
     const explicitImportPrice = updatedFields.importPriceVnd !== undefined && updatedFields.importPriceVnd !== ''
       ? parseFlexibleFloat(updatedFields.importPriceVnd)
       : null;
@@ -1336,7 +1350,8 @@ const mapLabelsToKeys = (fields, appOpts) => {
     // Use the server-normalized row so the first render matches the next reload.
     const persistedLaptop = { ...newItem, ...savedData, id: savedData.id };
     setLaptops(prev => [persistedLaptop, ...prev.filter(item => String(item.id) !== String(persistedLaptop.id))]);
-    addStockMovement({ laptopId: persistedLaptop.id, type: 'NHẬP KHO', note: persistedLaptop.conditionNote || 'Tạo mới máy trong kho' });
+    // The inventory CREATE audit is written by the trusted server route. Do not
+    // issue a second client-side manual stock event: those events are ADMIN-only.
     return { ok: true, laptop: persistedLaptop };
   };
 

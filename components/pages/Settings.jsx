@@ -136,9 +136,10 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
 
   const title = GROUP_TITLES[groupKey] || groupKey;
   const canExtend = isExtensibleOptionGroup(groupKey);
+  const safeOptions = Array.isArray(options) ? options : [];
   
   // Sort options alphabetically by label for consistency
-  const sortedOptions = [...(options || [])].sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  const sortedOptions = [...safeOptions].sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   const optionPages = useListPagination(sortedOptions, groupKey);
 
   const handleAddNewOption = async (e) => {
@@ -152,14 +153,18 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
     }
     
     // Check if key already exists locally
-    if (options.some(o => String(o.option_key).toLowerCase() === trimmedKey.toLowerCase())) {
+    if (safeOptions.some(o => String(o.option_key).toLowerCase() === trimmedKey.toLowerCase())) {
       toast.error('Mã này đã tồn tại trong nhóm!');
       return;
     }
 
     setIsSubmitting(true);
-    const success = await onAdd(groupKey, trimmedKey, trimmedLabel);
-    setIsSubmitting(false);
+    let success = false;
+    try {
+      success = await onAdd(groupKey, trimmedKey, trimmedLabel);
+    } finally {
+      setIsSubmitting(false);
+    }
 
     if (success) {
       setNewLabelInput('');
@@ -192,7 +197,7 @@ function GroupPanel({ groupKey, options, onAdd, onUpdate, onDelete }) {
             {title}
           </span>
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-            ({options?.length || 0} lựa chọn)
+            ({safeOptions.length} lựa chọn)
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -7,7 +7,8 @@ import {
   useInventory,
   computeImportPrice,
   computeProfit,
-  parseFlexibleFloat
+  parseFlexibleFloat,
+  parseMonthYear
 } from '../../context/InventoryContext';
 import { D } from '../../lib/fieldOptions';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
@@ -189,6 +190,25 @@ export default function Inventory() {
   const [isTechCheckModalOpen, setIsTechCheckModalOpen] = useState(false);
   const [techCheckLaptop, setTechCheckLaptop] = useState(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [sourceSuppliers, setSourceSuppliers] = useState(DOMESTIC_SUPPLIERS);
+
+  useEffect(() => {
+    if (!user?.role) return;
+    let active = true;
+    getAuthHeaders()
+      .then(headers => fetch('/api/suppliers', { headers }))
+      .then(async response => response.ok ? response.json() : Promise.reject(new Error('Không tải được nhà cung cấp')))
+      .then(rows => {
+        if (!active || !Array.isArray(rows)) return;
+        const normalized = rows.filter(row => row.active === undefined || (row.active !== false && Number(row.active) !== 0)).map(row => ({
+          id: String(row.id),
+          name: row.display_name || row.name,
+        })).filter(row => row.id && row.name);
+        if (normalized.length) setSourceSuppliers(normalized);
+      })
+      .catch(() => { /* Keep the two seeded domestic sources as a safe fallback. */ });
+    return () => { active = false; };
+  }, [user?.role]);
 
   // Form State cho Thêm / Sửa Laptop
   const emptyForm = {
@@ -219,9 +239,10 @@ export default function Inventory() {
 
   const [formData, setFormData] = useState(emptyForm);
 
-  const supplierOptions = useMemo(() => [...new Set(
-    laptops.map(laptop => String(laptop.supplierName || laptop.seller || '').trim()).filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b, 'vi')), [laptops]);
+  const supplierOptions = useMemo(() => [...new Set([
+    ...sourceSuppliers.map(source => source.name),
+    ...laptops.map(laptop => String(supplierNameOf(laptop)).trim()).filter(Boolean),
+  ])].sort((a, b) => a.localeCompare(b, 'vi')), [laptops, sourceSuppliers]);
 
   // Formula Form State
   const [formulaForm, setFormulaForm] = useState({
@@ -458,9 +479,16 @@ export default function Inventory() {
     savingRef.current = true;
     setIsSaving(true);
     try {
+    const storedMonthKey = String(editingLaptop?.monthKey || '');
+    const normalizedFormData = editingLaptop ? {
+      ...formData,
+      monthKey: /^(0[1-9]|1[0-2])\/\d{4}$/.test(storedMonthKey)
+        ? storedMonthKey
+        : parseMonthYear(formData.warehouseDate || formData.importDate),
+    } : formData;
     const computedPayloadWithUiState = !formData.importPriceManuallyEdited && liveImportPrice > 0
-      ? { ...formData, importPriceVnd: liveImportPrice }
-      : formData;
+      ? { ...normalizedFormData, importPriceVnd: liveImportPrice }
+      : normalizedFormData;
     const { importPriceManuallyEdited: _importPriceManuallyEdited, ...computedPayload } = computedPayloadWithUiState;
     if (editingLaptop) {
       const result = await updateLaptop(editingLaptop.id, computedPayload);
@@ -1230,7 +1258,7 @@ export default function Inventory() {
                     <label htmlFor="inventory-source-supplier">Nguồn nhập</label>
                     {!editingLaptop && DIRECT_CREATE_ROLES.has(user?.role) ? <select id="inventory-source-supplier" className="form-control" required
                       value={formData.sourceReferenceId} onChange={e => setFormData({ ...formData, sourceReferenceId: e.target.value })}>
-                      {DOMESTIC_SUPPLIERS.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
+                      {sourceSuppliers.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
                     </select> : <div className="form-control" aria-readonly="true">{formData.seller || 'Chưa xác định'}</div>}
                     {editingLaptop?.batchCode && <small style={{ display: 'block', marginTop: '4px' }}><Link href={`/purchases/${editingLaptop.purchaseBatchId}`}>{editingLaptop.batchCode} ↗</Link></small>}
                   </div>

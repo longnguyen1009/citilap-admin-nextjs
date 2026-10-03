@@ -34,6 +34,7 @@ import {
 
 export default function MainLayout({ children }) {
   const { user, logout } = useAuth();
+  const canReceive = ['ADMIN','SALES','TECH','TECHNICAL','SALES_TECH'].includes(user?.role);
   const { dataLoading, loadingStage, cloudStatus } = useInventory();
   const navigate = useRouter();
   const pathname = usePathname();
@@ -148,10 +149,10 @@ export default function MainLayout({ children }) {
           {['ADMIN','TECH','TECHNICAL','SALES_TECH'].includes(user?.role) && <Link href="/qc" aria-current={pathname === '/qc' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'QC kỹ thuật' : ''}><ClipboardCheck size={20}/>{!isCollapsed && <span>QC kỹ thuật</span>}</Link>}
           {['ADMIN','TECH','TECHNICAL','SALES_TECH'].includes(user?.role) && <Link href="/repairs" aria-current={pathname === '/repairs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Sửa chữa kỹ thuật' : ''}><Wrench size={20}/>{!isCollapsed && <span>Sửa chữa kỹ thuật</span>}</Link>}
 
-          {user?.role === 'ADMIN' && <div className="nav-section-label">{!isCollapsed && 'Nhập hàng'}</div>}
+          {canReceive && <div className="nav-section-label">{!isCollapsed && 'Nhập hàng'}</div>}
           {user?.role === 'ADMIN' && <Link href="/suppliers" aria-current={pathname === '/suppliers' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhà cung cấp' : ''}><Building2 size={20}/>{!isCollapsed && <span>Nhà cung cấp</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/purchases" aria-current={pathname === '/purchases' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Lô mua hàng' : ''}><Truck size={20}/>{!isCollapsed && <span>Lô mua hàng</span>}</Link>}
-          {user?.role === 'ADMIN' && <Link href="/receiving" aria-current={pathname === '/receiving' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhận hàng' : ''}><PackageCheck size={20}/>{!isCollapsed && <span>Nhận hàng</span>}</Link>}
+          {canReceive && <Link href="/receiving" aria-current={pathname === '/receiving' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Nhận hàng' : ''}><PackageCheck size={20}/>{!isCollapsed && <span>Nhận hàng</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/supplier-returns" aria-current={pathname === '/supplier-returns' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Trả nhà cung cấp' : ''}><PackageX size={20}/>{!isCollapsed && <span>Trả nhà cung cấp</span>}</Link>}
           {user?.role === 'ADMIN' && <Link href="/costs" aria-current={pathname === '/costs' ? 'page' : undefined} className="nav-item" title={isCollapsed ? 'Giá vốn thực tế' : ''}><Calculator size={20}/>{!isCollapsed && <span>Giá vốn thực tế</span>}</Link>}
 
@@ -257,6 +258,7 @@ export default function MainLayout({ children }) {
       <main className={`main-content ${isCollapsed ? 'collapsed' : ''} ${isLegacyList ? 'list-workspace' : 'taste-workspace'}`}>
         <nav className="mobile-navigation" aria-label="Điều hướng trên điện thoại">
           <Link href="/inventory" aria-current={pathname === '/inventory' ? 'page' : undefined}><Package size={18} /> Kho laptop</Link>
+          {canReceive && <Link href="/receiving" aria-current={pathname === '/receiving' ? 'page' : undefined}><PackageCheck size={18} /> Nhận hàng</Link>}
           {['ADMIN','SALES','SALES_TECH'].includes(user?.role) && <Link href="/orders" aria-current={pathname === '/orders' ? 'page' : undefined}><ShoppingCart size={18} /> Đơn hàng</Link>}
           {['ADMIN','SALES','SALES_TECH'].includes(user?.role) && <Link href="/payments" aria-current={pathname === '/payments' ? 'page' : undefined}><BadgeDollarSign size={18} /> Thu tiền</Link>}
           {['TECH','TECHNICAL','SALES_TECH'].includes(user?.role) && <Link href="/qc" aria-current={pathname === '/qc' ? 'page' : undefined}><ClipboardCheck size={18} /> QC</Link>}

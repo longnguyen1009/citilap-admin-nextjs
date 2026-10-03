@@ -81,7 +81,13 @@ export async function GET(request) {
   if (batchResult.error) {
     return NextResponse.json({ error: 'Không thể tải nguồn nhập của laptop. Vui lòng thử lại.' }, { status: 503 });
   }
-  const supplierIds = [...new Set((batchResult.data || []).map(batch => batch.supplier_id).filter(Boolean))];
+  const directSupplierIds = data
+    .map(item => String(item.sourceReferenceId || ''))
+    .filter(id => /^\d+$/.test(id));
+  const supplierIds = [...new Set([
+    ...(batchResult.data || []).map(batch => String(batch.supplier_id || '')).filter(Boolean),
+    ...directSupplierIds,
+  ])];
   const supplierResult = supplierIds.length
     ? await db.from('suppliers').select('id,name,display_name').in('id', supplierIds)
     : { data: [], error: null };
@@ -98,11 +104,15 @@ export async function GET(request) {
   const enriched = data.map(item => {
     const reservation = reservationByLaptop.get(String(item.id));
     const batch = batchById.get(String(item.purchaseBatchId));
-    const supplier = batch ? supplierById.get(String(batch.supplier_id)) : null;
+    const batchSupplier = batch ? supplierById.get(String(batch.supplier_id)) : null;
+    const isDomesticSource = ['1', '2'].includes(String(item.sourceReferenceId));
+    const domesticSupplier = isDomesticSource ? supplierById.get(String(item.sourceReferenceId)) : null;
+    const supplier = batchSupplier || domesticSupplier;
+    const supplierName = supplier ? (supplier.display_name || supplier.name) : (item.seller || null);
     return {
       ...item,
-      supplierName: supplier ? (supplier.display_name || supplier.name) : (item.seller || null),
-      domesticSourceName: ['1', '2'].includes(String(item.sourceReferenceId)) ? (item.seller || null) : undefined,
+      supplierName,
+      domesticSourceName: isDomesticSource ? supplierName : undefined,
       batchCode: batch?.batch_code || null,
       activeReservation: reservation ? {
         id: reservation.id,
@@ -177,7 +187,7 @@ export async function POST(request) {
 
     if (isCreateRequest) {
       const supplierId = String(body.sourceReferenceId || '');
-      if (!['1', '2'].includes(supplierId)) {
+      if (!/^\d+$/.test(supplierId)) {
         return NextResponse.json({ error: 'Nguồn nhập nội địa không hợp lệ.' }, { status: 400 });
       }
       if (body.importPriceVnd === undefined || body.importPriceVnd === '' || Number(body.importPriceVnd) <= 0) {

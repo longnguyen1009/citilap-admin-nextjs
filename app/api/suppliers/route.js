@@ -7,9 +7,16 @@ import { saveSupplier } from '@/lib/cloudflare/suppliers.mjs';
 export async function GET(request) {
   try {
     const { DB } = getCloudflareBindings();
-    await requireSession(DB, request, ['ADMIN']);
+    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
     const id = new URL(request.url).searchParams.get('id');
-    let query = createDatabase(DB).from('suppliers').select('*').order('active', { ascending: false }).order('name');
+    if (id && profile.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Chỉ quản trị viên được xem chi tiết nhà cung cấp.' }, { status: 403 });
+    }
+    let query = createDatabase(DB).from('suppliers')
+      .select(profile.role === 'ADMIN' ? '*' : 'id,name,display_name')
+      .order('name');
+    if (profile.role !== 'ADMIN') query = query.eq('active', true);
+    else query = query.order('active', { ascending: false });
     if (id) query = query.eq('id', id).maybeSingle();
     const { data, error } = await query;
     if (error) throw new Error(error.message);
