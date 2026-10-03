@@ -18,11 +18,23 @@ export default function TechCheckModal({ isOpen, onClose, laptop, onSave }) {
       ? [...(laptop.partsHistory || []), { date: new Date().toLocaleDateString('vi-VN'), log: partsLog.trim() }]
       : laptop.partsHistory || [];
 
-    try { await onSave(laptop.id, {
+    const { serialNumber, batteryHealth, ...qcDetails } = details;
+    const summary = key => qcDetails[key]?.result === 'PASS' ? 'ok'
+      : qcDetails[key]?.result === 'FAIL' ? 'error' : null;
+    const cameraMicResults = ['camera', 'microphone'].map(key => qcDetails[key]?.result);
+    const updates = {
       conditionNote: note,
       partsHistory: updatedPartsHistory,
-      qcDetails: details
-    }); } catch (err) { setError(err.message); } finally { setSaving(false); }
+      qcDetails,
+      screenStatus: summary('screen'),
+      mainboardStatus: summary('mainboard'),
+      cameraMicStatus: cameraMicResults.includes('FAIL') ? 'error'
+        : cameraMicResults.every(result => result === 'PASS') ? 'ok' : null,
+    };
+    if (String(serialNumber ?? '').trim() !== String(laptop.serial ?? '').trim()) updates.serial = String(serialNumber ?? '').trim();
+    if (String(batteryHealth ?? '') !== String(laptop.batteryHealth ?? '')) updates.batteryHealth = batteryHealth === '' ? null : Number(batteryHealth);
+
+    try { await onSave(laptop.id, updates); } catch (err) { setError(err.message); } finally { setSaving(false); }
   };
 
   return (

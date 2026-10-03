@@ -369,6 +369,8 @@ const bundle = await build({
         await env.DB.prepare("INSERT INTO orders(created_date,order_status,payment_status,sale_price,amount_paid,debt_amount,is_active,trade_in_credit_vnd) VALUES ('2026-10-01','new','unpaid',10,0,10,1,0)").run();
         const paymentOrder=await env.DB.prepare('SELECT max(id) AS id FROM orders').first();
         const orderPayment={p_order_id:paymentOrder.id,p_amount:4,p_payment_type:'deposit',p_payment_method:'transfer_cash',p_payment_date:'2026-10-01',p_reference_code:'PAY-1',p_note:'Deposit',p_recorded_by:'Runtime',p_account_id:paymentAccount.data.id,p_idempotency_key:'order-payment-one'};
+        const invalidPaymentAccount=await client.rpc('record_order_payment_with_account',{...orderPayment,p_account_id:'missing-account',p_idempotency_key:'order-payment-invalid-account'});
+        if(!invalidPaymentAccount.error||/malformed JSON/i.test(invalidPaymentAccount.error.message)||!invalidPaymentAccount.error.message.includes('Tài khoản nhận/chi')) throw new Error('Order payment validation message failed: '+JSON.stringify(invalidPaymentAccount));
         const paymentRollback=await client.rpc('record_order_payment_with_account',{...orderPayment,p_recorded_by:'Reject'});
         const paymentAfterRollback=await env.DB.prepare('SELECT amount_paid FROM orders WHERE id=?').bind(paymentOrder.id).first();
         if(!paymentRollback.error||paymentAfterRollback.amount_paid!==0) throw new Error('Order payment rollback failed');

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { hashPassword, verifyPassword, signIn, signOut, findSession, requireSession, assertSameOrigin, sessionCookie } from '../lib/cloudflare/session.mjs';
 import { readImage } from '../lib/cloudflare/images.mjs';
 import { createFirstAdmin } from '../lib/cloudflare/users.mjs';
+import { publicLaptop } from '../lib/responseVisibility.js';
 
 function adapter(sqlite) {
   return {
@@ -33,6 +34,21 @@ function request(method = 'POST', cookie = '', source = origin) {
 const password = 'test-password-for-cloudflare-only';
 let passwordHash;
 test.before(async () => { passwordHash = await hashPassword(password); });
+test('sale/tech laptop projection preserves underscored QC fields', () => {
+  const projected = publicLaptop({
+    id: 9,
+    qcDetails: {
+      keyboardBacklight: { result: 'PASS' },
+      usbC: { result: 'PASS' },
+      ssdHealth: { result: 'PASS' },
+      cpuStress: { result: 'PASS' },
+      gpuStress: { result: 'PASS' },
+    },
+  });
+  assert.deepEqual(Object.keys(projected.qcDetails).sort(), [
+    'cpu_stress', 'gpu_stress', 'keyboard_backlight', 'ssd_health', 'usb_c',
+  ]);
+});
 async function fixture() {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(await readFile('db/d1/migrations/0001_schema.sql', 'utf8'));

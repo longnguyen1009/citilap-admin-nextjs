@@ -1192,10 +1192,17 @@ const mapLabelsToKeys = (fields, appOpts) => {
     const currentLaptop = laptops.find(laptop => laptop.id == id);
     if (!currentLaptop) return { ok: false, message: 'Không tìm thấy máy.' };
     if (updatedFields.qcDetails !== undefined) {
-      return saveLaptopToCloud({ id, ...updatedFields }).then(saved => {
-        setLaptops(prev => prev.map(laptop => laptop.id == id ? { ...laptop, ...saved } : laptop));
-        return { ok: true };
-      });
+      try {
+        const saved = await saveLaptopToCloud({ id, ...updatedFields });
+        // The API may return a role-filtered/stale JSON projection while D1 has
+        // already persisted the submitted QC object. Keep the submitted fields
+        // as the local source of truth until the next list refresh.
+        const persisted = { ...currentLaptop, ...saved, ...updatedFields };
+        setLaptops(prev => prev.map(laptop => laptop.id == id ? persisted : laptop));
+        return { ok: true, laptop: persisted };
+      } catch (error) {
+        return { ok: false, message: error.message || 'Không thể lưu đánh giá kỹ thuật.' };
+      }
     }
     const lockedProtectedFields = ['priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd'];
     const currentStatusKey = labelToKey('laptopStatus', currentLaptop.status);

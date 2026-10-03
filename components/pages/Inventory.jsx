@@ -273,7 +273,7 @@ export default function Inventory() {
   // Trợ lý chọn Class màu cho Phân Loại
   const getCategoryBadgeClass = (category) => {
     if (!category) return 'pill-badge pill-neutral';
-    const label = getLabel('category', category) || String(category);
+    const label = getLabel('category', category, fieldOptionsConfig) || String(category);
     const cat = String(label).toUpperCase();
     if (cat.includes('LEGION 5 PRO')) return 'pill-badge pill-success';
     if (cat.includes('LEGION SLIM')) return 'pill-badge pill-danger';
@@ -942,7 +942,7 @@ export default function Inventory() {
                   fontWeight: 600
                 }}
               >
-                {getLabel('category', cat)}
+                {getLabel('category', cat, fieldOptionsConfig)}
                 <X
                   size={12}
                   style={{ cursor: 'pointer' }}
@@ -1114,7 +1114,7 @@ export default function Inventory() {
                     </td>
                     <td className="inventory-category-cell" style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
                       <span className={`cat-badge ${getCategoryBadgeClass(l.category)}`}>
-                        {getLabel('category', l.category)}
+                        {getLabel('category', l.category, fieldOptionsConfig)}
                       </span>
                     </td>
                     <td className="inventory-note-cell" style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.82rem', fontWeight: 700, color: '#111827' }}>
