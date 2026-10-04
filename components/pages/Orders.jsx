@@ -333,6 +333,9 @@ export default function Orders() {
       ? { requestedLaptopId: newLaptopId }
       : { laptopId: newLaptopId };
     if (selected) {
+      updates.requestedLaptopId = newLaptopId;
+      updates.requestedConfiguration = selected.name;
+      updates.requestedCategory = selected.category;
       const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
       if (autoPrice) {
         updates.salePrice = autoPrice;
@@ -387,6 +390,8 @@ export default function Orders() {
       deliveryStatus: DELIVERY_STATUS_OPTIONS[0],
       laptopId: '',
       requestedLaptopId: '',
+      requestedConfiguration: '',
+      requestedCategory: '',
       salePrice: '',
       depositAmount: '',
       depositNote: '',
@@ -430,6 +435,8 @@ export default function Orders() {
       deliveryStatus: getFormOptionLabel('deliveryStatus', order.deliveryStatus, DELIVERY_STATUS_OPTIONS[0]),
       laptopId: order.laptopId || '',
       requestedLaptopId: order.requestedLaptopId || '',
+      requestedConfiguration: order.requestedConfiguration || '',
+      requestedCategory: order.requestedCategory || '',
       salePrice: order.salePrice ?? '',
       depositAmount: order.depositAmount ?? '',
       depositNote: order.depositNote || '',
@@ -484,7 +491,9 @@ export default function Orders() {
     setFormData(prev => ({
       ...prev,
       laptopId: isDepositReference ? '' : laptopId,
-      requestedLaptopId: isDepositReference ? laptopId : (prev.requestedLaptopId || ''),
+      requestedLaptopId: laptopId || prev.requestedLaptopId || '',
+      requestedConfiguration: selected?.name || prev.requestedConfiguration || '',
+      requestedCategory: selected?.category || prev.requestedCategory || '',
       salePrice: autoPrice,
       // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
     }));
@@ -1026,25 +1035,55 @@ export default function Orders() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <select
-                              className="sheet-cell-select"
-                              aria-label={`Phân máy cho đơn #${ord.id}`}
-                              value=""
-                              disabled={allocatingOrderId !== null}
-                              onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
-                            >
-                              <option value="">{allocatingOrderId === ord.id ? 'Đang phân máy…' : 'Chọn máy'}</option>
-                              {getAllocationCandidates(ord.id).map(laptop => {
-                                const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
-                                return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
-                              })}
-                            </select>
-                            {ord.requestedConfiguration && (
-                              <div
-                                style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
-                                title={ord.requestedConfiguration}
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{ fontSize: '0.72rem', padding: '2px 6px', height: '22px', whiteSpace: 'nowrap' }}
+                                onClick={() => setAllocationOrder(ord)}
+                                title="Mở hộp thoại phân máy chi tiết"
                               >
-                                {formatConfigText(ord.requestedConfiguration)}
+                                🎯 Phân máy
+                              </button>
+                              <select
+                                className="sheet-cell-select"
+                                aria-label={`Phân máy cho đơn #${ord.id}`}
+                                value=""
+                                disabled={allocatingOrderId !== null}
+                                onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
+                                style={{ flex: 1, height: '22px', fontSize: '0.78rem' }}
+                              >
+                                <option value="">{allocatingOrderId === ord.id ? 'Đang phân máy…' : 'Chọn nhanh máy'}</option>
+                                {getAllocationCandidates(ord.id).map(laptop => {
+                                  const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
+                                  return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
+                                })}
+                              </select>
+                            </div>
+                            {ord.requestedConfiguration ? (
+                              <div
+                                style={{
+                                  fontSize: '0.72rem',
+                                  background: '#fffbeb',
+                                  border: '1px solid #fde68a',
+                                  borderRadius: '4px',
+                                  padding: '3px 6px',
+                                  lineHeight: 1.3,
+                                  color: '#92400e'
+                                }}
+                                title={`Cấu hình yêu cầu: ${ord.requestedConfiguration}`}
+                              >
+                                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309' }}>
+                                  <span>⚠️ Chờ máy:</span>
+                                  {ord.requestedLaptopId && <span style={{ fontSize: '0.68rem', color: '#78350f' }}>(Từng chọn #{ord.requestedLaptopId})</span>}
+                                </div>
+                                <div style={{ color: '#1e293b', fontWeight: 500, marginTop: '1px' }}>
+                                  {formatConfigText(ord.requestedConfiguration)}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '0.70rem', color: '#94a3b8', fontStyle: 'italic', padding: '2px 4px' }}>
+                                Chưa chọn cấu hình
                               </div>
                             )}
                           </div>
@@ -1105,9 +1144,17 @@ export default function Orders() {
                           {/* Dòng 2: Tên cấu hình máy tự động trích xuất từ kho */}
                           <div 
                             style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
-                            title={laptopObj?.name || 'Chưa chọn máy'}
+                            title={laptopObj?.name || ord.requestedConfiguration || 'Chưa chọn máy'}
                           >
-                            {laptopObj ? formatConfigText(laptopObj.name) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>}
+                            {laptopObj ? (
+                              formatConfigText(laptopObj.name)
+                            ) : ord.requestedConfiguration ? (
+                              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '2px 4px', color: '#92400e' }}>
+                                <strong>⚠️ Chờ máy:</strong> {formatConfigText(ord.requestedConfiguration)} {ord.requestedLaptopId ? `(#${ord.requestedLaptopId})` : ''}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>
+                            )}
                           </div>
                           {ord.reservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(ord.reservation.reservationCode)}`}>{ord.reservation.reservationCode} · {ord.reservation.status}</a>}
                           {ord.tradeIn && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(ord.tradeIn.tradeInCode)}`}>Thu cũ {ord.tradeIn.tradeInCode} · {(Number(ord.tradeIn.agreedValueVnd || 0) / 1000000).toFixed(2)}tr (phi tiền mặt)</a>}

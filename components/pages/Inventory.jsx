@@ -1087,8 +1087,8 @@ export default function Inventory() {
                       </span>
                       {l.sourceUnresolved && <Link href="/receiving" className="phase9-inline-link warning">Chưa rõ nguồn</Link>}
                       {(() => {
-                        const matching = demandOrders.filter(order => order.requested_configuration === l.name && String(order.requested_category || '') === String(l.category || ''));
-                        return matching.length > 0 && <details><summary>{matching.length} đơn cọc cùng cấu hình</summary>{matching.map(order => <button type="button" className="btn btn-outline" key={order.id} onClick={() => setAllocationOrder({ id: order.id, requestedConfiguration: order.requested_configuration, initialLaptopId: l.id })}>Phân máy cho #{order.id} · {order.customer_info}</button>)}</details>;
+                        const matching = demandOrders.filter(order => (order.requested_configuration || order.requestedConfiguration) === l.name && (!order.requested_category && !order.requestedCategory || String(order.requested_category || order.requestedCategory) === String(l.category || '')));
+                        return matching.length > 0 && <details><summary>{matching.length} đơn cọc cùng cấu hình</summary>{matching.map(order => <button type="button" className="btn btn-outline" key={order.id} onClick={() => setAllocationOrder({ id: order.id, requestedConfiguration: order.requested_configuration || order.requestedConfiguration, initialLaptopId: l.id })}>Phân máy cho #{order.id} · {order.customer_info || order.customerInfo}</button>)}</details>;
                       })()}
                       {l.activeReservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(l.activeReservation.code)}`} title={`Hết hạn ${new Date(l.activeReservation.expiresAt).toLocaleString('vi-VN')}`}>Đang giữ · {l.activeReservation.customer?.name || l.activeReservation.code}</a>}
                       {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'sold' && l.laptopId && <InvoiceLink laptopId={l.laptopId} label="Xem hóa đơn" />}

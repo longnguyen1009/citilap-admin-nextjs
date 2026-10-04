@@ -61,7 +61,8 @@ export async function POST(request) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 409 });
 
-  const orderIds = [...new Set([body.orderId, body.expectedOwner].filter(Boolean))];
+  const previousOwnerId = data?.previous_owner_id ?? body.expectedOwner ?? null;
+  const orderIds = [...new Set([body.orderId, previousOwnerId].filter(Boolean))];
   const laptopIds = [...new Set([currentOrder.laptop_id, body.laptopId].filter(Boolean))];
   const [orders, laptops] = await Promise.all([
     db.from('orders').select('*').in('id', orderIds),
