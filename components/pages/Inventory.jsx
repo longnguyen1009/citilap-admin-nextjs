@@ -50,7 +50,7 @@ const DOMESTIC_SUPPLIERS = [
   { id: '1', name: 'Nhập thợ VN' },
   { id: '2', name: 'Thu lại khách lẻ' },
 ];
-const DIRECT_CREATE_ROLES = new Set(['SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
+const DIRECT_CREATE_ROLES = new Set(['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
 
 export default function Inventory() {
   const [demandOrders, setDemandOrders] = useState([]);
@@ -711,25 +711,6 @@ export default function Inventory() {
         </div>}
       </div>
 
-      {cloudStatus === 'disconnected' && (
-        <div className="alert-banner error">
-          <AlertTriangle size={18} />
-          <div>
-            <strong>Chưa kết nối Supabase Cloud!</strong> Mọi dữ liệu (Kho máy, Đơn hàng) hiện tại đang là dữ liệu giả lập (mock data) và sẽ KHÔNG ĐƯỢC LƯU LÊN MẠNG. Dữ liệu sẽ <strong>MẤT</strong> khi tải lại trang.<br/>
-            Vui lòng vào <strong>Hệ Thống -&gt; Cấu hình Cloud (Supabase)</strong> để nhập thông tin kết nối ngay.
-          </div>
-        </div>
-      )}
-
-      {cloudStatus === 'error' && (
-        <div className="alert-banner warning">
-          <AlertTriangle size={18} />
-          <div>
-            <strong>Lỗi tải dữ liệu Supabase!</strong> Ứng dụng đang dùng dữ liệu mẫu. Nếu bạn vừa cập nhật Serial hoặc các cột mà chưa đồng bộ DB, vui lòng chạy lệnh <code>ALTER TABLE laptops ADD COLUMN serial VARCHAR(100);</code> trong SQL Editor.
-          </div>
-        </div>
-      )}
-
 
       {/* COMPACT FILTER & SEARCH CARD */}
       <div className="card glass filter-card inventory-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
@@ -1367,8 +1348,8 @@ export default function Inventory() {
                 </div>
 
 
-                {/* SECTION 3: TÀI CHÍNH (GIÁ NHẬP, GIÁ BÁN & LỢI NHUẬN) — chỉ ADMIN */}
-                {user?.role === 'ADMIN' && (<>
+                {/* SECTION 3: TÀI CHÍNH KHI SỬA MÁY ĐÃ CÓ — chỉ ADMIN */}
+                {editingLaptop && user?.role === 'ADMIN' && (<>
                 <h4 style={{ fontSize: '0.9rem', color: '#60a5fa', marginTop: '1.25rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Calculator size={16} /> 3. Tài Chính (Giá Nhập, Giá Bán & Lợi Nhuận)
                 </h4>
@@ -1459,16 +1440,45 @@ export default function Inventory() {
                 </div>
 
                 </>)}
-                {!editingLaptop && DIRECT_CREATE_ROLES.has(user?.role) && <section className="inventory-domestic-cost">
-                  <h4><Calculator size={16} /> 3. Giá nhập nội địa</h4>
-                  <p>Giá mua RMB và phí vận chuyển được cố định bằng 0. Nhập trực tiếp tổng giá vốn bằng triệu VNĐ.</p>
-                  <div className="form-group">
-                    <label htmlFor="inventory-direct-cost">Giá nhập (triệu VNĐ) *</label>
-                    <Input id="inventory-direct-cost" type="number" min="0.01" step="any" required
-                      data-testid="product-import-price-input" value={formData.importPriceVnd}
-                      onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })} />
-                  </div>
-                </section>}
+
+                {/* SECTION 3: GIÁ NHẬP & BÁN NỘI ĐỊA KHI TẠO MỚI */}
+                {!editingLaptop && DIRECT_CREATE_ROLES.has(user?.role) && (
+                  <section className="inventory-domestic-cost" style={{ marginTop: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', color: '#60a5fa', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calculator size={16} /> 3. Giá nhập nội địa {user?.role === 'ADMIN' ? '& Bán hàng' : ''}
+                    </h4>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' }}>
+                      Giá mua RMB và phí vận chuyển được cố định bằng 0. Nhập trực tiếp tổng giá vốn bằng triệu VNĐ.
+                    </p>
+                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                      <div className="form-group">
+                        <label htmlFor="inventory-direct-cost" style={{ color: '#60a5fa', fontWeight: 700 }}>
+                          Giá nhập (triệu VNĐ) *
+                        </label>
+                        <Input id="inventory-direct-cost" type="number" min="0.01" step="any" required
+                          data-testid="product-import-price-input" value={formData.importPriceVnd}
+                          onChange={e => setFormData({ ...formData, importPriceVnd: e.target.value, importPriceManuallyEdited: true })}
+                          style={{ fontWeight: 800, color: '#2563eb', fontSize: '1rem' }} />
+                      </div>
+                      {user?.role === 'ADMIN' && (
+                        <>
+                          <div className="form-group">
+                            <label htmlFor="inventory-direct-wholesale">Giá bán sỉ (triệu VNĐ)</label>
+                            <Input id="inventory-direct-wholesale" type="number" min="0" step="any"
+                              data-testid="product-wholesale-price-input" value={formData.wholesalePriceVnd}
+                              onChange={e => setFormData({ ...formData, wholesalePriceVnd: e.target.value })} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="inventory-direct-retail">Giá bán lẻ (triệu VNĐ)</label>
+                            <Input id="inventory-direct-retail" type="number" min="0" step="any"
+                              data-testid="product-retail-price-input" value={formData.retailPriceVnd}
+                              onChange={e => setFormData({ ...formData, retailPriceVnd: e.target.value })} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
 
               <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

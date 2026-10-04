@@ -224,7 +224,6 @@ export async function POST(request) {
       }
       if (isLegacyTradeInType(oldData.order_type)) body.orderType = oldData.order_type;
       body.tradeInLaptopId = oldData.trade_in_laptop_id || null;
-      body.paymentStatus = oldData.payment_status;
       body.amountPaid = Number(oldData.amount_paid || 0);
       body.depositAmount = Number(oldData.deposit_amount || 0);
       const salePrice = Number(body.salePrice ?? oldData.sale_price ?? 0);
@@ -232,6 +231,18 @@ export async function POST(request) {
       const tradeInCredit = Number(body.tradeInCreditVnd || 0) / 1000000;
       body.debtAmount = Math.max(0, salePrice - body.amountPaid - tradeInCredit);
       body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount ?? oldData.cod_amount ?? 0), 0));
+
+      if (oldData.payment_status === 'refunded') {
+        body.paymentStatus = 'refunded';
+      } else if (body.debtAmount <= 0.000001 && (body.amountPaid > 0 || tradeInCredit >= salePrice)) {
+        body.paymentStatus = 'paid';
+      } else if (body.codAmount > 0 && body.amountPaid + body.codAmount + tradeInCredit >= salePrice - 0.000001) {
+        body.paymentStatus = 'cod';
+      } else if (body.amountPaid > 0) {
+        body.paymentStatus = 'deposited';
+      } else {
+        body.paymentStatus = 'unpaid';
+      }
 
       const storedGiftAccessoryIds = normalizeGiftAccessoryIds(oldData.gift_accessory_ids);
       if (Array.isArray(body.giftAccessoryIds)

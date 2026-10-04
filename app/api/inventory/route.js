@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parseListScope } from '../../../lib/listScope';
+import { parseListScope, businessMonthKey } from '../../../lib/listScope';
 import { filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { createTiming, timeAsync, markTiming, withServerTiming } from '../../../lib/apiTiming';
 import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
@@ -142,10 +142,7 @@ export async function POST(request) {
     const rawPayload = await request.json();
     const { searchParams } = new URL(request.url);
     const isCreateRequest = searchParams.get('mode') === 'create';
-    const canCreateDomestic = ['SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role);
-    if (isCreateRequest && isAdmin) {
-      return NextResponse.json({ error: 'ADMIN tạo laptop mới qua màn hình Lô mua hàng.' }, { status: 400 });
-    }
+    const canCreateDomestic = ['ADMIN', 'SUPER_ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role);
     if (isCreateRequest && !canCreateDomestic) {
       return NextResponse.json({ error: 'Bạn không có quyền tạo laptop mới.' }, { status: 403 });
     }
@@ -200,6 +197,7 @@ export async function POST(request) {
       const row = keysToSnake({
         ...body,
         id: undefined,
+        monthKey: body.monthKey || businessMonthKey(),
         seller: supplier.data.display_name || supplier.data.name,
         sourceReferenceId: supplierId,
         priceRmb: 0,

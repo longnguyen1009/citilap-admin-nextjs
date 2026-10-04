@@ -165,7 +165,21 @@ export default function QC() {
     {active && <div className="modal-backdrop active"><form className="qc-modal quick-qc-modal" onSubmit={complete} role="dialog" aria-modal="true" aria-labelledby="quick-qc-title">
       <header><div><small>{active.inspection_code}</small><h2 id="quick-qc-title">{active.laptops?.name}</h2><p>{active.laptops?.serial || 'Chưa có serial'} · {active.started_by}</p></div><button type="button" aria-label="Đóng QC" disabled={saving} onClick={() => setActive(null)}><X /></button></header>
       {error && <p className="quick-qc-error" role="alert">{error}</p>}
-      {active.status === 'IN_PROGRESS' ? <><fieldset className="quick-qc-options" disabled={saving}><legend>Kết quả QC</legend>{OUTCOMES.map(({ key, label, detail, icon: Icon }) => <label key={key} className={`quick-qc-option ${key} ${choice === key ? 'selected' : ''}`}><input type="radio" name="disposition" value={key} checked={choice === key} onChange={() => setChoice(key)} required /><Icon size={22} /><span><strong>{label}</strong><small>{detail}</small></span></label>)}</fieldset>
+      {active.status === 'IN_PROGRESS' ? <><fieldset className="quick-qc-options" disabled={saving}><legend>Kết quả QC</legend>{OUTCOMES.map(({ key, label, detail, icon: Icon }) => {
+        const cannotReturnCn = key === 'RETURN_CN' && (!active.laptops?.purchase_batch_id || active.laptops?.source_type === 'UNKNOWN');
+        return (
+          <label key={key} className={`quick-qc-option ${key} ${choice === key ? 'selected' : ''} ${cannotReturnCn ? 'disabled' : ''}`}
+            title={cannotReturnCn ? 'Chỉ áp dụng cho máy thuộc lô mua hàng TQ có thể truy xuất' : undefined}
+            style={cannotReturnCn ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(0.8)' } : undefined}>
+            <input type="radio" name="disposition" value={key} checked={choice === key} onChange={() => setChoice(key)} disabled={cannotReturnCn || saving} required={!cannotReturnCn} />
+            <Icon size={22} />
+            <span>
+              <strong>{label}</strong>
+              <small>{cannotReturnCn ? 'Chỉ áp dụng cho máy thuộc lô TQ' : detail}</small>
+            </span>
+          </label>
+        );
+      })}</fieldset>
         <QCDetailsFields value={details} onChange={setDetails} disabled={saving} />
         <label className="quick-qc-notes">Ghi chú chung của laptop <span>(dùng chung với lô mua hàng)</span><textarea value={notes} maxLength={2000} onChange={e => setNotes(e.target.value)} rows={3} disabled={saving} /></label>
         <footer><span>{OUTCOMES.find(x => x.key === choice)?.detail || 'Chọn một kết quả để tiếp tục'}</span><button disabled={!choice || saving}>{saving ? 'Đang lưu…' : 'Hoàn tất QC'}</button></footer></>

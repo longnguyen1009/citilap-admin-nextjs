@@ -17,7 +17,7 @@ export async function GET(request) {
 
     if (inspectionId) {
       const [head, items] = await Promise.all([
-        db.from('qc_inspections').select('*,laptops(id,serial,name,status,location,battery_health,qc_details,condition_note)').eq('id', inspectionId).maybeSingle(),
+        db.from('qc_inspections').select('*,laptops(id,serial,name,status,location,battery_health,qc_details,condition_note,purchase_batch_id,source_type)').eq('id', inspectionId).maybeSingle(),
         db.from('qc_check_items').select('*').eq('qc_inspection_id', inspectionId).order('id'),
       ]);
       if (head.error || items.error) throw new Error(head.error?.message || items.error?.message);
@@ -55,7 +55,7 @@ export async function POST(request) {
     const body = await request.json();
     const actor = profile.name || 'Kỹ thuật';
     let result;
-    if (body.action === 'quick-complete') {
+    if (body.action === 'quick-complete' || body.action === 'complete') {
       const key = String(body.idempotencyKey || '');
       if (!/^[0-9a-f-]{36}$/i.test(String(body.inspectionId || ''))
         || !['PASS', 'FAIL', 'REPAIR', 'RETURN_CN'].includes(body.disposition)

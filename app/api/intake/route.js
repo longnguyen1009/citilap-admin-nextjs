@@ -5,7 +5,7 @@ import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
 const RECEIVING_ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'];
-const RECEIVING_PRICE_FIELDS = ['purchase_price_rmb', 'shipping_rmb', 'purchase_exchange_rate', 'import_price_vnd'];
+const RECEIVING_PRICE_FIELDS = ['purchase_price_rmb', 'shipping_rmb', 'purchase_exchange_rate', 'import_price_vnd', 'price_rmb', 'exchange_rate'];
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const keyOf = value => {
   const key = String(value || '').trim();
@@ -126,9 +126,11 @@ export async function POST(request) {
       const payload = Object.fromEntries(Object.entries(body.data || {}).filter(([key]) => allowed.includes(key)));
       result = await db.rpc('update_laptop_procurement', { p_laptop_id: Number(body.laptopId), p_data: payload, p_actor: actor });
     } else if (body.action === 'reconcile') {
-      if (!validId(body.unknownLaptopId) || !validId(body.expectedLaptopId)) throw new Error('Mã laptop không hợp lệ');
+      const unknownId = body.unknownLaptopId || body.unknownId;
+      const expectedId = body.expectedLaptopId || body.expectedId;
+      if (!validId(unknownId) || !validId(expectedId)) throw new Error('Mã laptop không hợp lệ');
       result = await db.rpc('reconcile_unknown_laptop', {
-        p_unknown_laptop_id: Number(body.unknownLaptopId), p_expected_laptop_id: Number(body.expectedLaptopId),
+        p_unknown_laptop_id: Number(unknownId), p_expected_laptop_id: Number(expectedId),
         p_actor: actor, p_idempotency_key: keyOf(body.key)
       });
     } else if (body.action === 'ignore') {
@@ -138,7 +140,17 @@ export async function POST(request) {
       });
     } else throw new Error('Thao tác không hợp lệ');
     if (result.error) throw new Error(result.error.message);
-    return NextResponse.json(result.data);
+    let outputData = result.data;
+    if (profile.role !== 'ADMIN' && outputData) {
+      const redact = row => Object.fromEntries(Object.entries(row || {}).filter(([k]) => !RECEIVING_PRICE_FIELDS.includes(k)));
+      outputData = {
+        ...outputData,
+        ...(Array.isArray(outputData.expected) ? { expected: outputData.expected.map(redact) } : {}),
+        ...(Array.isArray(outputData.unknown) ? { unknown: outputData.unknown.map(redact) } : {}),
+        ...(Array.isArray(outputData.laptops) ? { laptops: outputData.laptops.map(redact) } : {})
+      };
+    }
+    return NextResponse.json(outputData);
   } catch (error) {
     return NextResponse.json({ error: error.message || 'Không thể lưu nhập hàng' }, { status: 400 });
   }
