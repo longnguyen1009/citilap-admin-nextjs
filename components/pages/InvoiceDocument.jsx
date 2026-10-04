@@ -5,6 +5,15 @@ import { invoiceMoney } from '@/lib/invoiceClient';
 import './invoice-document.css';
 import { invoiceOrderValue, invoiceSettlement } from '@/lib/invoiceSnapshot';
 
+const giftPresetLabels = {
+  none: 'Không tặng',
+  mouse: 'Chỉ chuột',
+  backpack: 'Chỉ balo',
+  basic: 'Chuột + balo',
+  full: 'Full combo quà tặng',
+  custom: 'Tùy chọn',
+};
+
 export default function InvoiceDocument({ invoice, getLabel, onBack }) {
   const snapshot = invoice.snapshot || {};
   const order = snapshot.order || {};
@@ -20,7 +29,7 @@ export default function InvoiceDocument({ invoice, getLabel, onBack }) {
     <nav className="invoice-no-print">{onBack ? <button type="button" className="btn btn-outline" onClick={onBack}>← Chi tiết hóa đơn</button> : <Link href={`/invoices/${invoice.id}`}>← Chi tiết hóa đơn</Link>}<button className="btn btn-primary" onClick={() => window.print()}>In A4 / Lưu PDF</button></nav>
     <div className="sales-invoice-document">
       <header className="sales-invoice-brand"><div><strong>CITILAP</strong><p>{branch.name || 'Cửa hàng laptop'}</p><p>{branch.address || 'Địa chỉ tiếp nhận: liên hệ chi nhánh bán hàng'}</p>{branch.phone && <p>Điện thoại: {branch.phone}</p>}</div><div><h1>HÓA ĐƠN BÁN HÀNG</h1><p>Số: HD{String(invoice.id).padStart(6, '0')} · Đơn #{invoice.order_id}</p><p>Ngày: {new Date(invoice.created_at).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p></div></header>
-      <section className="sales-invoice-customer"><p><b>Khách hàng:</b> {customer.name || '—'}</p><p><b>Điện thoại:</b> {customer.phone || '—'}</p><p><b>Địa chỉ:</b> {invoiceOrderValue(order, 'customer_address', 'customerAddress') || customer.address || '—'}</p><p><b>Nhân viên:</b> {label('saleOnline', saleOnline)}</p><p><b>Trạng thái:</b> {label('paymentStatus', paymentStatus)}</p></section>
+      <section className="sales-invoice-customer"><p><b>Khách hàng:</b> {customer.name || '—'}</p><p><b>Điện thoại:</b> {customer.phone || '—'}</p><p><b>Địa chỉ:</b> {invoiceOrderValue(order, 'customer_address', 'customerAddress') || customer.address || '—'}</p><p><b>Nhân viên:</b> {label('saleOnline', saleOnline)}</p><p><b>Trạng thái:</b> {label('paymentStatus', paymentStatus)}</p>{order.gift_preset && order.gift_preset !== 'none' && <p><b>Combo quà tặng:</b> {giftPresetLabels[order.gift_preset] || order.gift_preset}</p>}</section>
       <table className="sales-invoice-items"><thead><tr><th>STT</th><th>Sản phẩm / Serial</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead><tbody>{items.map((item, index) => <tr key={`${item.kind}-${item.id}-${index}`}><td>{index + 1}</td><td><b>{item.name}</b>{item.kind === 'gift' && <small>Quà tặng</small>}{item.serial && <small>Serial: {item.serial}</small>}</td><td>{item.quantity}</td><td>{invoiceMoney(item.price)}</td><td>{invoiceMoney(item.total)}</td></tr>)}</tbody></table>
       <section className="sales-invoice-settlement"><div><p><b>Bảo hành trên đơn:</b> {invoiceOrderValue(order, 'warranty', 'warranty') || 'Chưa ghi thời hạn — cần xác nhận với cửa hàng'}</p>{invoiceOrderValue(order, 'setup_note', 'setupNote') && <p><b>Cài đặt bàn giao:</b> {invoiceOrderValue(order, 'setup_note', 'setupNote')}</p>}</div><dl><div><dt>Tổng tiền hàng</dt><dd>{invoiceMoney(total)}</dd></div><div><dt>Đã thanh toán</dt><dd>{invoiceMoney(paid)}</dd></div>{credit > 0 && <div><dt>Đối trừ thu cũ</dt><dd>{invoiceMoney(credit)}</dd></div>}<div><dt>Còn phải thanh toán</dt><dd>{invoiceMoney(debt)}</dd></div></dl></section>
       <section className="sales-invoice-terms"><h2>CAM KẾT BÀN GIAO & ĐIỀU KIỆN BẢO HÀNH</h2>

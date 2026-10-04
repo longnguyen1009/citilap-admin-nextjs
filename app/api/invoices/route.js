@@ -5,6 +5,8 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 
+import { resolveGiftItems } from '@/lib/cloudflare/remaining.mjs';
+
 function visibleInvoice(invoice, role) {
   return role === 'ADMIN' ? invoice : publicInvoice(invoice);
 }
@@ -24,7 +26,28 @@ export async function GET(request) {
     }
     const { data, error } = await query.limit(500);
     if (error) return NextResponse.json({ error: error.message }, { status: 503 });
-    return NextResponse.json(data.map(row => visibleInvoice(row, profile.role)));
+
+    const rows = await Promise.all((data || []).map(async (row) => {
+      let snapshot = row.snapshot;
+      if (typeof snapshot === 'string') {
+        try { snapshot = JSON.parse(snapshot); } catch (_) {}
+      }
+      if (snapshot && Array.isArray(snapshot.items) && !snapshot.items.some(item => item.kind === 'gift')) {
+        const order = snapshot.order;
+        if (order && (order.gift_accessory_ids || (order.gift_preset && order.gift_preset !== 'none'))) {
+          const gifts = await resolveGiftItems(DB, order);
+          if (gifts.length > 0) {
+            snapshot = { ...snapshot, items: [...snapshot.items, ...gifts] };
+            try {
+              await DB.prepare('UPDATE invoices SET snapshot=? WHERE id=?').bind(JSON.stringify(snapshot), row.id).run();
+            } catch (_) {}
+          }
+        }
+      }
+      return { ...row, snapshot };
+    }));
+
+    return NextResponse.json(rows.map(row => visibleInvoice(row, profile.role)));
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: error.status || 500 });
   }

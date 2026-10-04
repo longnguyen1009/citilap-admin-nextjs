@@ -27,7 +27,12 @@ export function Modal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent {...(!description ? { 'aria-describedby': undefined } : {})} className={cn(maxWidth, "modal-shell max-h-[90dvh]", className)}>
+      <DialogContent
+        {...(!description ? { 'aria-describedby': undefined } : {})}
+        className={cn(maxWidth, "modal-shell max-h-[90dvh]", className)}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         {(title || description) && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
