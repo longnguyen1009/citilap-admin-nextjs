@@ -8,7 +8,7 @@ export async function GET(request) {
   const { data, error } = await db.from('app_options').select('*').order('sort_order', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data.map(option => ({ ...option, label: repairMojibake(option.label) })));
+  return NextResponse.json(data.map(option => ({ ...option, label: option.group_key === 'laptopStatus' && option.option_key === 'ignored' ? 'HỦY' : repairMojibake(option.label) })));
 }
 
 export async function POST(request) {

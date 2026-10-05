@@ -97,6 +97,26 @@ body .qc-page .operations-toolbar button { border:1px solid #52718c; color:#173e
 body .qc-page .operations-toolbar button[aria-pressed=true] { background:#145c50; border-color:#0e443b; color:#fff; }
 body .cost-page .cost-open { background:#145c50; border:1px solid #0e443b; color:#fff; font-weight:700; }
 body .cost-page.cost-page .cost-table td:nth-child(5) { background:#e0f0e8; color:#105443; font-weight:800; }
+/* Purchase cells keep the inventory status colors, including on hover. */
+body .intake-page.intake-page .purchase-day .purchase-row > td:not(.purchase-supplier),
+body .intake-page.intake-page .purchase-day .purchase-row:hover > td:not(.purchase-supplier) {
+  background:var(--intake-row, #fff); color:#111; padding:4px 6px; vertical-align:middle;
+}
+body .intake-page.intake-page .purchase-day th { padding:5px 6px; white-space:nowrap; }
+body .intake-page.intake-page .purchase-day th:nth-child(2) { width:auto; }
+body .intake-page.intake-page .purchase-day th:nth-child(3) { width:145px; }
+body .intake-page.intake-page .purchase-day th:nth-child(4) { width:165px; }
+body .intake-page.intake-page .purchase-day th:nth-child(5) { width:110px; }
+body .intake-page.intake-page .purchase-day th:nth-child(6) { width:112px; }
+body .intake-page.intake-page .purchase-day th:nth-child(7) { width:104px; }
+body .intake-page.intake-page .purchase-row > td:last-child { white-space:nowrap; }
+body .intake-page.intake-page .purchase-row > td > button { padding:3px 6px; min-height:26px; font-size:11px; }
+body .intake-page.intake-page .purchase-row .intake-status { padding:2px 5px; font-size:10px; }
+body .intake-page.intake-page .purchase-machine > b { line-height:1.3; }
+body .intake-page.intake-page .purchase-machine > small { color:#172d40; line-height:1.3; }
+body .intake-page.intake-page .purchase-supplier { padding:4px 6px; }
+body .intake-page.intake-page .purchase-supplier > b { font-size:12px; }
+body .intake-page.intake-page .purchase-supplier button { margin-top:2px; padding:2px 6px; min-height:24px; }
 @media(max-width:760px) {
   body :is(.intake-page.intake-page .intake-header,.qc-page.qc-page .qc-header,.cost-page.cost-page .cost-hero) { flex-wrap:wrap; gap:8px; }
   body :is(.intake-page.intake-page .intake-stats,.cost-page.cost-page .cost-metrics) { grid-template-columns:repeat(2,minmax(0,1fr)); }

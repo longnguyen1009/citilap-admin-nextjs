@@ -43,7 +43,7 @@ export async function GET(request) {
     let q = db.from('laptops').select('*', paginated ? { count: 'exact' } : undefined);
     if (query.monthKey && !query.all) q = q.eq('month_key', query.monthKey);
     if (query.status) q = q.eq('status', query.status);
-    q = q.eq('is_active', true).order('id');
+    q = q.orEquals({ is_active: true, status: 'ignored' }).order('id');
     if (paginated) q = q.range(offset, offset + limit - 1);
     const response = await q;
     if (response.error) throw new Error(response.error.message);
@@ -229,6 +229,7 @@ export async function POST(request) {
       if (!data) return NextResponse.json({ error: 'Không tìm thấy laptop.' }, { status: 404 });
       if (data) {
         oldData = data;
+        if (oldData.status === 'ignored') return NextResponse.json({ error: 'Sản phẩm đã HỦY, không thể chỉnh sửa.' }, { status: 409 });
         action = 'UPDATE';
         if (body.isActive !== undefined && body.isActive !== oldData.is_active) {
           return NextResponse.json({ error: 'Không thể đổi trạng thái hoạt động qua chỉnh sửa máy.' }, { status: 403 });
@@ -296,7 +297,7 @@ export async function POST(request) {
       const row = keysToSnake(body);
       const id = Number(row.id);
       delete row.id;
-      const result = await db.from('laptops').update(row).eq('id', id).select().single();
+      const result = await db.from('laptops').update(row).eq('id', id).neq('status', 'ignored').select().single();
       if (result.error) throw new Error(result.error.message);
       data = keysToCamel(result.data);
     } catch (error) {

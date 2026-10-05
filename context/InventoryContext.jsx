@@ -1188,6 +1188,17 @@ const mapLabelsToKeys = (fields, appOpts) => {
   };
 
   // Cập nhật từng laptop
+  const cancelLaptop = async (id) => {
+    const response = await fetch('/api/intake', {
+      method: 'POST', headers: await getAuthHeaders(),
+      body: JSON.stringify({ action: 'ignore', laptopId: id, reason: 'Hủy sản phẩm theo xác nhận của quản trị viên' }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Không thể HỦY sản phẩm.');
+    setLaptops(current => current.map(laptop => String(laptop.id) === String(id)
+      ? { ...laptop, status: 'ignored', isActive: false } : laptop));
+  };
+
   const updateLaptop = async (id, updatedFields) => {
     const currentLaptop = laptops.find(laptop => laptop.id == id);
     if (!currentLaptop) return { ok: false, message: 'Không tìm thấy máy.' };
@@ -1684,6 +1695,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       getDepositReferenceLaptops,
       getLaptopAssignmentError,
       updateLaptop,
+      cancelLaptop,
       updateLaptopStatus,
       addLaptop,
       deleteLaptop,

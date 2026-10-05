@@ -41,7 +41,7 @@ export async function GET(request) {
   const laptopFields = batchJoin => `id,sku,purchase_batch_id,source_type,name,category,serial,tracking_code_cn,purchase_price_rmb,shipping_rmb,purchase_exchange_rate,import_price_vnd,status,received_at,condition_note,month_key,${batchJoin}`;
   const baseLaptopQuery = batchJoin => db.from('laptops')
     .select(laptopFields(batchJoin))
-    .eq('is_active', true)
+    .orEquals({ is_active: true, status: 'ignored' })
     .in('source_type', ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT', 'UNKNOWN'])
     .order('id', { ascending: false });
   const [laptops, suppliers, options] = await Promise.all([
@@ -139,7 +139,7 @@ export async function POST(request) {
         p_laptop_id: Number(body.laptopId), p_reason: String(body.reason || ''), p_actor: actor
       });
     } else throw new Error('Thao tác không hợp lệ');
-    if (result.error) throw new Error(result.error.message);
+    if (result.error) throw new Error(body.action === 'ignore' ? 'Không thể HỦY: máy đã khóa, đang gắn với đơn hàng hoặc giữ chỗ. Hãy tải lại và xử lý liên kết trước.' : result.error.message);
     let outputData = result.data;
     if (profile.role !== 'ADMIN' && outputData) {
       const redact = row => Object.fromEntries(Object.entries(row || {}).filter(([k]) => !RECEIVING_PRICE_FIELDS.includes(k)));

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TechCheckModal from '../TechCheckModal';
+import CancelLaptopModal from '../CancelLaptopModal';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +77,7 @@ export default function Inventory() {
     parseMonthYear,
     formulaConfig,
     updateLaptop,
+    cancelLaptop,
     addLaptop,
     deleteLaptop,
     updateFormulaConfig,
@@ -180,6 +182,7 @@ export default function Inventory() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [cancellingLaptop, setCancellingLaptop] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -415,6 +418,7 @@ export default function Inventory() {
 
   // Mở Modal Chỉnh Sửa
   const handleOpenEdit = (laptop) => {
+    if (labelToKey('laptopStatus', laptop.status, fieldOptionsConfig) === 'ignored') return;
     setSaveError('');
     setEditingLaptop(laptop);
     setFormData({
@@ -1047,7 +1051,7 @@ export default function Inventory() {
                       >
                         <summary aria-label={`Thao tác laptop ${l.id}`} title="Thao tác"><MoreHorizontal size={18} /></summary>
                         <div>
-                          {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'in_transit' ?
+                          {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'ignored' ? <span>Đã HỦY · Đã khóa</span> : labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'in_transit' ?
                             <Link className="btn btn-sm btn-outline" href="/receiving">Nhận hàng</Link> : <>
                               <button data-testid={`product-edit-button-${l.id}`} className="btn btn-sm btn-outline"
                                 aria-label={`Sửa laptop ${l.id}`}
@@ -1057,6 +1061,7 @@ export default function Inventory() {
                                 setOpenActionMenuId(null); setTechCheckLaptop(l); setIsTechCheckModalOpen(true);
                               }}><Activity size={13} /> Test</button>
                             </>}
+                          {user?.role === 'ADMIN' && ['in_transit', 'waiting_qc', 'available', 'repair'].includes(labelToKey('laptopStatus', l.status, fieldOptionsConfig)) && <button className="btn btn-sm btn-outline" aria-label={`Hủy laptop ${l.id}`} onClick={() => { setOpenActionMenuId(null); setCancellingLaptop(l); }}>HỦY</button>}
                         </div>
                       </details>
                     </td>
@@ -1718,6 +1723,7 @@ export default function Inventory() {
           </Modal>
       )}
       {/* TECH CHECK MODAL */}
+      {cancellingLaptop && <CancelLaptopModal laptop={cancellingLaptop} onClose={() => setCancellingLaptop(null)} onConfirm={async () => { await cancelLaptop(cancellingLaptop.id); toast.success('Đã HỦY sản phẩm.'); }} />}
       <TechCheckModal
         key={`${techCheckLaptop?.id || 'none'}-${isTechCheckModalOpen}`}
         isOpen={isTechCheckModalOpen}

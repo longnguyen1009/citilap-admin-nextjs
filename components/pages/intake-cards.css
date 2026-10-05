@@ -139,7 +139,7 @@
 .intake-page.intake-page .purchase-day th { padding:7px 8px; }
 .intake-page.intake-page .purchase-day th:first-child { width:145px; }
 .intake-page.intake-page .purchase-day th:nth-child(2) { width:32%; }
-.intake-page.intake-page .purchase-day th:last-child { width:65px; }
+.intake-page.intake-page .purchase-day th:last-child { width:130px; }
 .intake-page.intake-page .purchase-day td { padding:6px 8px; font-size:12px; line-height:1.35; }
 .intake-page.intake-page .purchase-day small { margin-top:2px; font-size:11px; }
 .intake-page.intake-page .purchase-machine > :is(b,small) { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
