@@ -34,6 +34,24 @@ DELETE FROM customers;
 DELETE FROM operation_requests;
 DELETE FROM activity_logs;
 
+-- The source snapshot contains one supplier that was not present in the remote
+-- catalog when this migration was prepared. Seed it idempotently before the
+-- strict supplier-resolution guard so the whole import can remain atomic.
+INSERT INTO suppliers(
+  code,name,display_name,wechat_name,country,preferred_shipping_destination,
+  notes,active,created_by,created_at,updated_at
+) VALUES (
+  'WE_MAO','We-Mão','We-Mão','We-Mão','Trung Quốc','OTHER',
+  'Nhà cung cấp được bổ sung từ snapshot Google Sheet ngày 01/10/2026',1,
+  'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'
+)
+ON CONFLICT(code) DO UPDATE SET
+  name=excluded.name,
+  display_name=excluded.display_name,
+  wechat_name=excluded.wechat_name,
+  active=1,
+  updated_at=excluded.updated_at;
+
 CREATE TABLE _sheet_suppliers(source_name TEXT PRIMARY KEY, supplier_code TEXT);
 INSERT INTO _sheet_suppliers VALUES
   ('Thu lại khách lẻ', 'RETAIL_BUYBACK'),
@@ -42,7 +60,7 @@ INSERT INTO _sheet_suppliers VALUES
   ('We-莫名', 'WECHAT001'),
   ('Nhập thợ VN', 'VN_TECH'),
   ('We-A Bắc', 'WE_A_BAC'),
-  ('We-Mão', NULL),
+  ('We-Mão', 'WE_MAO'),
   ('We-AAALenovo', 'WE_LENOVO_02'),
   ('We-勇哥📱 13878190009', 'WE_003'),
   ('We-Hướng', 'WE_HUONG'),
