@@ -89,7 +89,7 @@ export function buildReplacement() {
   if(customerId===id) sql.push(insert('customers',{id,name:o.customer_raw||'Khách chưa có tên trong sheet',phone,address:o.address_raw}));
   if(phone) customerPhones.set(phone,customerId);
   sql.push(insert('orders',{id,created_date:o.created_date,month_key:'10/2026',order_type:'retail',
-   order_status:status,payment_status:paid===o.sale_million_vnd?'paid':/COD/.test(o.payment_status_raw)?'cod':dep>0?'deposit':'unpaid',
+   order_status:status,payment_status:paid===o.sale_million_vnd?'paid':/COD/.test(o.payment_status_raw)?'cod':dep>0?'deposited':'unpaid',
    laptop_id:cancelled?null:Number(o.laptop_id)||null,requested_laptop_id:Number(o.laptop_id)||null,requested_configuration:o.configuration,
    sale_price:o.sale_million_vnd,deposit_amount:dep,amount_paid:paid,debt_amount:o.sale_million_vnd-paid,cod_amount:o.sale_million_vnd-dep,
    customer_id:customerId,customer_info:o.customer_raw,customer_address:o.address_raw,shipping_method:method,
