@@ -5,6 +5,21 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 import { isCalendarDate } from '@/lib/listScope';
+import { correctPayment } from '@/lib/cloudflare/payment-correction.mjs';
+
+export async function PATCH(request) {
+  try {
+    const { DB } = getCloudflareBindings();
+    const profile = await requireSession(DB, request, ['ADMIN']);
+    const body = await request.json();
+    const result = toCamel(await correctPayment(DB, profile, body));
+    result.order.isActive = Boolean(result.order.isActive);
+    result.order.laptopLocked = Boolean(result.order.laptopLocked);
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: error.status || 400 });
+  }
+}
 
 const PAYMENT_TYPES = new Set(['deposit', 'balance', 'cod', 'refund', 'other']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

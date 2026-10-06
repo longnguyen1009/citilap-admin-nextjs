@@ -1,11 +1,11 @@
 "use client";
 import { useColumnResize } from '@/lib/useColumnResize';
 import { downloadExport } from '@/lib/downloadExport';
-import React, { useState, useMemo, useRef, useDeferredValue } from 'react';
+import { useState, useMemo, useRef, useDeferredValue, useEffect } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { useInventory, parseFlexibleFloat, isOrderCommitted, isOrderCancelled } from '../../context/InventoryContext';
-import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
+import { useInventory, parseFlexibleFloat } from '../../context/InventoryContext';
+import { labelToKey } from '../../lib/useFieldOptions';
 import { useAuth } from '../../context/AuthContext';
 import {
   ShoppingCart,
@@ -17,7 +17,9 @@ import {
   Check,
   History,
   TrendingUp,
-  Package
+  Package,
+  MoreHorizontal,
+  Edit3
 } from 'lucide-react';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
@@ -26,7 +28,11 @@ import { Modal } from '@/components/ui/modal';
 import InvoiceLink from '../InvoiceLink';
 import InvoiceOrderFields from '../InvoiceOrderFields';
 import OrderAllocation from '../OrderAllocation';
-import { getAuthHeaders } from '@/lib/apiFetchers';
+import CustomerFormModal from '../CustomerFormModal';
+import OrderQuickNote from '../OrderQuickNote';
+import RecordPaymentModal from '../RecordPaymentModal';
+import { useSubmission } from '@/lib/useSubmission';
+import { remainingOrderAmount, orderBalanceAfterDeposit } from '@/lib/orderPaymentAmounts.mjs';
 
 const formatConfigText = (value) => String(value || '').replaceAll('/', '/\u200B');
 
@@ -53,90 +59,13 @@ const toVnFormat = (ymd) => {
   return ymd;
 };
 
-const EditableCell = ({ value, onChange, type = "text", rows, placeholder, className, style, step }) => {
-  const incomingValue = value || '';
-  const [localValue, setLocalValue] = React.useState(incomingValue);
-  const textareaRef = React.useRef(null);
-
-  // Sync external cell updates (for example, polling/reconciliation) into the editor.
-  // This local draft is intentionally reset when the server value changes.
-  /* eslint-disable react-hooks/set-state-in-effect */
-  React.useEffect(() => {
-    setLocalValue(incomingValue);
-  }, [incomingValue]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  React.useEffect(() => {
-    if (type === 'textarea' && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [localValue, type]);
-
-  const handleBlur = () => {
-    if (localValue !== incomingValue) {
-      onChange(localValue);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.target.blur();
-    }
-  };
-
-  if (type === 'textarea') {
-    return (
-      <textarea
-        ref={textareaRef}
-        className={className}
-        style={{ ...style, overflow: 'hidden', resize: 'none' }}
-        rows={1}
-        placeholder={placeholder}
-        value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-      />
-    );
-  }
-
-  if (type === 'date') {
-    return (
-      <input
-        type="date"
-        className={className}
-        style={style}
-        value={toYMD(localValue)}
-        onChange={(e) => setLocalValue(toVnFormat(e.target.value))}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-      />
-    );
-  }
-
-  return (
-    <input
-      type={type}
-      step={step}
-      className={className}
-      style={style}
-      placeholder={placeholder}
-      value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-    />
-  );
-};
-
 export default function Orders() {
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const customerSubmission = useSubmission();
   const [allocationOrder, setAllocationOrder] = useState(null);
-  const [allocatingOrderId, setAllocatingOrderId] = useState(null);
-  const [activeLaptopPicker, setActiveLaptopPicker] = useState(null);
+  const [paymentOrder, setPaymentOrder] = useState(null);
   const { 
     laptops, 
-    orders: allOrders,
     dataLoading,
     filteredOrders: orders,
     customers,
@@ -154,11 +83,10 @@ export default function Orders() {
     ORDER_TYPES,
     PAYMENT_METHODS,
     createCustomer,
+    updateCustomer,
     getSelectableLaptops,
-    getAllocationCandidates,
     getDepositReferenceLaptops,
     getLaptopAssignmentError,
-    applyAllocationUpdate,
     getOptions,
     getLabel,
     appOptions
@@ -178,33 +106,6 @@ export default function Orders() {
     );
     return option?.label || String(value);
   };
-  const toKey = (groupKey, label) => getFormOptionKey(groupKey, label);
-  const selectValue = (value) => value == null ? '' : String(value);
-
-  const handleOrderStatusChange = (orderId, value) => {
-    const statusKey = getFormOptionKey('orderStatus', value);
-    // Xác nhận trước khi thay đổi trạng thái hủy/trả
-    if (statusKey === 'cancelled') {
-      if (!window.confirm(`Bạn có chắc chắn muốn HỦY đơn hàng #${orderId}?`)) return;
-    }
-    if (statusKey === 'returned') {
-      if (!window.confirm(`Bạn có chắc chắn muốn ĐỔI TRẢ (BẢO HÀNH) đơn hàng #${orderId}?`)) return;
-    }
-    const updates = { orderStatus: statusKey };
-    if (statusKey === 'cancelled') {
-      updates.deliveryStatus = 'cancelled';
-      updates.cancelledAt = new Date().toISOString();
-      updates.cancelReason = 'Hủy từ danh sách đơn hàng';
-    }
-    if (statusKey === 'returned') {
-      updates.deliveryStatus = 'returned';
-      updates.returnedAt = new Date().toISOString();
-      updates.returnReason = 'Đổi trả từ danh sách đơn hàng';
-    }
-    const result = updateOrder(orderId, updates);
-    if (!result.ok) toast.error(result.message);
-  };
-
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -257,31 +158,42 @@ export default function Orders() {
     creditCardFee: ''
   });
   const [laptopPickerSearch, setLaptopPickerSearch] = useState('');
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
+
+  useEffect(() => {
+    const closeActionMenu = (event) => {
+      if (!event.target.closest('.inventory-action-menu')) setOpenActionMenuId(null);
+    };
+    document.addEventListener('pointerdown', closeActionMenu);
+    return () => document.removeEventListener('pointerdown', closeActionMenu);
+  }, []);
 
   // State quản lý độ rộng của từng cột (Trạng Thái Đơn, Thanh Toán, Gửi Hàng trước Giá Bán)
   const [colWidths, setColWidths] = useState({
     id: 70,
-    createdDate: 135,
-    note: 180,
-    laptopId: 250,
-    orderStatus: 165,
-    paymentStatus: 160,
-    paymentMethod: 165,
-    deliveryStatus: 160,
-    shippingMethod: 145,
-    salePrice: 85,
-    profitVnd: 95,
-    depositNote: 125,
-    codAmount: 85,
-    customerId: 150,
-    customerAddress: 170,
+    actions: 76,
+    createdDate: 110,
+    note: 190,
+    laptopId: 480,
+    orderStatus: 120,
+    paymentStatus: 180,
+    paymentMethod: 100,
+    deliveryStatus: 115,
+    shippingMethod: 200,
+    salePrice: 90,
+    profitVnd: 85,
+    depositNote: 80,
+    codAmount: 90,
+    customerId: 185,
+    customerAddress: 215,
     setupNote: 120,
-    warranty: 80,
+    warranty: 100,
   });
 
   const orderColumnKeys = useMemo(() => {
     const keys = [
       'id',
+      'actions',
       'createdDate',
       'note',
       'laptopId',
@@ -309,69 +221,13 @@ export default function Orders() {
     return keys;
   }, [user?.role]);
 
-  const orderColumnCount = orderColumnKeys.length + 1;
+  const orderColumnCount = orderColumnKeys.length;
 
   const startResizing = useColumnResize(colWidths, setColWidths);
 
   const totalTableWidth = useMemo(() => {
-    return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0) + 108;
+    return orderColumnKeys.reduce((total, key) => total + (colWidths[key] || 0), 0);
   }, [colWidths, orderColumnKeys]);
-
-  // Đổi máy trực tiếp trên bảng Google Sheet
-  const handleDirectChangeLaptop = (ordId, newLaptopId) => {
-    // Check the current status of the order to see if it allows changing the laptop
-    const currentOrder = allOrders.find(o => String(o.id) === String(ordId));
-    if (!currentOrder) return;
-    const isLocked = isOrderCommitted(currentOrder, appOptions) || isOrderCancelled(currentOrder, appOptions);
-    if (isLocked) {
-      toast.error('Đơn hàng đang ở trạng thái KHÔNG ĐƯỢC PHÉP thay đổi sản phẩm. Vui lòng chuyển trạng thái đơn hàng về "MỚI TẠO" hoặc "ĐÃ CỌC" trước khi đổi máy.');
-      return;
-    }
-    const selected = laptops.find(l => String(l.id) === String(newLaptopId));
-    const isDepositReference = !currentOrder.laptopId;
-    let updates = isDepositReference
-      ? { requestedLaptopId: newLaptopId }
-      : { laptopId: newLaptopId };
-    if (selected) {
-      updates.requestedLaptopId = newLaptopId;
-      updates.requestedConfiguration = selected.name;
-      updates.requestedCategory = selected.category;
-      const autoPrice = selected.retailPriceVnd || selected.wholesalePriceVnd;
-      if (autoPrice) {
-        updates.salePrice = autoPrice;
-        // Không tự động ghi đè codAmount — để người dùng tự quyết định số tiền thu hộ.
-      }
-    }
-    const result = updateOrder(ordId, updates);
-    if (!result.ok) toast.error(result.message);
-  };
-
-  const handleAllocateLaptop = async (orderId, laptopId) => {
-    if (!laptopId || allocatingOrderId) return;
-    setAllocatingOrderId(orderId);
-    try {
-      const currentOwner = allOrders.find(order => (
-        String(order.id) !== String(orderId)
-        && String(order.laptopId) === String(laptopId)
-        && order.isActive !== false
-        && !isOrderCommitted(order, appOptions)
-        && !isOrderCancelled(order, appOptions)
-      ));
-      const response = await fetch('/api/order-allocation', {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ orderId: Number(orderId), laptopId: Number(laptopId), expectedOwner: currentOwner?.id ?? null }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error);
-      applyAllocationUpdate(payload);
-      toast.success(`Đã cập nhật máy cho đơn #${orderId}.`);
-      setAllocatingOrderId(null);
-    } catch (error) {
-      toast.error(error.message || 'Không thể phân máy.');
-      setAllocatingOrderId(null);
-    }
-  };
 
   // Mở modal tạo đơn mới
   const handleOpenAdd = () => {
@@ -495,7 +351,7 @@ export default function Orders() {
       requestedConfiguration: selected?.name || prev.requestedConfiguration || '',
       requestedCategory: selected?.category || prev.requestedCategory || '',
       salePrice: autoPrice,
-      // Không tự động ghi đè codAmount — để người dùng tự quyết định COD
+      codAmount: remainingOrderAmount({ ...prev, salePrice: autoPrice }),
     }));
   };
 
@@ -535,7 +391,7 @@ export default function Orders() {
     setIsSaving(true);
     try {
     const finalSalePrice = parseFlexibleFloat(formData.salePrice);
-    const finalCodAmount = parseFlexibleFloat(formData.codAmount);
+    const finalCodAmount = remainingOrderAmount({ ...formData, salePrice: finalSalePrice });
     
     const orderPayload = {
       ...formData,
@@ -586,23 +442,23 @@ export default function Orders() {
         if (!matchId && !matchCustomer && !matchLaptop && !matchTracking && !matchAddress && !matchNote) return false;
       }
 
-      if (filterSaleOnline && labelToKey('saleOnline', o.saleOnline) !== labelToKey('saleOnline', filterSaleOnline)) return false;
-      if (filterOrderStatus && o.orderStatus !== labelToKey('orderStatus', filterOrderStatus)) return false;
-      if (filterPaymentStatus && o.paymentStatus !== labelToKey('paymentStatus', filterPaymentStatus)) return false;
-      if (filterDeliveryStatus && o.deliveryStatus !== labelToKey('deliveryStatus', filterDeliveryStatus)) return false;
-      if (filterShippingMethod && labelToKey('shippingMethod', o.shippingMethod) !== labelToKey('shippingMethod', filterShippingMethod)) return false;
+      if (filterSaleOnline && labelToKey('saleOnline', o.saleOnline, appOptions) !== labelToKey('saleOnline', filterSaleOnline, appOptions)) return false;
+      if (filterOrderStatus && labelToKey('orderStatus', o.orderStatus, appOptions) !== labelToKey('orderStatus', filterOrderStatus, appOptions)) return false;
+      if (filterPaymentStatus && labelToKey('paymentStatus', o.paymentStatus, appOptions) !== labelToKey('paymentStatus', filterPaymentStatus, appOptions)) return false;
+      if (filterDeliveryStatus && labelToKey('deliveryStatus', o.deliveryStatus, appOptions) !== labelToKey('deliveryStatus', filterDeliveryStatus, appOptions)) return false;
+      if (filterShippingMethod && labelToKey('shippingMethod', o.shippingMethod, appOptions) !== labelToKey('shippingMethod', filterShippingMethod, appOptions)) return false;
 
       // Lọc theo Phân Loại Sản Phẩm (join từ danh sách máy)
       if (filterCategory) {
         const laptopObj = laptops.find(l => String(l.id) === String(o.laptopId));
-        if (!laptopObj || labelToKey('category', laptopObj.category) !== labelToKey('category', filterCategory)) return false;
+        if (!laptopObj || labelToKey('category', laptopObj.category, appOptions) !== labelToKey('category', filterCategory, appOptions)) return false;
       }
 
       return true;
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory]);
+  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory, appOptions]);
 
 
   const hasActiveFilters = Boolean(
@@ -622,11 +478,11 @@ export default function Orders() {
   const getOrderStatusBadgeClass = (status) => {
     const key = labelToKey('orderStatus', status, appOptions);
     switch (key) {
-      case 'done': return 'pill-gray';
+      case 'done': return 'pill-success';
       case 'shipping': return 'pill-warning';
       case 'prepared': return 'pill-warning';
       case 'new': return 'pill-white';
-      case 'deposited': return 'pill-info';
+      case 'deposited': return 'pill-purple';
       case 'cancelled':
       case 'returned': return 'pill-gray';
       default: return 'pill-white';
@@ -637,9 +493,10 @@ export default function Orders() {
     const key = labelToKey('paymentStatus', status, appOptions);
     switch (key) {
       case 'paid': return 'pill-success';
-      case 'deposited': return 'pill-warning';
+      case 'deposited': return 'pill-purple';
+      case 'cod': return 'pill-warning';
       case 'unpaid': return 'pill-danger';
-      case 'cod': return 'pill-purple';
+      case 'refunded': return 'pill-danger';
       default: return 'pill-neutral';
     }
   };
@@ -811,14 +668,14 @@ export default function Orders() {
           <div className="summary-icon"><TrendingUp size={15} /></div>
           <div className="summary-text">
             <span className="summary-label">Chờ thanh toán</span>
-            <strong className="summary-value">{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus))).length}</strong>
+            <strong className="summary-value">{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus, appOptions))).length}</strong>
           </div>
         </div>
         <div className="list-summary-item list-summary-item-success">
           <div className="summary-icon"><Check size={15} /></div>
           <div className="summary-text">
             <span className="summary-label">Hoàn thành</span>
-            <strong className="summary-value">{orders.filter(order => labelToKey('orderStatus', order.orderStatus) === 'done').length}</strong>
+            <strong className="summary-value">{orders.filter(order => labelToKey('orderStatus', order.orderStatus, appOptions) === 'done').length}</strong>
           </div>
         </div>
         {hasActiveFilters && (
@@ -851,11 +708,15 @@ export default function Orders() {
           <table className={`data-table data-table-wide orders-list-table ${user?.role === 'ADMIN' ? 'is-admin' : ''}`} aria-label="Order list" style={{ width: `${totalTableWidth}px`, minWidth: `${totalTableWidth}px` }}>
             <thead>
               <tr>
-                <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative' }}>
+                <th className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, position: 'relative', textAlign: 'center' }}>
                   ID Đơn
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột ID" aria-valuemin={45} aria-valuenow={colWidths.id || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, id: Math.max(45, (previous.id || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'id')} title="Kéo để chỉnh rộng hẹp cột ID" />
                 </th>
-                <th className="sticky-col-2" style={{ width: `${colWidths.createdDate}px`, minWidth: `${colWidths.createdDate}px`, position: 'relative', left: `${colWidths.id}px` }}>
+                <th className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', position: 'relative', left: `${colWidths.id}px` }}>
+                  Thao tác
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Thao tác" aria-valuemin={45} aria-valuenow={colWidths.actions || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, actions: Math.max(45, (previous.actions || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'actions')} title="Kéo để chỉnh rộng hẹp cột Thao tác" />
+                </th>
+                <th style={{ width: `${colWidths.createdDate}px`, minWidth: `${colWidths.createdDate}px`, position: 'relative' }}>
                   Ngày tạo & SALE
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ngày tạo & SALE" aria-valuemin={45} aria-valuenow={colWidths.createdDate || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, createdDate: Math.max(45, (previous.createdDate || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'createdDate')} title="Kéo để chỉnh rộng hẹp cột Ngày tạo & SALE" />
                 </th>
@@ -945,7 +806,6 @@ export default function Orders() {
                   Bảo Hành
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Bảo Hành" aria-valuemin={45} aria-valuenow={colWidths.warranty || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, warranty: Math.max(45, (previous.warranty || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'warranty')} title="Kéo để chỉnh rộng hẹp cột Bảo Hành" />
                 </th>
-                <th style={{ width: '108px', minWidth: '108px' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -958,6 +818,7 @@ export default function Orders() {
               ) : (
                 filteredOrders.map((ord) => {
                   const laptopObj = laptops.find(l => String(l.id) === String(ord.laptopId || ord.requestedLaptopId));
+                  const linkedCustomer = customers.find(customer => String(customer.id) === String(ord.customerId));
                   const noteValue = ord.note !== undefined ? ord.note : [ord.note1, ord.note2].filter(Boolean).join(' - ');
                   const showAllocationDetails = ['new', 'deposited'].includes(
                     labelToKey('orderStatus', ord.orderStatus, appOptions)
@@ -970,211 +831,70 @@ export default function Orders() {
                         #{ord.id}
                       </td>
 
-                      {/* Ngày tạo, SALE Online (Gộp chung) */}
-                      <td className="sticky-col-2" style={{ width: `${colWidths.createdDate}px`, minWidth: `${colWidths.createdDate}px`, left: `${colWidths.id}px` }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <div style={{ flex: 1 }}>
-                              <EditableCell 
-                                type="date"
-                                className="sheet-cell-input"
-                                value={ord.createdDate || ''} 
-                                onChange={(val) => updateOrder(ord.id, { createdDate: val })} 
-                              />
-                            </div>
+                      {/* Thao tác */}
+                      <td className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', left: `${colWidths.id}px` }}>
+                        <details
+                          className="inventory-action-menu"
+                          open={openActionMenuId === ord.id}
+                          onToggle={(event) => {
+                            if (event.currentTarget.open) setOpenActionMenuId(ord.id);
+                            else setOpenActionMenuId((current) => current === ord.id ? null : current);
+                          }}
+                        >
+                          <summary aria-label={`Thao tác đơn hàng #${ord.id}`} title="Thao tác"><MoreHorizontal size={18} /></summary>
+                          <div>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              data-testid={`order-edit-button-${ord.id}`}
+                              onClick={() => {
+                                setOpenActionMenuId(null);
+                                handleOpenEdit(ord);
+                              }}
+                              title="Chỉnh sửa đơn hàng"
+                            >
+                              <Edit3 size={13} /> Sửa
+                            </button>
+                            <InvoiceLink
+                              orderId={ord.id}
+                              invoiceId={ord.invoiceId}
+                              issue
+                              eligible={['shipping', 'done'].includes(labelToKey('orderStatus', ord.orderStatus, appOptions))}
+                            />
                           </div>
-                          <select 
-                            className="sheet-cell-select"
-                            style={{ fontWeight: 700, color: '#0369a1' }}
-                            value={selectValue(ord.saleOnline)}
-                            onChange={(e) => updateOrder(ord.id, { saleOnline: e.target.value })}
-                          >
-                            {getOptions('saleOnline').map(s => (
-                              <option key={s.key} value={s.key}>{s.label}</option>
-                            ))}
-                          </select>
+                        </details>
+                      </td>
+
+                      <td style={{ width: colWidths.createdDate, minWidth: colWidths.createdDate }}>
+                        <div className="order-display-text">{toVnFormat(ord.createdDate) || '—'}</div>
+                        {ord.saleOnline && <strong>{getLabel('saleOnline', ord.saleOnline)}</strong>}
+                        {ord.saleOffline && <div>{getLabel('saleOffline', ord.saleOffline)}</div>}
+                      </td>
+                      <td style={{ width: colWidths.note, minWidth: colWidths.note }}>
+                        <OrderQuickNote key={`${ord.id}:${noteValue}`} orderId={ord.id} value={noteValue} onSave={note => updateOrder(ord.id, { note }, { awaitPersistence: true })} />
+                      </td>
+                      <td style={{ width: colWidths.laptopId, minWidth: colWidths.laptopId }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                          <div className="order-display-text" style={{ fontSize: '0.86rem', fontWeight: 600 }}>
+                            {ord.laptopId && <><span className="order-id-card">#{ord.laptopId}</span>{' '}</>}
+                            {formatConfigText(laptopObj?.name || ord.requestedConfiguration || '—')}
+                          </div>
+                          {!ord.laptopId && showAllocationDetails && (
+                            <button type="button" className="btn btn-outline" onClick={() => setAllocationOrder(ord)}>
+                              Phân máy
+                            </button>
+                          )}
+                          {ord.laptopId && showAllocationDetails && (
+                            <button type="button" className="btn btn-outline" onClick={() => setAllocationOrder(ord)}>
+                              Đổi máy
+                            </button>
+                          )}
+                          {ord.reservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(ord.reservation.reservationCode)}`}>{ord.reservation.reservationCode} · {ord.reservation.status}</a>}
+                          {ord.tradeIn && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(ord.tradeIn.tradeInCode)}`}>Thu cũ {ord.tradeIn.tradeInCode}</a>}
                         </div>
                       </td>
-
-                      {/* 4. GHI CHÚ GỘP 1 CỘT (TEXTBOX 3 HÀNG THOÁNG MÁT) */}
-                      <td style={{ width: `${colWidths.note}px`, minWidth: `${colWidths.note}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          rows={3}
-                          style={{ color: '#111827', fontWeight: 700, fontSize: '0.84rem' }}
-                          value={noteValue || ''} 
-                          onChange={(val) => updateOrder(ord.id, { note: val })} 
-                        />
-                      </td>
-
-
-                      {/* 5. CỘT MÁY: 2 DÒNG THOÁNG MÁT (DÒNG 1: SELECTOR ID, DÒNG 2: TÊN CẤU HÌNH) */}
-                      <td style={{ width: `${colWidths.laptopId}px`, minWidth: `${colWidths.laptopId}px`, padding: '0.3rem 0.4rem' }}>
-                        {showAllocationDetails && (ord.laptopId ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <button type="button" className="btn btn-outline" onClick={() => setAllocationOrder(ord)}>Đổi / Giải phóng máy</button>
-                            <select
-                              className="sheet-cell-select"
-                              aria-label={`Đổi máy cho đơn #${ord.id}`}
-                              value={ord.laptopId}
-                              disabled={allocatingOrderId !== null}
-                              onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
-                            >
-                              {getAllocationCandidates(ord.id).map(laptop => {
-                                const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
-                                return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
-                              })}
-                            </select>
-                            <div
-                              style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
-                              title={laptopObj?.name || ''}
-                            >
-                              {laptopObj?.name ? formatConfigText(laptopObj.name) : 'Chưa có cấu hình máy'}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                              <button
-                                type="button"
-                                className="btn btn-outline"
-                                style={{ fontSize: '0.72rem', padding: '2px 6px', height: '22px', whiteSpace: 'nowrap' }}
-                                onClick={() => setAllocationOrder(ord)}
-                                title="Mở hộp thoại phân máy chi tiết"
-                              >
-                                🎯 Phân máy
-                              </button>
-                              <select
-                                className="sheet-cell-select"
-                                aria-label={`Phân máy cho đơn #${ord.id}`}
-                                value=""
-                                disabled={allocatingOrderId !== null}
-                                onChange={(event) => handleAllocateLaptop(ord.id, event.target.value)}
-                                style={{ flex: 1, height: '22px', fontSize: '0.78rem' }}
-                              >
-                                <option value="">{allocatingOrderId === ord.id ? 'Đang phân máy…' : 'Chọn nhanh máy'}</option>
-                                {getAllocationCandidates(ord.id).map(laptop => {
-                                  const owner = allOrders.find(order => String(order.id) !== String(ord.id) && String(order.laptopId) === String(laptop.id));
-                                  return <option key={laptop.id} value={laptop.id}>#{laptop.id} · {laptop.name} · {laptop.serial || 'Chưa serial'}{owner ? ` · Đang cọc đơn #${owner.id}` : ''}</option>;
-                                })}
-                              </select>
-                            </div>
-                            {ord.requestedConfiguration ? (
-                              <div
-                                style={{
-                                  fontSize: '0.72rem',
-                                  background: '#fffbeb',
-                                  border: '1px solid #fde68a',
-                                  borderRadius: '4px',
-                                  padding: '3px 6px',
-                                  lineHeight: 1.3,
-                                  color: '#92400e'
-                                }}
-                                title={`Cấu hình yêu cầu: ${ord.requestedConfiguration}`}
-                              >
-                                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309' }}>
-                                  <span>⚠️ Chờ máy:</span>
-                                  {ord.requestedLaptopId && <span style={{ fontSize: '0.68rem', color: '#78350f' }}>(Từng chọn #{ord.requestedLaptopId})</span>}
-                                </div>
-                                <div style={{ color: '#1e293b', fontWeight: 500, marginTop: '1px' }}>
-                                  {formatConfigText(ord.requestedConfiguration)}
-                                </div>
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: '0.70rem', color: '#94a3b8', fontStyle: 'italic', padding: '2px 4px' }}>
-                                Chưa chọn cấu hình
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {!showAllocationDetails && <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {/* Dòng 1: Dropdown chọn ID Máy - khóa khi đơn đã xác định sản phẩm */}
-                          {(() => {
-                            const lockedByDelivery = ['shipped', 'delivered'].includes(labelToKey('deliveryStatus', ord.deliveryStatus));
-                            const lockedByPayment = labelToKey('paymentStatus', ord.paymentStatus) === 'paid';
-                            const lockedByOrder = isOrderCommitted(ord, appOptions) || isOrderCancelled(ord, appOptions);
-
-                            const isLocked = lockedByDelivery || lockedByPayment || lockedByOrder;
-
-                            // Xác định lý do khóa để hiển thị tooltip rõ ràng
-                            const lockReason = lockedByDelivery
-                              ? `Giao hàng: "${ord.deliveryStatus}"`
-                              : lockedByOrder
-                              ? `Trạng thái đơn: "${ord.orderStatus}"`
-                              : lockedByPayment
-                              ? `Thanh toán: "${ord.paymentStatus}"`
-                              : '';
-
-                            return (
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <select 
-                                  className="sheet-cell-select"
-                                  style={{ 
-                                    fontWeight: 800, 
-                                    color: isLocked ? '#64748b' : '#1d4ed8', 
-                                    fontSize: '0.82rem', 
-                                    height: '22px',
-                                    flex: 1,
-                                    cursor: isLocked ? 'not-allowed' : 'pointer',
-                                    opacity: isLocked ? 0.75 : 1,
-                                    background: isLocked ? 'rgba(100,116,139,0.08)' : undefined
-                                  }}
-                                  value={ord.laptopId || ord.requestedLaptopId || ''}
-                                  onFocus={() => setActiveLaptopPicker(ord.id)}
-                                  onChange={(e) => handleDirectChangeLaptop(ord.id, e.target.value)}
-                                  disabled={isLocked}
-                                  title={isLocked ? `🔒 Không được đổi máy — ${lockReason}` : 'Chọn máy cho đơn hàng'}
-                                >
-                                  <option value="">- Chưa gán máy -</option>
-                                  {(activeLaptopPicker !== ord.id || isLocked ? (laptopObj ? [laptopObj] : []) : ord.laptopId ? getSelectableLaptops(ord.id) : getDepositReferenceLaptops(ord.requestedLaptopId)).map(l => (
-                                    <option key={l.id} value={l.id}>
-                                      {l.id} - {l.name} ({l.status})
-                                    </option>
-                                  ))}
-                                </select>
-                                {isLocked && (
-                                  <span title={`Không được đổi máy — ${lockReason}`} style={{ fontSize: '0.75rem', flexShrink: 0 }}>🔒</span>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Dòng 2: Tên cấu hình máy tự động trích xuất từ kho */}
-                          <div 
-                            style={{ fontSize: '0.72rem', color: '#475569', whiteSpace: 'normal', overflowWrap: 'normal', wordBreak: 'normal', lineHeight: 1.35, padding: '2px 4px', fontWeight: 500 }}
-                            title={laptopObj?.name || ord.requestedConfiguration || 'Chưa chọn máy'}
-                          >
-                            {laptopObj ? (
-                              formatConfigText(laptopObj.name)
-                            ) : ord.requestedConfiguration ? (
-                              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '2px 4px', color: '#92400e' }}>
-                                <strong>⚠️ Chờ máy:</strong> {formatConfigText(ord.requestedConfiguration)} {ord.requestedLaptopId ? `(#${ord.requestedLaptopId})` : ''}
-                              </div>
-                            ) : (
-                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Tên cấu hình máy...</span>
-                            )}
-                          </div>
-                          {ord.reservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(ord.reservation.reservationCode)}`}>{ord.reservation.reservationCode} · {ord.reservation.status}</a>}
-                          {ord.tradeIn && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(ord.tradeIn.tradeInCode)}`}>Thu cũ {ord.tradeIn.tradeInCode} · {(Number(ord.tradeIn.agreedValueVnd || 0) / 1000000).toFixed(2)}tr (phi tiền mặt)</a>}
-                        </div>}
-                      </td>
-
-
-                      {/* 6. TRẠNG THÁI ĐƠN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
-                      <td style={{ width: `${colWidths.orderStatus}px`, minWidth: `${colWidths.orderStatus}px` }}>
-                        <select
-                          data-testid={`order-status-cell-${ord.id}`}
-                          className={`sheet-cell-select ${getOrderStatusBadgeClass(ord.orderStatus)}`}
-                          style={{ fontWeight: 700, borderRadius: '4px' }}
-                          value={selectValue(getLabel('orderStatus', ord.orderStatus))}
-                          onChange={(e) => handleOrderStatusChange(ord.id, e.target.value)}
-                        >
-                          {ORDER_STATUS_OPTIONS.map(st => (
-                            <option key={st} value={st}>{st}</option>
-                          ))}
-                        </select>
+                      <td style={{ width: colWidths.orderStatus, minWidth: colWidths.orderStatus }}>
+                        <span data-testid={`order-status-cell-${ord.id}`} className={`status-badge ${getOrderStatusBadgeClass(ord.orderStatus)}`}>{getLabel('orderStatus', ord.orderStatus)}</span>
                       </td>
 
                       {/* 7. THANH TOÁN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
@@ -1186,185 +906,61 @@ export default function Orders() {
                         >
                           {getLabel('paymentStatus', ord.paymentStatus)}
                         </span>
-                        <div className="phase9-cell-meta">Đã thu {Number(ord.amountPaid || 0).toFixed(2)} triệu · COD {Number(ord.codAmount || 0).toFixed(2)} triệu · Còn {Number(ord.debtAmount || 0).toFixed(2)} triệu</div>
+                        <div className="phase9-cell-meta">{labelToKey('paymentStatus', ord.paymentStatus, appOptions) === 'paid'
+                          ? `Đã thu đủ ${Number(ord.amountPaid || 0).toLocaleString('vi-VN')} triệu`
+                          : `Đã thu ${Number(ord.amountPaid || 0).toLocaleString('vi-VN')} triệu, còn ${remainingOrderAmount(ord).toLocaleString('vi-VN')} triệu`}</div>
                         {ord.isActive !== false && Number(ord.debtAmount || 0) > 0 && (
-                          <a className="phase9-inline-link" href={`/payments?orderId=${ord.id}`}>Mở thu tiền</a>
+                          <button
+                            type="button"
+                            className="phase9-inline-link"
+                            onClick={() => setPaymentOrder(ord)}
+                          >
+                            Mở thu tiền
+                          </button>
                         )}
                       </td>
 
-                      {/* PHƯƠNG THỨC THANH TOÁN */}
-                      <td style={{ width: `${colWidths.paymentMethod}px`, minWidth: `${colWidths.paymentMethod}px` }}>
-                        <select
-                          className={`sheet-cell-select ${getPaymentMethodBadgeClass(ord.paymentMethod)}`}
-                          style={{ fontWeight: 600, borderRadius: '4px' }}
-                          value={selectValue(getLabel('paymentMethod', ord.paymentMethod))}
-                          onChange={(e) => updateOrder(ord.id, { paymentMethod: toKey('paymentMethod', e.target.value) })}
-                        >
-                          {PAYMENT_METHODS.map(pm => (
-                            <option key={pm} value={pm}>{pm}</option>
-                          ))}
-                        </select>
-                      </td>
-
-                      {/* 8. GIAO HÀNG (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
-                      <td style={{ width: `${colWidths.deliveryStatus}px`, minWidth: `${colWidths.deliveryStatus}px` }}>
-                        <select
-                          data-testid={`order-delivery-cell-${ord.id}`}
-                          className={`sheet-cell-select ${getDeliveryStatusBadgeClass(ord.deliveryStatus)}`}
-                          style={{ fontWeight: 700, borderRadius: '4px' }}
-                          value={selectValue(getLabel('deliveryStatus', ord.deliveryStatus))}
-                          onChange={(e) => updateOrder(ord.id, { deliveryStatus: toKey('deliveryStatus', e.target.value) })}
-                        >
-                          {DELIVERY_STATUS_OPTIONS.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </td>
-
-                      {/* 9. GỬI HÀNG & VẬN ĐƠN (GỘP CHUNG) */}
-                      <td style={{ width: `${colWidths.shippingMethod}px`, minWidth: `${colWidths.shippingMethod}px` }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <select
-                            className="sheet-cell-select"
-                            style={{ fontWeight: 600 }}
-                            value={selectValue(getLabel('shippingMethod', ord.shippingMethod))}
-                            onChange={(e) => updateOrder(ord.id, { shippingMethod: toKey('shippingMethod', e.target.value) })}
-                          >
-                            {SHIPPING_METHOD_OPTIONS.map(sm => (
-                              <option key={sm} value={sm}>{sm}</option>
-                            ))}
-                          </select>
-                          <EditableCell 
-                            type="date"
-                            className="sheet-cell-input"
-                            value={ord.shipDate || ''} 
-                            onChange={(val) => updateOrder(ord.id, { shipDate: val })} 
-                          />
-                          {(['viettelpost', 'shopee_spx'].includes(labelToKey('shippingMethod', ord.shippingMethod))) && (
-                            <EditableCell 
-                              type="text"
-                              className="sheet-cell-input"
-                              style={{ fontFamily: 'monospace', fontSize: '0.75rem', marginTop: '2px', border: '1px dashed #cbd5e1' }}
-                              value={ord.trackingCode || ''} 
-                              onChange={(val) => updateOrder(ord.id, { trackingCode: val })} 
-                            />
-                          )}
-                        </div>
+                      <td style={{ width: colWidths.paymentMethod, minWidth: colWidths.paymentMethod }}><span className={`status-badge ${getPaymentMethodBadgeClass(ord.paymentMethod)}`}>{getLabel('paymentMethod', ord.paymentMethod)}</span></td>
+                      <td style={{ width: colWidths.deliveryStatus, minWidth: colWidths.deliveryStatus }}><span data-testid={`order-delivery-cell-${ord.id}`} className={`status-badge ${getDeliveryStatusBadgeClass(ord.deliveryStatus)}`}>{getLabel('deliveryStatus', ord.deliveryStatus)}</span></td>
+                      <td style={{ width: colWidths.shippingMethod, minWidth: colWidths.shippingMethod }}>
+                        <div className="order-display-text">{getLabel('shippingMethod', ord.shippingMethod) || '—'}</div>
+                        {ord.shipDate && <div>{toVnFormat(ord.shipDate)}</div>}
+                        {ord.trackingCode && <div className="order-display-text">{ord.trackingCode}</div>}
                       </td>
 
                       {/* 10. GIÁ BÁN (TR) */}
                       <td className="order-sale-price-cell" style={{ width: `${colWidths.salePrice}px`, minWidth: `${colWidths.salePrice}px`, textAlign: 'center' }}>
-                        <EditableCell 
-                          type="number" 
-                          step="any" 
-                          className="sheet-cell-input"
-                          style={{ fontWeight: 800, color: '#2563eb', textAlign: 'center' }}
-                          value={ord.salePrice !== undefined ? ord.salePrice : ''} 
-                          onChange={(val) => updateOrder(ord.id, { salePrice: val })} 
-                        />
+                        <strong title="Bấm Sửa để thay đổi giá bán">{Number(ord.salePrice || 0).toLocaleString('vi-VN')}</strong>
                       </td>
 
                       {/* 10b. LỢI NHUẬN (TR) — chỉ ADMIN: giá bán - giá nhập của máy */}
                       {user?.role === 'ADMIN' && (
                         <td style={{ width: `${colWidths.profitVnd}px`, minWidth: `${colWidths.profitVnd}px`, fontWeight: 800, color: '#059669', textAlign: 'center' }}>
-                          {!ord.laptopId ? 'Chưa phân máy' : ord.profitVnd != null
-                            ? `${Number(ord.profitVnd).toFixed(2)}tr`
+                          {!ord.laptopId ? '-' : ord.profitVnd != null
+                            ? Number(ord.profitVnd).toFixed(2)
                             : laptopObj && ord.salePrice
-                              ? `${Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2)).toFixed(2)}tr`
+                              ? Number((parseFlexibleFloat(ord.salePrice) - parseFlexibleFloat(laptopObj.importPriceVnd)).toFixed(2)).toFixed(2)
                               : '-'}
                         </td>
                       )}
 
                       {/* 11. CỌC (TEXTBOX 3 HÀNG THOÁNG MÁT) */}
                       <td style={{ width: `${colWidths.depositNote}px`, minWidth: `${colWidths.depositNote}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          rows={3}
-                          style={{ fontWeight: 600, color: '#d97706' }}
-                          value={ord.depositNote || ''} 
-                          onChange={(val) => updateOrder(ord.id, { depositNote: val })} 
-                        />
+                        <div style={{ textAlign: 'center' }} title="Cọc lấy từ lịch sử Thu tiền; chỉ admin được sửa giao dịch">
+                          <strong>{Number(ord.depositAmount || 0).toLocaleString('vi-VN')}</strong>
+                        </div>
                       </td>
 
                       {/* 12. THU HỘ COD (TR) */}
                       <td style={{ width: `${colWidths.codAmount}px`, minWidth: `${colWidths.codAmount}px` }}>
-                        <EditableCell 
-                          type="number" 
-                          step="any" 
-                          className="sheet-cell-input"
-                          style={{ fontWeight: 800, color: '#059669' }}
-                          value={ord.codAmount !== undefined ? ord.codAmount : ''} 
-                          onChange={(val) => updateOrder(ord.id, { codAmount: val })} 
-                        />
+                        <div style={{ textAlign: 'center' }} title="Giá bán trừ tổng tiền cọc"><strong>{orderBalanceAfterDeposit(ord).toLocaleString('vi-VN')}</strong></div>
                       </td>
 
-                      {/* Thông Tin Khách */}
-                      <td style={{ width: `${colWidths.customerId}px`, minWidth: `${colWidths.customerId}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          rows={3}
-                          style={{ fontWeight: 600 }}
-                          value={ord.customerInfo || customers.find(customer => String(customer.id) === String(ord.customerId))?.name || ''}
-                          onChange={(val) => updateOrder(ord.id, { customerInfo: val })}
-                        />
-                      </td>
+                      <td style={{ width: colWidths.customerId, minWidth: colWidths.customerId }}><div className="order-display-text">{linkedCustomer ? [linkedCustomer.name, linkedCustomer.phone].filter(Boolean).join('\n') : ord.customerInfo || '—'}</div></td>
+                      <td style={{ width: colWidths.customerAddress, minWidth: colWidths.customerAddress }}><div className="order-display-text">{linkedCustomer ? linkedCustomer.address || '—' : ord.customerAddress || '—'}</div></td>
+                      <td style={{ width: colWidths.setupNote, minWidth: colWidths.setupNote }}><div className="order-display-text">{ord.setupNote || '—'}</div></td>
+                      <td style={{ width: colWidths.warranty, minWidth: colWidths.warranty }}><div className="order-display-text">{ord.warranty || '—'}</div></td>
 
-                      {/* Địa Chỉ */}
-                      <td style={{ width: `${colWidths.customerAddress}px`, minWidth: `${colWidths.customerAddress}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          rows={3}
-                          style={{ color: 'var(--text-muted)' }}
-                          value={ord.customerAddress || ''}
-                          onChange={(val) => updateOrder(ord.id, { customerAddress: val })}
-                        />
-                      </td>
-
-
-
-                      {/* Cài Đặt */}
-                      <td style={{ width: `${colWidths.setupNote}px`, minWidth: `${colWidths.setupNote}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          value={ord.setupNote || ''} 
-                          onChange={(val) => updateOrder(ord.id, { setupNote: val })} 
-                        />
-                      </td>
-
-                      {/* Bảo Hành */}
-                      <td style={{ width: `${colWidths.warranty}px`, minWidth: `${colWidths.warranty}px` }}>
-                        <EditableCell 
-                          type="textarea"
-                          className="sheet-cell-textarea"
-                          value={ord.warranty || ''} 
-                          onChange={(val) => updateOrder(ord.id, { warranty: val })} 
-                        />
-                      </td>
-
-                      {/* Mở form sửa chi tiết */}
-                      <td className="order-actions-cell" style={{ width: '108px', minWidth: '108px', textAlign: 'center' }}>
-                        <div className="order-row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          data-testid={`order-edit-button-${ord.id}`}
-                          onClick={() => handleOpenEdit(ord)}
-                          title="Chỉnh sửa đơn hàng"
-                        >
-                          Sửa
-                        </button>
-                        <InvoiceLink
-                          orderId={ord.id}
-                          invoiceId={ord.invoiceId}
-                          issue
-                          eligible={['shipping', 'done'].includes(labelToKey('orderStatus', ord.orderStatus, appOptions))}
-                        />
-                        </div>
-                      </td>
                     </tr>
                   );
                 })
@@ -1389,7 +985,7 @@ export default function Orders() {
             </span>
           }
           maxWidth="max-w-5xl"
-          description={formData.id ? 'Cập nhật đơn hàng trong kỳ đã lưu.' : `Lưu vào tháng ${selectedMonth === 'ALL' ? 'theo ngày tạo đơn' : selectedMonth}.`}
+          description={formData.id ? undefined : `Lưu vào tháng ${selectedMonth === 'ALL' ? 'theo ngày tạo đơn' : selectedMonth}.`}
           footer={null}
         >
             <div className="modal-header" style={{ display: 'none' }} />
@@ -1414,12 +1010,12 @@ export default function Orders() {
                 <div className="form-group">
                   <label htmlFor="order-field-8" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Online</label>
                   <select id="order-field-8"
-                    data-testid="order-sale-online-select" required
+                    data-testid="order-sale-online-select"
                     className="form-control" 
                     value={formData.saleOnline} 
                     onChange={e => setFormData({ ...formData, saleOnline: e.target.value })}
                   >
-                    <option value="">Chọn SALE Online</option>{SALE_ONLINE_OPTIONS.map(s => (
+                    <option value="">Không chọn SALE Online</option>{SALE_ONLINE_OPTIONS.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -1427,8 +1023,8 @@ export default function Orders() {
 
                 <div className="form-group">
                   <label htmlFor="order-sale-offline" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>SALE Offline</label>
-                  <select required id="order-sale-offline" className="form-control" value={formData.saleOffline} onChange={e => setFormData({ ...formData, saleOffline: e.target.value })}>
-                    <option value="">Chọn SALE Offline</option>{SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  <select id="order-sale-offline" className="form-control" value={formData.saleOffline} onChange={e => setFormData({ ...formData, saleOffline: e.target.value })}>
+                    <option value="">Không chọn SALE Offline</option>{SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
 
@@ -1536,7 +1132,6 @@ export default function Orders() {
                       </option>
                     ))}
                   </select>
-                  <small>Chọn cấu hình tham khảo. Sau khi lưu đơn, dùng “Phân máy” để giữ một laptop cụ thể.</small>
                 </div>
 
                 {/* 7. TRẠNG THÁI ĐƠN */}
@@ -1560,7 +1155,6 @@ export default function Orders() {
                   <div id="order-field-15" data-testid="order-payment-status-readonly" className={`form-control ${getPaymentStatusBadgeClass(formData.id ? formData.paymentStatus : PAYMENT_STATUS_OPTIONS[0])}`} aria-readonly="true">
                     {formData.id ? formData.paymentStatus : PAYMENT_STATUS_OPTIONS[0]}
                   </div>
-                  <small className="form-hint">{formData.id ? 'Trạng thái được cập nhật từ lịch sử thu tiền.' : 'Lưu đơn trước, sau đó dùng mục Thu tiền để ghi cọc hoặc thanh toán vào đúng tài khoản.'}</small>
                 </div>
 
                 {/* Phương thức thanh toán (Phase 2) */}
@@ -1631,13 +1225,13 @@ export default function Orders() {
                     step="0.01"
                     className="form-control" 
                     value={formData.salePrice} 
-                    onChange={e => setFormData({ ...formData, salePrice: e.target.value })} 
+                    onChange={e => setFormData({ ...formData, salePrice: e.target.value })}
                     placeholder="VD: 17.5"
                     required 
                   />
                 </div>
 
-                {formData.id && getFormOptionKey('paymentStatus', formData.paymentStatus) === 'deposited' && (
+                {(
                   <>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#d97706' }}>Tiền Cọc Đã Ghi Nhận</label>
@@ -1652,11 +1246,11 @@ export default function Orders() {
                   <input id="order-field-24"
                     type="number" 
                     min="0"
+                    readOnly
                         data-testid="order-cod-amount-input"
                     step="any" 
                     className="form-control" 
-                    value={formData.codAmount} 
-                    onChange={e => setFormData({ ...formData, codAmount: e.target.value })} 
+                    value={orderBalanceAfterDeposit(formData)}
                     placeholder="VD: 17.0"
                   />
                 </div>
@@ -1666,11 +1260,15 @@ export default function Orders() {
                   <label htmlFor="order-field-25" className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem' }}>
                     Khách Hàng <button type="button" className="inline-add-button" onClick={() => setShowCustomerForm(prev => !prev)}>{showCustomerForm ? '× Đóng' : '+ Thêm mới'}</button>
                   </label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <select id="order-field-25"
                     data-testid="order-customer-select"
                     className="form-control" 
                     value={formData.customerId} 
-                    onChange={e => setFormData({ ...formData, customerId: e.target.value })} 
+                    onChange={e => {
+                      const customer = customers.find(item => String(item.id) === e.target.value);
+                      setFormData({ ...formData, customerId: e.target.value, customerInfo: customer ? [customer.name, customer.phone].filter(Boolean).join('\n') : '', customerAddress: customer?.address || '' });
+                    }}
                     required 
                   >
                     <option value="">-- Chọn khách hàng --</option>
@@ -1678,6 +1276,11 @@ export default function Orders() {
                       <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
                     ))}
                   </select>
+                  <Button type="button" variant="outline" disabled={!formData.customerId} onClick={() => {
+                    const customer = customers.find(item => String(item.id) === String(formData.customerId));
+                    if (customer) setEditingCustomer({ ...customer, name: customer.name || '', phone: customer.phone || '', address: customer.address || '' });
+                  }}>Sửa khách hàng</Button>
+                  </div>
                   {showCustomerForm && (
                     <div className="inline-customer-form">
                       <input
@@ -1801,6 +1404,24 @@ export default function Orders() {
             )}
           </div>
         </Modal>
+      )}
+      {editingCustomer && <CustomerFormModal isModalOpen setIsModalOpen={open => { if (!open) setEditingCustomer(null); }} formData={editingCustomer} setFormData={setEditingCustomer} submission={customerSubmission} handleSave={event => {
+        event.preventDefault();
+        event.stopPropagation();
+        customerSubmission.run(async () => {
+          const result = await updateCustomer(editingCustomer.id, { name: editingCustomer.name, phone: editingCustomer.phone, address: editingCustomer.address });
+          if (!result?.ok) { toast.error(result?.message || 'Không lưu được khách hàng.'); return; }
+          setFormData(current => ({ ...current, customerInfo: [editingCustomer.name, editingCustomer.phone].filter(Boolean).join('\n'), customerAddress: editingCustomer.address }));
+          setEditingCustomer(null);
+        });
+      }} />}
+      {paymentOrder && (
+        <RecordPaymentModal
+          key={paymentOrder.id}
+          open={Boolean(paymentOrder)}
+          initialOrderId={paymentOrder.id}
+          onClose={() => setPaymentOrder(null)}
+        />
       )}
     </section>
   );

@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, Copy, Pencil, Plus, Trash2 } from 'lucide-re
 import { getAuthHeaders } from '@/lib/apiFetchers';
 import { formatRmb } from '@/lib/procurement';
 import ProductNameInput from '@/components/common/ProductNameInput';
+import LaptopCategoryBadge from '@/components/common/LaptopCategoryBadge';
 import PurchaseDayTables from './PurchaseDayTables';
 import CancelLaptopModal from '@/components/CancelLaptopModal';
 import './direct-intake.css';
@@ -180,7 +181,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
                     <td><input type="checkbox" checked={Object.hasOwn(selected, laptop.id)} onChange={event => setSelected(current => { const next = { ...current }; if (event.target.checked) next[laptop.id] = { serial: laptop.serial || '', notes: laptop.condition_note || '' }; else delete next[laptop.id]; return next; })} /></td>
                     <td><code>Mã VC: {laptop.tracking_code_cn || '—'}</code></td>
                     <td><b>#{laptop.id} · {laptop.name}</b><small>{laptop.condition_note}</small></td>
-                    <td>{data.categories.find(option => option.option_key === laptop.category)?.label || laptop.category || '—'}</td>
+                    <td className="inventory-category-cell" style={{ textAlign: 'center' }}><LaptopCategoryBadge category={laptop.category} categories={data.categories} /></td>
                     <td>Serial: {laptop.serial || '—'}</td>
                     {isAdmin && <td>{formatRmb(laptop.purchase_price_rmb)}<small>Ship {formatRmb(laptop.shipping_rmb)}</small></td>}
                     <td><span className={`intake-status intake-status-${laptop.status}`}>{STATUS[laptop.status] || laptop.status}</span></td>

@@ -9,6 +9,7 @@ import { Modal } from '../ui/modal';
 import { Button } from '@/components/ui/button';
 import { useSubmission } from '@/lib/useSubmission';
 import ListPagination, { useListPagination } from '../ui/ListPagination';
+import RecordPaymentModal from '../RecordPaymentModal';
 
 const paymentTypes = [
   { key: 'deposit', label: 'Thu tiền cọc' },
@@ -19,9 +20,9 @@ const paymentTypes = [
 ];
 
 const paymentTypeBadgeClass = {
-  deposit: 'pill-badge pill-warning',
+  deposit: 'pill-badge pill-purple',
   balance: 'pill-badge pill-success',
-  cod: 'pill-badge pill-info',
+  cod: 'pill-badge pill-warning',
   refund: 'pill-badge pill-danger',
   other: 'pill-badge pill-neutral'
 };
@@ -41,13 +42,9 @@ const today = () => {
 const formatAmount = value => `${Number(value || 0).toFixed(2)} tr`;
 
 export default function Payments({ initialOrderId = '' }) {
-  const { orders, payments, recordPayment, appOptions, isAdmin } = useInventory();
+  const { orders, payments, editPayment, appOptions, isAdmin } = useInventory();
+  const [editingPayment, setEditingPayment] = useState(null);
   const paymentMethods = getOptions('paymentMethod', appOptions);
-  const [cashAccounts, setCashAccounts] = useState([]);
-  const [paymentForm, setPaymentForm] = useState({
-    orderId: initialOrderId, paymentType: 'deposit', amount: '', paymentMethod: 'transfer_cash',
-    paymentDate: today(), referenceCode: '', note: '', accountId: '', idempotencyKey: ''
-  });
   const [message, setMessage] = useState(null);
   const submission = useSubmission();
   const saving = submission.pending;
@@ -61,22 +58,15 @@ export default function Payments({ initialOrderId = '' }) {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(Boolean(initialOrderId));
 
   const activeOrders = useMemo(() => orders.filter(order => order.isActive !== false && Number(order.salePrice || 0) > 0), [orders]);
-  const selectedOrder = activeOrders.find(order => String(order.id) === String(paymentForm.orderId));
-  // debtAmount is server-owned and already includes non-cash trade-in credit.
-  // Recomputing from salePrice - amountPaid would ask the customer to pay twice.
-  const remaining = selectedOrder ? Math.max(0, Number(selectedOrder.debtAmount || 0)) : 0;
   const incomeTotal = payments.reduce((sum, item) => sum + (item.paymentType === 'refund' ? 0 : Number(item.amount || 0)), 0);
   const refundTotal = payments.reduce((sum, item) => sum + (item.paymentType === 'refund' ? Number(item.amount || 0) : 0), 0);
   const ordersWithDebt = activeOrders.filter(o => Number(o.debtAmount || 0) > 0).length;
 
-  useEffect(() => {
-    getAuthHeaders().then(headers => fetch('/api/cash-accounts?currency=VND', { headers })).then(response => response.ok ? response.json() : []).then(setCashAccounts).catch(() => setCashAccounts([]));
-  }, []);
-
-  // Filtered payments
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
       const matchSearch = !paymentSearch ||
+        String(p.paymentDate || '').includes(paymentSearch.trim()) ||
+        String(p.paymentDate || '').split('-').reverse().join('/').includes(paymentSearch.trim()) ||
         String(p.orderId || '').includes(paymentSearch) ||
         (paymentTypes.find(t => t.key === p.paymentType)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
         (paymentMethods.find(m => m.key === p.paymentMethod)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
@@ -88,24 +78,6 @@ export default function Payments({ initialOrderId = '' }) {
     });
   }, [payments, paymentSearch, paymentTypeFilter, paymentMethodFilter, paymentMethods]);
   const paymentPages = useListPagination(filteredPayments, `${paymentSearch}|${paymentTypeFilter}|${paymentMethodFilter}`);
-
-  const handlePaymentSubmit = async event => {
-    event.preventDefault();
-    return submission.run(async () => {
-      setMessage(null);
-      const idempotencyKey = paymentForm.idempotencyKey || crypto.randomUUID();
-      setPaymentForm(prev => ({ ...prev, idempotencyKey }));
-      try {
-        const result = await recordPayment({ ...paymentForm, amount: Number(paymentForm.amount), idempotencyKey });
-        if (!result.ok) { setMessage({ type: 'error', text: result.message }); return; }
-        setMessage({ type: 'success', text: 'Đã ghi nhận thanh toán và cập nhật công nợ.' });
-        setPaymentForm(prev => ({ ...prev, amount: '', referenceCode: '', note: '', idempotencyKey: '' }));
-        setIsPaymentModalOpen(false);
-      } catch (error) {
-        setMessage({ type: 'error', text: error.message || 'Không thể lưu giao dịch. Vui lòng thử lại.' });
-      }
-    });
-  };
 
   return (
     <section className="page-section list-workspace-page">
@@ -182,7 +154,7 @@ export default function Payments({ initialOrderId = '' }) {
               <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="text"
-                placeholder="Tìm giao dịch..."
+                placeholder="Tìm giao dịch, ngày (10-05)..."
                 value={paymentSearch}
                 onChange={e => setPaymentSearch(e.target.value)}
                 style={{ padding: '5px 8px 5px 28px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', width: '200px', background: '#fff' }}
@@ -217,12 +189,13 @@ export default function Payments({ initialOrderId = '' }) {
                 <th style={{ width: '190px', minWidth: '190px' }}>Phương thức</th>
                 <th>Tham chiếu</th>
                 <th style={{ width: '120px' }}>Người ghi nhận</th>
+                {isAdmin && <th>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
               {filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
+                  <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                     <CreditCard size={40} style={{ opacity: 0.15, marginBottom: '12px' }} />
                     <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>Chưa có giao dịch thanh toán</p>
                     <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.7 }}>Bấm &quot;Ghi nhận thanh toán&quot; để bắt đầu</p>
@@ -247,6 +220,7 @@ export default function Payments({ initialOrderId = '' }) {
                   </td>
                   <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.referenceCode || '-'}</td>
                   <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.recordedBy || '-'}</td>
+                  {isAdmin && <td><Button size="sm" variant="outline" onClick={() => { setMessage(null); setEditingPayment({ id: Number(payment.id), expectedAmount: Number(payment.amount), amount: payment.amount, reason: '' }); }}>Sửa</Button></td>}
                 </tr>
               ))}
             </tbody>
@@ -256,77 +230,26 @@ export default function Payments({ initialOrderId = '' }) {
       </div>
 
       {/* PAYMENT MODAL */}
-      <Modal open={isPaymentModalOpen} onOpenChange={open => { if (!saving) setIsPaymentModalOpen(open); }} title="Ghi nhận thanh toán" maxWidth="max-w-xl">
-        <form aria-busy={saving} onSubmit={handlePaymentSubmit} style={{ display: 'grid', gap: '14px' }}>
-          {message?.type === "error" && <p role="alert" className="form-submit-error">{message.text}</p>}
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Đơn hàng <span style={{color:'#ef4444'}}>*</span></label>
-            <select id="payment-order" aria-label="Đơn hàng cần thu tiền" className="form-control" required value={paymentForm.orderId} onChange={e => setPaymentForm(prev => ({ ...prev, orderId: e.target.value }))}>
-              <option value="">Chọn đơn hàng</option>
-              {activeOrders.map(order => <option key={order.id} value={order.id}>#{order.id} - {formatAmount(order.salePrice)} - còn {formatAmount(order.debtAmount)}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Loại giao dịch</label>
-            <select className="form-control" value={paymentForm.paymentType} onChange={e => setPaymentForm(prev => ({ ...prev, paymentType: e.target.value }))}>
-              {paymentTypes.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Số tiền (triệu VNĐ) <span style={{color:'#ef4444'}}>*</span></label>
-            <input
-              className="form-control"
-              type="number"
-              min="0.01"
-              step="0.01"
-              max={paymentForm.paymentType === 'refund' ? Number(selectedOrder?.amountPaid || 0) : remaining}
-              placeholder={!selectedOrder ? 'Chọn đơn hàng trước' : ''}
-              disabled={!selectedOrder}
-              required
-              value={paymentForm.amount}
-              onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
-            />
-            {!selectedOrder && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>Vui lòng chọn đơn hàng để nhập số tiền</span>}
-            {selectedOrder && paymentForm.paymentType !== 'refund' && remaining > 0 && (
-              <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'block' }}>Còn phải thu: {formatAmount(remaining)}</span>
-            )}
-          </div>
-          <div className="finance-form-grid">
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Phương thức</label>
-              <select className="form-control" value={paymentForm.paymentMethod} onChange={e => setPaymentForm(prev => ({ ...prev, paymentMethod: e.target.value }))}>
-                {paymentMethods.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ngày thanh toán</label>
-              <input className="form-control" type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))} />
-            </div>
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Tài khoản nhận/chi <span style={{color:'#ef4444'}}>*</span></label>
-            <select data-testid="payment-account-select" className="form-control" required value={paymentForm.accountId} onChange={e => setPaymentForm(prev => ({ ...prev, accountId: e.target.value, idempotencyKey: prev.idempotencyKey || crypto.randomUUID() }))}>
-              <option value="">Chọn tài khoản VND</option>
-              {cashAccounts.map(account => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}
-            </select>
-            {!cashAccounts.length && <span style={{fontSize:'.75rem',color:'#b45309'}}>ADMIN cần tạo tài khoản tiền và opening balance trước khi ghi payment mới.</span>}
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Mã tham chiếu</label>
-            <input className="form-control" value={paymentForm.referenceCode} onChange={e => setPaymentForm(prev => ({ ...prev, referenceCode: e.target.value }))} placeholder="Mã giao dịch ngân hàng / vận đơn" />
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>Ghi chú</label>
-            <textarea className="form-control" rows="2" value={paymentForm.note} onChange={e => setPaymentForm(prev => ({ ...prev, note: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsPaymentModalOpen(false)}>Hủy</Button>
-            <Button type="submit" variant="default" size="sm" disabled={saving}>
-              {saving ? 'Đang lưu...' : 'Lưu giao dịch'}
-            </Button>
-          </div>
-        </form>
+      <Modal open={Boolean(editingPayment)} onOpenChange={open => { if (!open && !saving) setEditingPayment(null); }} title="Sửa số tiền giao dịch" maxWidth="max-w-xl">
+        {editingPayment && <form onSubmit={event => { event.preventDefault(); submission.run(async () => {
+          const result = await editPayment({ ...editingPayment, amount: Number(editingPayment.amount) });
+          setMessage({ type: result.ok ? 'success' : 'error', text: result.ok ? 'Đã sửa giao dịch và cập nhật công nợ.' : result.message });
+          if (result.ok) setEditingPayment(null);
+        }); }} style={{ display: 'grid', gap: 12 }}>
+          <p>Số tiền cũ: {formatAmount(editingPayment.expectedAmount)}. Thay đổi được lưu vào lịch sử.</p>
+          <label>Số tiền mới (triệu VNĐ)<input className="form-control" type="number" min="0.000001" step="0.000001" required value={editingPayment.amount} onChange={e => setEditingPayment({ ...editingPayment, amount: e.target.value })} /></label>
+          <label>Lý do sửa<textarea className="form-control" required maxLength={1000} value={editingPayment.reason} onChange={e => setEditingPayment({ ...editingPayment, reason: e.target.value })} /></label>
+          {message?.type === 'error' && <p role="alert">{message.text}</p>}
+          <Button type="submit" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>
+        </form>}
       </Modal>
+      {isPaymentModalOpen && (
+        <RecordPaymentModal
+          open={isPaymentModalOpen}
+          initialOrderId={initialOrderId}
+          onClose={() => setIsPaymentModalOpen(false)}
+        />
+      )}
 
     </section>
   );

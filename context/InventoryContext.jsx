@@ -820,6 +820,17 @@ export const InventoryProvider = ({ children }) => {
     }
   };
 
+  const editPayment = async (payload) => {
+    try {
+      const response = await fetch('/api/payments', { method: 'PATCH', headers: { ...await getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setPayments(prev => prev.map(row => String(row.id) === String(result.payment.id) ? result.payment : row));
+      setOrders(prev => prev.map(row => String(row.id) === String(result.order.id) ? result.order : row));
+      return { ok: true };
+    } catch (error) { return { ok: false, message: error.message }; }
+  };
+
   const getLaptopAssignmentError = (laptopId, currentOrderId = null) => {
     if (!laptopId) return '';
     const laptop = laptops.find(l => String(l.id) === String(laptopId));
@@ -1430,6 +1441,9 @@ const mapLabelsToKeys = (fields, appOpts) => {
       return { ok: false, message: error.message || 'Không thể cập nhật khách hàng lên cloud.' };
     }
     setCustomers(prev => prev.map(c => String(c.id) === String(id) ? saved : c));
+    setOrders(prev => prev.map(order => String(order.customerId) === String(id)
+      ? { ...order, customerInfo: [saved.name, saved.phone].filter(Boolean).join('\n'), customerAddress: saved.address || '' }
+      : order));
     return { ok: true, customer: saved };
   };
 
@@ -1704,6 +1718,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       addOrder,
       updateOrder,
       recordPayment,
+      editPayment,
       applyAllocationUpdate,
       deleteOrder,
       cancelOrder,

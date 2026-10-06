@@ -32,7 +32,7 @@ export async function GET(request) {
     return NextResponse.json(data, { headers: { 'Cache-Control': 'private, no-store' } });
   }
   const [machines, orders] = await Promise.all([
-    db.from('laptops').select('id,name,serial,status').eq('is_active', true).in('status', ['available', 'reserved']),
+    db.from('laptops').select('id,name,serial,status,category').eq('is_active', true).in('status', ['available', 'reserved']),
     db.from('orders').select('id,laptop_id,customer_info,order_status,payment_status').eq('is_active', true).not('laptop_id', 'is', null).not('order_status', 'in', '(cancelled,returned)').neq('payment_status', 'refunded'),
   ]);
   if (machines.error || orders.error) return NextResponse.json({ error: 'Không thể tải danh sách phân máy' }, { status: 503 });

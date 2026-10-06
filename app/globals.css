@@ -1743,14 +1743,14 @@ tr td .sheet-cell-textarea:focus {
 
 /* Pill color variants — high-contrast backgrounds with bold dark text */
 .pill-success {
-    background: #22c55e !important;
+    background: #16a34a !important;
     color: #ffffff !important;
     border-color: #15803d !important;
 }
 .pill-warning {
-    background: #f59e0b !important;
-    color: #ffffff !important;
-    border-color: #b45309 !important;
+    background: #eab308 !important;
+    color: #000000 !important;
+    border-color: #ca8a04 !important;
 }
 .pill-danger {
     background: #ef4444 !important;
@@ -1763,9 +1763,9 @@ tr td .sheet-cell-textarea:focus {
     border-color: #1d4ed8 !important;
 }
 .pill-purple {
-    background: #8b5cf6 !important;
+    background: #7c3aed !important;
     color: #ffffff !important;
-    border-color: #6d28d9 !important;
+    border-color: #5b21b6 !important;
 }
 .pill-neutral {
     background: rgba(100, 116, 139, 0.15) !important;
@@ -1785,7 +1785,7 @@ tr td .sheet-cell-textarea:focus {
 
 /* Status selects use the same palette as their read-only pills. */
 .sheet-cell-select.pill-success { background-color: #16a34a !important; color: #ffffff !important; border-color: #166534 !important; }
-.sheet-cell-select.pill-warning { background-color: #f2c94c !important; color: #422006 !important; border-color: #9a6700 !important; }
+.sheet-cell-select.pill-warning { background-color: #eab308 !important; color: #000000 !important; border-color: #ca8a04 !important; }
 .sheet-cell-select.pill-danger { background-color: #dc2626 !important; color: #ffffff !important; border-color: #991b1b !important; }
 .sheet-cell-select.pill-info { background-color: #2563eb !important; color: #ffffff !important; border-color: #1e40af !important; }
 .sheet-cell-select.pill-purple { background-color: #7c3aed !important; color: #ffffff !important; border-color: #5b21b6 !important; }
@@ -2819,12 +2819,17 @@ body {
 .invoice-catalog-form label, .invoice-order-fields > label { display: grid; gap: 5px; color: #536176; font-size: .75rem; font-weight: 700; }
 .invoice-catalog-form input, .invoice-catalog-form select, .invoice-order-fields select { min-height: 38px; padding: 7px 9px; border: 1px solid #cdd7e4; border-radius: 8px; background: #fff; }
 .invoice-catalog > input { width: min(420px, 100%); min-height: 40px; margin-bottom: 12px; padding: 8px 11px; border: 1px solid #ccd7e5; border-radius: 9px; }
-.invoice-order-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 6px 0 0; padding: 14px; border: 1px solid #cde2df; border-radius: 11px; background: #f4fbfa; }
+.invoice-order-fields { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(145px, .85fr) minmax(135px, .75fr) minmax(0, 2.4fr); align-items: end; gap: 10px; min-width: 0; margin: 6px 0 0; padding: 10px; border: 1px solid #cde2df; border-radius: 11px; background: #f4fbfa; }
 .invoice-order-fields legend { padding: 0 6px; color: #177e71; font-size: .8rem; font-weight: 800; }
-.invoice-order-fields > small, .invoice-order-fields > .invoice-error, .invoice-gift-options { grid-column: 1 / -1; }
+.invoice-order-fields > .invoice-error { grid-column: 1 / -1; }
+.invoice-order-fields > label, .invoice-order-fields select { min-width: 0; width: 100%; }
+.order-display-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.orders-list-table .order-id-card { display: inline-flex; align-items: center; padding: 3px 8px; border: 1px solid #93c5fd; border-radius: 9px; background: #eff6ff; color: #1d4ed8 !important; font-size: .78rem; font-weight: 800; white-space: nowrap; vertical-align: baseline; }
+.orders-list-table .order-actions-cell .order-row-actions { display: flex; flex-direction: column; gap: 5px; align-items: center; }
 .invoice-order-fields .invoice-error { margin: 0; }
-.invoice-gift-options { display: flex; flex-wrap: wrap; gap: 7px; }
-.invoice-gift-options label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid #cddfdc; border-radius: 8px; background: #fff; font-size: .72rem; }
+.invoice-gift-options { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; min-width: 0; }
+.invoice-gift-options label { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 5px 6px; border: 1px solid #cddfdc; border-radius: 6px; background: #fff; font-size: .68rem; line-height: 1.2; }
+.invoice-gift-options input { flex-shrink: 0; }
 .invoice-gift-options small { color: #83908f; }
 .invoice-link { min-height: 25px !important; padding: 2px 6px !important; font-size: .67rem !important; }
 .inventory-sku { display: block; margin-top: 3px; color: #748196; font-family: monospace; font-size: .67rem; }
@@ -2851,6 +2856,7 @@ body {
     .invoice-toolbar, .invoice-document-header { align-items: flex-start; flex-direction: column; }
     .invoice-document-date { text-align: left; }
     .invoice-order-fields { grid-template-columns: 1fr; }
+    .invoice-gift-options { flex-wrap: wrap; }
     .finance-form-grid { grid-template-columns: 1fr; }
 }
 
@@ -2935,7 +2941,7 @@ body {
 .salesops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}.salesops-card{padding:20px;border:1px solid #dbe4f0;border-radius:18px;background:#fff;box-shadow:0 12px 30px rgba(30,41,59,.06)}.salesops-card header{display:flex;justify-content:space-between;gap:12px}.salesops-card h3{margin:4px 0;color:#172554}.salesops-card small{font-weight:800;color:#64748b}.salesops-card header>span{height:max-content;border-radius:999px;padding:5px 9px;background:#e2e8f0;font-size:.7rem;font-weight:850}.salesops-card header>span[data-status="ACTIVE"],.salesops-card header>span[data-status="PAID"],.salesops-card header>span[data-status="CONVERTED_TO_INVENTORY"]{background:#dcfce7;color:#166534}.salesops-card p{color:#475569}.salesops-card dl{display:grid;grid-template-columns:1fr 1fr;gap:10px}.salesops-card dl div{padding:10px;background:#f8fafc;border-radius:10px}.salesops-card dt{font-size:.72rem;color:#64748b}.salesops-card dd{margin:3px 0 0;font-weight:750;color:#0f172a}.salesops-card footer{display:flex;gap:8px;margin-top:16px}.salesops-card footer .quiet{background:#f1f5f9;color:#334155}.salesops-empty{margin-top:20px;padding:36px;text-align:center;border:1px dashed #94a3b8;border-radius:16px;background:#fff;color:#64748b}
 .salesops-dialog{width:min(680px,calc(100vw - 32px));display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:22px;border-radius:18px;background:#fff}.salesops-dialog header,.salesops-dialog footer,.salesops-dialog .wide{grid-column:1/-1}.salesops-dialog header,.salesops-dialog footer{display:flex;align-items:center;justify-content:space-between}.salesops-dialog header h2{margin:3px 0}.salesops-dialog header>button,.salesops-dialog footer>button:first-child{border:0;background:transparent;font-size:1.4rem;cursor:pointer}.salesops-dialog label{font-size:.8rem;font-weight:750;color:#475569}.salesops-dialog label>*{margin-top:6px}
 @media(max-width:720px){.salesops-page{padding:14px}.salesops-hero{align-items:flex-start;padding:20px}.salesops-title p{display:none}.salesops-toolbar{grid-template-columns:1fr}.salesops-dialog{grid-template-columns:1fr}.salesops-dialog label{grid-column:1/-1}}
-.phase9-inline-link{display:block;margin-top:3px;font-size:.68rem;font-weight:750;color:#2563eb;text-decoration:none}.phase9-inline-link.warning{color:#b45309}.phase9-inline-link:hover{text-decoration:underline}.phase9-cell-meta{margin-top:3px;font-size:.66rem;line-height:1.25;color:#64748b;font-weight:650}
+.phase9-inline-link{display:block;margin-top:3px;font-size:.68rem;font-weight:750;color:#2563eb;text-decoration:none}button.phase9-inline-link{background:none;border:none;padding:0;cursor:pointer;text-align:left;font:inherit}.phase9-inline-link.warning{color:#b45309}.phase9-inline-link:hover{text-decoration:underline}.phase9-cell-meta{margin-top:3px;font-size:.66rem;line-height:1.25;color:#64748b;font-weight:650}
 
 /* Screen audit: keep form controls within their grid tracks on narrow screens. */
 .procurement-grid > *, .purchase-item-row > *, .warranty-form-grid > * { min-width: 0; }
@@ -2969,19 +2975,36 @@ body {
     color: #000 !important;
     font-weight: 750 !important;
 }
-.inventory-list-table tbody tr.row-da-coc :is(input, select, textarea, button, a, span),
-.orders-list-table tbody tr.order-row-deposited :is(input, select, textarea, button, a, span) {
+.inventory-list-table tbody tr.row-da-coc :is(input, select, textarea, button, a, span:not(.status-badge)),
+.orders-list-table tbody tr.order-row-deposited :is(input, select, textarea, button, a, span:not(.status-badge)) {
     color: #000 !important;
     font-weight: 750 !important;
 }
 .orders-list-table tbody tr.order-row-deposited .order-payment-cell,
-.orders-list-table tbody tr.order-row-deposited .order-payment-cell :is(.status-badge, .phase9-cell-meta, .phase9-inline-link) {
+.orders-list-table tbody tr.order-row-deposited .order-payment-cell :is(.phase9-cell-meta, .phase9-inline-link) {
     color: #000 !important;
     font-weight: 800 !important;
     opacity: 1 !important;
 }
 .orders-list-table tbody tr.order-row-deposited .order-payment-cell .phase9-cell-meta {
     line-height: 1.35;
+}
+
+/* Priority status badge colors on Orders table */
+.orders-list-table .status-badge.pill-success {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #15803d !important;
+}
+.orders-list-table .status-badge.pill-warning {
+    background: #eab308 !important;
+    color: #000000 !important;
+    border-color: #ca8a04 !important;
+}
+.orders-list-table .status-badge.pill-purple {
+    background: #7c3aed !important;
+    color: #ffffff !important;
+    border-color: #5b21b6 !important;
 }
 .inventory-list-table tbody tr.row-dang-sua td { background: #c9362b !important; color: #000 !important; }
 .inventory-list-table tbody tr.row-da-ban td,
@@ -3091,7 +3114,7 @@ body {
 .supplier-return-modal>footer button{border:1px solid #cbc4b8;border-radius:10px;padding:10px 15px;background:#fff;color:#273244;font-weight:800;cursor:pointer}.supplier-return-modal>footer button:last-child{border-color:#d96625;background:#e97832;color:#fff}.supplier-return-modal>footer button:disabled{cursor:not-allowed;opacity:.55}
 
 /* Compact row action menu and high-contrast spreadsheet grid. */
-.inventory-action-menu{position:relative;display:inline-grid;justify-items:center;width:100%}.inventory-action-menu summary{display:grid;place-items:center;width:30px;height:26px;margin:auto;border:1px solid #64748b;border-radius:5px;background:#fff;cursor:pointer;list-style:none}.inventory-action-menu summary::-webkit-details-marker{display:none}.inventory-action-menu>div{position:absolute;z-index:410;top:32px;left:50%;display:grid;gap:5px;width:max-content;min-width:96px;padding:5px;transform:translateX(-50%);border:1px solid #111;background:#fff;box-shadow:0 8px 20px #0f172a42}.inventory-action-menu>div :is(button,a){display:flex!important;align-items:center;justify-content:center;gap:5px;width:100%;min-height:27px;padding-inline:8px!important;white-space:nowrap}.inventory-list-table td.sticky-col-2:has(.inventory-action-menu[open]){z-index:400!important;overflow:visible!important}.inventory-list-table tr:has(.inventory-action-menu[open]){position:relative;z-index:390}.inventory-list-table tr:has(.inventory-action-menu[open]) td.sticky-col-2{vertical-align:middle!important}
+.inventory-action-menu{position:relative;display:inline-grid;justify-items:center;width:100%}.inventory-action-menu summary{display:grid;place-items:center;width:30px;height:26px;margin:auto;border:1px solid #64748b;border-radius:5px;background:#fff;cursor:pointer;list-style:none}.inventory-action-menu summary::-webkit-details-marker{display:none}.inventory-action-menu>div{position:absolute;z-index:410;top:32px;left:50%;display:grid;gap:5px;width:max-content;min-width:96px;padding:5px;transform:translateX(-50%);border:1px solid #111;background:#fff;box-shadow:0 8px 20px #0f172a42}.inventory-action-menu>div :is(button,a){display:flex!important;align-items:center;justify-content:center;gap:5px;width:100%;min-height:27px;padding-inline:8px!important;white-space:nowrap}.inventory-list-table td.sticky-col-2:has(.inventory-action-menu[open]),.orders-list-table td.sticky-col-2:has(.inventory-action-menu[open]){z-index:400!important;overflow:visible!important}.inventory-list-table tr:has(.inventory-action-menu[open]),.orders-list-table tr:has(.inventory-action-menu[open]){position:relative;z-index:390}.inventory-list-table tr:has(.inventory-action-menu[open]) td.sticky-col-2,.orders-list-table tr:has(.inventory-action-menu[open]) td.sticky-col-2{vertical-align:middle!important}
 .inventory-seller-cell{text-align:left}.inventory-seller-badge{display:inline-block;max-width:100%;padding:2px 8px;box-sizing:border-box;border-radius:12px;color:var(--seller-color)!important;font-size:.75rem;font-weight:600!important;line-height:1.4;text-align:center;white-space:normal;overflow-wrap:anywhere}.inventory-seller-empty{color:#94a3b8!important;font-weight:600!important}
 .inventory-list-table :is(th,td),.orders-list-table :is(th,td){border-right:1px solid #000!important;border-bottom:1px solid #000!important}.inventory-list-table tr>*:first-child,.orders-list-table tr>*:first-child{border-left:1px solid #000!important}.inventory-list-table thead tr:first-child th,.orders-list-table thead tr:first-child th{border-top:1px solid #000!important}.inventory-test-summary{display:flex;align-items:center;gap:5px;white-space:nowrap}.inventory-condition-text{margin-top:3px;font-weight:650}
 

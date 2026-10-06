@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/apiFetchers';
 import { Modal } from '@/components/ui/modal';
 import { useInventory } from '@/context/InventoryContext';
+import { labelToKey } from '@/lib/useFieldOptions';
 
 export default function OrderAllocation({ order, onClose, initialLaptopId }) {
-  const { applyAllocationUpdate } = useInventory();
+  const { applyAllocationUpdate, CATEGORY_OPTIONS, fieldOptionsConfig } = useInventory();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(String(initialLaptopId || order.laptopId || ''));
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -78,15 +80,36 @@ export default function OrderAllocation({ order, onClose, initialLaptopId }) {
       </div>
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div>
-        <label htmlFor="allocation-search" style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}>Tìm ID, cấu hình hoặc serial</label>
-        <input id="allocation-search" className="form-control" style={{ width: '100%', boxSizing: 'border-box' }} value={search} onChange={event => setSearch(event.target.value)} disabled={saving} placeholder="Nhập tên máy, serial hoặc ID..." />
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(160px, 1fr)', gap: 12, alignItems: 'flex-end' }}>
+        <div>
+          <label htmlFor="allocation-search" style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}>Tìm ID, cấu hình hoặc serial</label>
+          <input id="allocation-search" className="form-control" style={{ width: '100%', boxSizing: 'border-box' }} value={search} onChange={event => setSearch(event.target.value)} disabled={saving} placeholder="Nhập tên máy, serial hoặc ID..." />
+        </div>
+        <div>
+          <label htmlFor="allocation-category" style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}>Phân loại</label>
+          <select id="allocation-category" className="form-control" style={{ width: '100%', boxSizing: 'border-box' }} value={selectedCategory} onChange={event => setSelectedCategory(event.target.value)} disabled={saving}>
+            <option value="">Tất cả phân loại</option>
+            {CATEGORY_OPTIONS?.map(cat => (
+              <option key={cat.key || cat.value || cat} value={cat.key || cat.value || cat}>
+                {cat.label || cat}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div>
         <label htmlFor="allocation-machine" style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#334155' }}>Máy thực tế</label>
         <select id="allocation-machine" className="form-control" style={{ width: '100%', boxSizing: 'border-box' }} value={selected} onChange={event => setSelected(event.target.value)} disabled={!data || saving}>
           <option value="">Chọn máy</option>
-          {data?.machines.filter(machine => String(machine.id) === selected || `${machine.id} ${machine.name} ${machine.serial || ''}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'))).map(machine => <option key={machine.id} value={machine.id}>#{machine.id} · {machine.name} · {machine.serial || 'Chưa serial'}</option>)}
+          {data?.machines.filter(machine => {
+            if (String(machine.id) === selected) return true;
+            const matchCategory = !selectedCategory ||
+              machine.category === selectedCategory ||
+              (fieldOptionsConfig && labelToKey('category', machine.category, fieldOptionsConfig) === selectedCategory);
+            const matchSearch = !search ||
+              `${machine.id} ${machine.name} ${machine.serial || ''}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'));
+            return matchCategory && matchSearch;
+          }).map(machine => <option key={machine.id} value={machine.id}>#{machine.id} · {machine.name} · {machine.serial || 'Chưa serial'}</option>)}
         </select>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { createTiming, timeAsync, markTiming, withServerTiming } from '../../../
 import { getCloudflareBindings } from '../../../lib/cloudflare/bindings';
 import { createDatabase } from '../../../lib/cloudflare/database.mjs';
 import { requireSession } from '../../../lib/cloudflare/session.mjs';
+import { remainingOrderAmount } from '../../../lib/orderPaymentAmounts.mjs';
 
 const snakeKey = key => key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 const keysToSnake = value => {
@@ -39,6 +40,9 @@ async function context(request, roles) {
 
 async function saveOrder(db, order, actor, persisted) {
   const normalizedOrder = normalizeOrderJsonFields(order);
+  for (const key of ['saleOnline', 'saleOffline']) {
+    if (Object.hasOwn(normalizedOrder, key)) normalizedOrder[key] = normalizedOrder[key]?.trim() || null;
+  }
   for (const key of ['laptopId', 'requestedLaptopId', 'tradeInLaptopId', 'customerId', 'branchId']) {
     if (normalizedOrder[key] === '') normalizedOrder[key] = null;
   }
@@ -81,7 +85,20 @@ export async function GET(request) {
     if (paginated) requestQuery = requestQuery.range(offset, offset + limit - 1);
     const response = await requestQuery;
     if (response.error) throw new Error(response.error.message);
-    const rows = keysToCamel(response.data).map(normalizeOrderJsonFields);
+    const rows = keysToCamel(response.data).map(normalizeOrderJsonFields).map(order => ({ ...order, codAmount: remainingOrderAmount(order) }));
+    const customerIds = [...new Set(rows.map(order => order.customerId).filter(Boolean))];
+    if (customerIds.length) {
+      const customerResult = await db.from('customers').select('id,name,phone,address').in('id', customerIds);
+      if (customerResult.error) throw new Error(customerResult.error.message);
+      const customersById = new Map(customerResult.data.map(customer => [String(customer.id), customer]));
+      for (const order of rows) {
+        const customer = customersById.get(String(order.customerId));
+        if (customer) {
+          order.customerInfo = [customer.name, customer.phone].filter(Boolean).join('\n');
+          order.customerAddress = customer.address || '';
+        }
+      }
+    }
     return paginated
       ? { data: rows, total: response.count || 0, offset, limit, hasMore: offset + rows.length < (response.count || 0) }
       : rows;
@@ -191,7 +208,8 @@ export async function POST(request) {
       body.amountPaid = 0;
       body.depositAmount = 0;
       body.debtAmount = Number(body.salePrice || 0);
-      body.paymentStatus = requestedPaymentStatus === 'cod' ? 'cod' : 'unpaid';
+      body.codAmount = body.debtAmount;
+      body.paymentStatus = 'unpaid';
     }
 
     const persistedId = body.id && /^\d+$/.test(String(body.id)) && Number(body.id) > 0;
@@ -229,14 +247,17 @@ export async function POST(request) {
       const salePrice = Number(body.salePrice ?? oldData.sale_price ?? 0);
       body.salePrice = salePrice;
       const tradeInCredit = Number(body.tradeInCreditVnd || 0) / 1000000;
+      if (!Number.isFinite(salePrice) || salePrice <= 0 || salePrice < body.amountPaid + tradeInCredit) {
+        return NextResponse.json({ error: 'Giá bán phải lớn hơn 0 và không thấp hơn tổng tiền đã thu + giá trị thu cũ. Hãy xử lý giao dịch trước.' }, { status: 400 });
+      }
       body.debtAmount = Math.max(0, salePrice - body.amountPaid - tradeInCredit);
-      body.codAmount = Math.min(body.debtAmount, Math.max(Number(body.codAmount ?? oldData.cod_amount ?? 0), 0));
+      body.codAmount = body.debtAmount;
 
       if (oldData.payment_status === 'refunded') {
         body.paymentStatus = 'refunded';
       } else if (body.debtAmount <= 0.000001 && (body.amountPaid > 0 || tradeInCredit >= salePrice)) {
         body.paymentStatus = 'paid';
-      } else if (body.codAmount > 0 && body.amountPaid + body.codAmount + tradeInCredit >= salePrice - 0.000001) {
+      } else if (oldData.payment_status === 'cod' && body.debtAmount > 0) {
         body.paymentStatus = 'cod';
       } else if (body.amountPaid > 0) {
         body.paymentStatus = 'deposited';
@@ -258,6 +279,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Bạn không có quyền thay đổi lợi nhuận.' }, { status: 403 });
     }
 
+    const effectiveCustomerId = body.customerId !== undefined ? body.customerId : oldData?.customer_id;
+    if (effectiveCustomerId) {
+      const customerResult = await db.from('customers').select('id,name,phone,address').eq('id', effectiveCustomerId).maybeSingle();
+      if (customerResult.error) throw new Error(customerResult.error.message);
+      if (!customerResult.data) return NextResponse.json({ error: 'Khách hàng không tồn tại.' }, { status: 400 });
+      body.customerInfo = [customerResult.data.name, customerResult.data.phone].filter(Boolean).join('\n');
+      body.customerAddress = customerResult.data.address || '';
+    }
     validateOrderPayload(body);
 
     // Tính profit_vnd server-side từ laptop import price
