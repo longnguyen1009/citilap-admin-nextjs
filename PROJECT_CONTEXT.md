@@ -1,6 +1,8 @@
 # CitiLap Admin — Project Context
 
 > Cập nhật Cloudflare 2026-10-01: runtime hiện tại là Next.js full-stack trên Cloudflare Workers, D1 cho dữ liệu/auth/session và R2 cho ảnh/cache. Mọi Route Handler dùng binding theo request và D1 session; dependency Supabase đã được gỡ. `db/migrations/`, `supabase/migrations/`, `init_full_db.sql` và các báo cáo Supabase bên dưới là tài liệu lịch sử để đối chiếu nghiệp vụ, không phải quy trình deploy hiện tại. Xem `docs/cloudflare/STATUS.md`, `db/d1/migrations/` và `wrangler.jsonc` để vận hành môi trường mới.
+>
+> Cập nhật local 2026-10-06: chuỗi D1 hiện có migration `0020_integrity_consolidation.sql`; kiểm thử full-chain áp dụng 20/20 migration từ DB trắng, foreign key sạch. Quy tắc lợi nhuận đơn hàng canonical là `sale_price - laptops.import_price_vnd`; cost snapshot khi chốt đơn dùng cùng giá vốn này. Các thay đổi 2026-10-06 chưa được deploy production.
 
 ## Mục tiêu hệ thống
 

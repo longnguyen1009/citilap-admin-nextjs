@@ -7,6 +7,7 @@ import { getCloudflareBindings } from '../../../lib/cloudflare/bindings';
 import { createDatabase } from '../../../lib/cloudflare/database.mjs';
 import { requireSession } from '../../../lib/cloudflare/session.mjs';
 import { remainingOrderAmount } from '../../../lib/orderPaymentAmounts.mjs';
+import { SALES_ROLES } from '../../../lib/roles.mjs';
 
 const snakeKey = key => key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 const keysToSnake = value => {
@@ -61,7 +62,7 @@ async function saveOrder(db, order, actor, persisted) {
 
 export async function GET(request) {
   try {
-    const { db, profile } = await context(request, ['ADMIN', 'SALES', 'SALES_TECH']);
+    const { db, profile } = await context(request, SALES_ROLES);
     const timing = createTiming();
     const isAdmin = profile.role === 'ADMIN';
 
@@ -157,7 +158,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { db, profile } = await context(request, ['ADMIN', 'SALES', 'SALES_TECH']);
+    const { db, profile } = await context(request, SALES_ROLES);
     const isAdmin = profile.role === 'ADMIN';
     const rawPayload = await request.json();
     const protectedCostFields = ['costSnapshotVnd', 'grossProfitSnapshotVnd', 'directCostSnapshotVnd', 'netContributionSnapshotVnd', 'costSnapshotStatus', 'costSnapshotReasons', 'costSnapshottedAt', 'tradeInCreditVnd'];

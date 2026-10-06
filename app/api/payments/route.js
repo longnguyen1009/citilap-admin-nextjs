@@ -6,6 +6,7 @@ import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 import { isCalendarDate } from '@/lib/listScope';
 import { correctPayment } from '@/lib/cloudflare/payment-correction.mjs';
+import { SALES_ROLES } from '@/lib/roles.mjs';
 
 export async function PATCH(request) {
   try {
@@ -33,7 +34,7 @@ const toCamel = value => Array.isArray(value)
 
 async function context(request) {
   const { DB } = getCloudflareBindings();
-  const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
+  const profile = await requireSession(DB, request, SALES_ROLES);
   return { db: createDatabase(DB), profile };
 }
 

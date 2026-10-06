@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useInventory, parseFlexibleFloat } from '../../context/InventoryContext';
 import { labelToKey } from '../../lib/useFieldOptions';
+import { SALES_ROLES } from '../../lib/roles.mjs';
 import { useAuth } from '../../context/AuthContext';
 import {
   ShoppingCart,
@@ -563,7 +564,7 @@ export default function Orders() {
         <div className="section-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {user?.role === 'ADMIN' && <><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('csv')}><Download size={14} /> CSV</Button><Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportCSV('xlsx')}><Download size={14} /> Excel (.xlsx)</Button></>}
 
-          {(['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) || !user) && (
+          {(SALES_ROLES.includes(user?.role) || !user) && (
             <Button data-testid="order-add-button" variant="default" size="sm" onClick={handleOpenAdd}>
               <Plus size={16} /> Tạo Đơn Hàng Mới
             </Button>

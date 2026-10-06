@@ -12,6 +12,7 @@ import {
 } from '../../context/InventoryContext';
 import { D } from '../../lib/fieldOptions';
 import { labelToKey, getOptions, getLabel } from '../../lib/useFieldOptions';
+import { SALES_ROLES, SALES_TECHNICAL_ROLES } from '../../lib/roles.mjs';
 import { useAuth } from '../../context/AuthContext';
 import {
   Plus, Edit3, Trash2, Settings, RefreshCw, Download, Upload,
@@ -51,7 +52,7 @@ const DOMESTIC_SUPPLIERS = [
   { id: '1', name: 'Nhập thợ VN' },
   { id: '2', name: 'Thu lại khách lẻ' },
 ];
-const DIRECT_CREATE_ROLES = new Set(['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
+const DIRECT_CREATE_ROLES = new Set(SALES_TECHNICAL_ROLES);
 
 export default function Inventory() {
   const [demandOrders, setDemandOrders] = useState([]);
@@ -1019,7 +1020,7 @@ export default function Inventory() {
                     </th>
                   </>
                 )}
-                {['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) && (
+                {SALES_ROLES.includes(user?.role) && (
                   <>
                   </>
                 )}
@@ -1150,7 +1151,7 @@ export default function Inventory() {
                       </>
                     )}
 
-                    {['ADMIN', 'SALES', 'SALES_TECH'].includes(user?.role) && (
+                    {SALES_ROLES.includes(user?.role) && (
                       <>
                       </>
                     )}

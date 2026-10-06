@@ -3,6 +3,7 @@ import { parseListScope, businessMonthKey } from '../../../lib/listScope';
 import { filterSensitiveFields, sanitizePayload, validateLaptopPayload, LAPTOP_PAYLOAD_KEYS, SENSITIVE_LAPTOP_KEYS } from '../../../lib/apiAuth';
 import { createTiming, timeAsync, markTiming, withServerTiming } from '../../../lib/apiTiming';
 import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
+import { ALL_ROLES, SALES_ROLES, SALES_TECHNICAL_ROLES, TECHNICAL_ROLES } from '../../../lib/roles.mjs';
 
 const LAPTOP_AUDIT_FIELDS = [
   'sku', 'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
@@ -17,7 +18,7 @@ const diffObject = (before, after, fields) => Object.fromEntries(fields.filter(k
 
 export async function GET(request) {
   try {
-  const { db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+  const { db, profile } = await routeContext(request, ALL_ROLES);
   const timing = createTiming();
   const isAdmin = profile.role === 'ADMIN';
 
@@ -100,7 +101,7 @@ export async function GET(request) {
   const userById = new Map((users || []).map(item => [String(item.id), item]));
   const reservationByLaptop = new Map((reservations || []).map(item => [String(item.laptop_id), item]));
   const tradeInByLaptop = new Map((tradeIns || []).map(item => [String(item.inventory_laptop_id), item.trade_in_code]));
-  const canSeeCustomer = ['ADMIN', 'SALES', 'SALES_TECH'].includes(profile.role);
+  const canSeeCustomer = SALES_ROLES.includes(profile.role);
   const enriched = data.map(item => {
     const reservation = reservationByLaptop.get(String(item.id));
     const batch = batchById.get(String(item.purchaseBatchId));
@@ -137,16 +138,16 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const { DB, db, profile } = await routeContext(request, ALL_ROLES);
     const isAdmin = profile.role === 'ADMIN';
     const rawPayload = await request.json();
     const { searchParams } = new URL(request.url);
     const isCreateRequest = searchParams.get('mode') === 'create';
-    const canCreateDomestic = ['ADMIN', 'SUPER_ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role);
+    const canCreateDomestic = SALES_TECHNICAL_ROLES.includes(profile.role);
     if (isCreateRequest && !canCreateDomestic) {
       return NextResponse.json({ error: 'Bạn không có quyền tạo laptop mới.' }, { status: 403 });
     }
-    if (rawPayload.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) {
+    if (rawPayload.qcDetails !== undefined && !TECHNICAL_ROLES.includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
     // The browser includes its exchange-rate default and supplier warranty text.
@@ -157,7 +158,7 @@ export async function POST(request) {
     if (isCreateRequest) directSensitiveKeys.forEach(key => { delete payloadForSanitize[key]; });
     const body = sanitizePayload(payloadForSanitize, LAPTOP_PAYLOAD_KEYS,
       isCreateRequest ? directSensitiveKeys : SENSITIVE_LAPTOP_KEYS, isAdmin);
-    if (body.qcDetails !== undefined && !['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) {
+    if (body.qcDetails !== undefined && !TECHNICAL_ROLES.includes(profile.role)) {
       return NextResponse.json({ error: 'Chỉ kỹ thuật hoặc admin được sửa chi tiết QC' }, { status: 403 });
     }
     delete body.createdAt;
@@ -202,12 +203,12 @@ export async function POST(request) {
         sourceReferenceId: supplierId,
         priceRmb: 0,
         shippingRmb: 0,
+        exchangeRate: 0,
         status: 'available',
         isActive: true,
         createdBy: profile.name,
       });
       delete row.id;
-      delete row.exchange_rate;
       const result = await db.from('laptops').insert(row).select().single();
       if (result.error) throw new Error(result.error.message);
       const created = keysToCamel(result.data);
@@ -243,6 +244,10 @@ export async function POST(request) {
         // name from the Inventory form back into the laptop row.
         if (['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
           delete body.seller;
+          if (isAdmin) {
+            if (body.priceRmb !== undefined) body.purchasePriceRmb = body.priceRmb;
+            if (body.exchangeRate !== undefined) body.purchaseExchangeRate = body.exchangeRate;
+          }
         }
 
         if (!isAdmin && ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {

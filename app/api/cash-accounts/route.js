@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { SALES_ROLES } from '@/lib/roles.mjs';
 
 const clean = (value, max) => String(value ?? '').trim().slice(0, max);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -15,7 +16,7 @@ async function financeAdmin(request, roles = ['ADMIN']) {
 }
 
 export async function GET(request) {
-  const context = await financeAdmin(request, ['ADMIN', 'SALES', 'SALES_TECH']);
+  const context = await financeAdmin(request, SALES_ROLES);
   if (context.response) return context.response;
   const { auth, db } = context;
   const currency = new URL(request.url).searchParams.get('currency');
@@ -45,4 +46,3 @@ export async function PATCH(request) {
     return NextResponse.json(data);
   } catch (error) { return financeError(error); }
 }
-

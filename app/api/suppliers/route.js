@@ -3,11 +3,12 @@ import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 import { saveSupplier } from '@/lib/cloudflare/suppliers.mjs';
+import { ALL_ROLES } from '@/lib/roles.mjs';
 
 export async function GET(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const profile = await requireSession(DB, request, ALL_ROLES);
     const id = new URL(request.url).searchParams.get('id');
     if (id && profile.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Chỉ quản trị viên được xem chi tiết nhà cung cấp.' }, { status: 403 });

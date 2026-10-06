@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { invoiceRequest } from '@/lib/invoiceClient';
+import { SALES_ROLES } from '@/lib/roles.mjs';
 import toast from 'react-hot-toast';
 
 export default function InvoiceLink({ orderId, laptopId, customerId, invoiceId = null, issue = false, eligible = true, label }) {
@@ -10,7 +11,7 @@ export default function InvoiceLink({ orderId, laptopId, customerId, invoiceId =
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [existingId, setExistingId] = useState(invoiceId);
-  if (!['ADMIN','SALES','SALES_TECH'].includes(user?.role)) return null;
+  if (!SALES_ROLES.includes(user?.role)) return null;
   if (issue && !eligible && !existingId) return null;
   const open = async () => {
     if (busy) return;

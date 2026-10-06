@@ -15,6 +15,7 @@
     "cf:test": "node --test qa/cloudflare-auth.test.mjs",
     "cf:test:runtime": "node qa/cloudflare-runtime.mjs",
     "cf:test:views": "node qa/cloudflare-view-parity.mjs",
+    "cf:test:migrations": "node qa/cloudflare-migrations.mjs",
     "cf:coverage": "node qa/cloudflare-coverage.mjs",
     "cf:inventory": "node qa/cloudflare-inventory.mjs"
   },

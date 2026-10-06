@@ -1,11 +1,12 @@
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
 import { readImage } from '@/lib/cloudflare/images.mjs';
+import { SALES_TECHNICAL_ROLES } from '@/lib/roles.mjs';
 
 export async function POST(request) {
   try {
     const { DB, IMAGES_BUCKET } = getCloudflareBindings();
-    const user = await requireSession(DB, request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH']);
+    const user = await requireSession(DB, request, SALES_TECHNICAL_ROLES);
     const { bytes, contentType } = await readImage(request);
     const id = crypto.randomUUID();
     const objectKey = `images/${id}`;

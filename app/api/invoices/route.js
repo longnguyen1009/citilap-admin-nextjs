@@ -4,6 +4,7 @@ import { publicInvoice } from '@/lib/responseVisibility';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { SALES_ROLES } from '@/lib/roles.mjs';
 
 import { resolveGiftItems } from '@/lib/cloudflare/remaining.mjs';
 
@@ -14,7 +15,7 @@ function visibleInvoice(invoice, role) {
 export async function GET(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
+    const profile = await requireSession(DB, request, SALES_ROLES);
     const params = new URL(request.url).searchParams;
     const db = createDatabase(DB);
     let query = db.from('invoices').select('*').order('created_at', { ascending: false });
@@ -56,7 +57,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const { DB } = getCloudflareBindings();
-    const profile = await requireSession(DB, request, ['ADMIN', 'SALES', 'SALES_TECH']);
+    const profile = await requireSession(DB, request, SALES_ROLES);
     const { orderId } = await request.json();
     if (!isValidPositiveId(orderId)) return NextResponse.json({ error: 'Mã đơn không hợp lệ' }, { status: 400 });
     const { data, error } = await createDatabase(DB).rpc('issue_invoice', {

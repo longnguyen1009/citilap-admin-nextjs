@@ -3,8 +3,9 @@ import { canReadAudit, visibleAuditChanges } from '@/lib/auditVisibility';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { ALL_ROLES } from '@/lib/roles.mjs';
 
-const ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF'];
+const ROLES = ALL_ROLES;
 const ENTITY_TYPES = new Set([
   'LAPTOP', 'ORDER', 'CUSTOMER', 'WARRANTY', 'STOCK_MOVEMENT', 'SETTING', 'OPTION', 'PAYMENT', 'FINANCIAL_RECORD',
 ]);

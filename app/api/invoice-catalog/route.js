@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { isValidPositiveId } from '@/lib/apiAuth';
 import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
+import { SALES_ROLES } from '@/lib/roles.mjs';
 
 export async function GET(request) {
-  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'SALES_TECH']);
+  const { db } = await routeContext(request, SALES_ROLES);
   const [branches, accessories] = await Promise.all([
     db.from('branches').select('*').order('id'), db.from('accessories').select('*').order('id')
   ]);

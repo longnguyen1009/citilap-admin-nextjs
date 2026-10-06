@@ -34,21 +34,28 @@ DELETE FROM customers;
 DELETE FROM operation_requests;
 DELETE FROM activity_logs;
 
--- The source snapshot contains one supplier that was not present in the remote
--- catalog when this migration was prepared. Seed it idempotently before the
--- strict supplier-resolution guard so the whole import can remain atomic.
+-- Make this snapshot migration reproducible from a blank database. Earlier
+-- migrations only guarantee the two default Vietnamese sources, while this
+-- snapshot references the full supplier catalog below. Preserve existing
+-- supplier details on conflict and only ensure every required code is active.
 INSERT INTO suppliers(
   code,name,display_name,wechat_name,country,preferred_shipping_destination,
   notes,active,created_by,created_at,updated_at
-) VALUES (
-  'WE_MAO','We-Mão','We-Mão','We-Mão','Trung Quốc','OTHER',
-  'Nhà cung cấp được bổ sung từ snapshot Google Sheet ngày 01/10/2026',1,
-  'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'
-)
+) VALUES
+  ('RETAIL_BUYBACK','Thu lại khách lẻ','Thu lại khách lẻ','','Việt Nam','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_LENOVO_01','We-可一件代发','We-可一件代发','We-可一件代发','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('QUEANH','Quế Anh Mua','Quế Anh Mua','','Việt Nam','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WECHAT001','We-莫名','We-莫名','We-莫名','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('VN_TECH','Nhập thợ VN','Nhập thợ VN','','Việt Nam','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_A_BAC','We-A Bắc','We-A Bắc','We-A Bắc','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_MAO','We-Mão','We-Mão','We-Mão','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_LENOVO_02','We-AAALenovo','We-AAALenovo','We-AAALenovo','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_003','We-勇哥📱 13878190009','We-勇哥📱 13878190009','We-勇哥📱 13878190009','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_HUONG','We-Hướng','We-Hướng','We-Hướng','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_004','We-千百度（微信没回复及时打语音）','We-千百度（微信没回复及时打语音）','We-千百度（微信没回复及时打语音）','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_005','We-万法唯','We-万法唯','We-万法唯','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z'),
+  ('WE_MAXWELL','We-Maxwell','We-Maxwell','We-Maxwell','Trung Quốc','OTHER','Nguồn snapshot Google Sheet 01/10/2026',1,'SYSTEM_MIGRATION','2026-10-01T00:00:00.000Z','2026-10-01T00:00:00.000Z')
 ON CONFLICT(code) DO UPDATE SET
-  name=excluded.name,
-  display_name=excluded.display_name,
-  wechat_name=excluded.wechat_name,
   active=1,
   updated_at=excluded.updated_at;
 

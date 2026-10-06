@@ -63,17 +63,25 @@ export default function Dashboard() {
 
   const totalCapitalVnd = availableLaptops.reduce((sum, l) => {
     const price = Number(l.importPriceVnd || 0);
-    // Cap extreme values (likely test data) at 100 tr per unit
-    return sum + (price > 0 && price < 100 ? price : 0);
+    return sum + (Number.isFinite(price) && price > 0 ? price : 0);
   }, 0);
   const totalProfitVnd = availableLaptops.reduce((sum, l) => {
-    const profit = Number(l.profitVnd || 0);
-    return sum + (Math.abs(profit) < 100 ? profit : 0);
+    const salePrice = Number(l.retailPriceVnd || l.wholesalePriceVnd || 0);
+    const importPrice = Number(l.importPriceVnd || 0);
+    if (!Number.isFinite(salePrice) || !Number.isFinite(importPrice) || salePrice <= 0 || importPrice <= 0) return sum;
+    return sum + (salePrice - importPrice);
   }, 0);
   const realizedProfitVnd = orders.filter(o => isOrderCommitted(o, appOptions)).reduce((sum, order) => {
+    if (order.profitVnd !== undefined && order.profitVnd !== null && order.profitVnd !== '') {
+      const serverProfit = Number(order.profitVnd);
+      if (Number.isFinite(serverProfit)) return sum + serverProfit;
+    }
     const laptop = laptops.find(item => String(item.id) === String(order.laptopId));
-    if (!laptop) return sum + Number(order.profitVnd || 0);
-    return sum + (Number(order.salePrice || 0) - Number(laptop?.importPriceVnd || 0) - Number(order.creditCardFee || 0));
+    const salePrice = Number(order.salePrice || 0);
+    const importPrice = Number(laptop?.importPriceVnd || 0);
+    return Number.isFinite(salePrice) && Number.isFinite(importPrice) && importPrice > 0
+      ? sum + (salePrice - importPrice)
+      : sum;
   }, 0);
 
   // Group by category count

@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ChevronDown, ChevronRight, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/apiFetchers';
 import { formatRmb } from '@/lib/procurement';
+import { TECHNICAL_ROLES } from '@/lib/roles.mjs';
 import ProductNameInput from '@/components/common/ProductNameInput';
 import LaptopCategoryBadge from '@/components/common/LaptopCategoryBadge';
 import PurchaseDayTables from './PurchaseDayTables';
@@ -31,7 +32,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
   const { selectedMonth, setSelectedMonth, availableMonths, formulaConfig, cancelLaptop } = useInventory();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const canUseQc = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(user?.role);
+  const canUseQc = TECHNICAL_ROLES.includes(user?.role);
   const [purchaseMonths, setPurchaseMonths] = useState([]);
   useEffect(() => {
     if (receiving || batchId) return;
@@ -139,7 +140,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
     <section className="intake-stats"><div><small>Lô mua</small><b>{data.batches.length}</b></div><div><small>Chưa về hàng</small><b>{incoming.length}</b></div><div><small>Chờ QC</small><b>{data.laptops.filter(x => x.status === 'waiting_qc').length}</b></div><div><small>Chưa rõ nguồn</small><b>{data.unresolved.filter(x => x.status !== 'ignored').length}</b></div></section>
     {error && <p role="alert" className="intake-error">{error}</p>}{message && <p role="status" className="intake-success">{message}</p>}
 
-    <div className="intake-toolbar">{!receiving && !batchId && <select aria-label="Tháng mua hàng" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>{[...new Set([selectedMonth, ...availableMonths, ...purchaseMonths])].filter(m => m !== 'ALL').map(month => <option key={month} value={month}>{month}</option>)}<option value="ALL">Tất cả tháng</option></select>}{receiving && <span>Máy chưa về · Tất cả tháng</span>}<input aria-label="Tìm theo mã vận chuyển, tên máy, serial hoặc lô" placeholder="Tìm tracking, tên máy, serial, lô…" value={query} onChange={e => setQuery(e.target.value)} />{!receiving && <select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả trạng thái</option>{Object.entries(STATUS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}<button onClick={load}>Tải lại</button>{!receiving && <button className="intake-primary" onClick={() => { setDraft({ supplier_id: '', purchase_date: today(), purchase_exchange_rate: 3550, notes: '', key: crypto.randomUUID() }); setRows([blankLaptop(data.categories[0]?.option_key)]); }}>+ Tạo lô mua</button>}</div>
+    <div className="intake-toolbar">{!receiving && !batchId && <select aria-label="Tháng mua hàng" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>{[...new Set([selectedMonth, ...availableMonths, ...purchaseMonths])].filter(m => m !== 'ALL').map(month => <option key={month} value={month}>{month}</option>)}<option value="ALL">Tất cả tháng</option></select>}{receiving && <span>Máy chưa về · Tất cả tháng</span>}<input aria-label="Tìm theo mã vận chuyển, tên máy, serial hoặc lô" placeholder="Tìm tracking, tên máy, serial, lô…" value={query} onChange={e => setQuery(e.target.value)} />{!receiving && <select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả trạng thái</option>{Object.entries(STATUS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}<button onClick={load}>Tải lại</button>{!receiving && <button className="intake-primary" onClick={() => { setDraft({ supplier_id: '', purchase_date: today(), purchase_exchange_rate: Number(formulaConfig?.defaultRate) || 3990, notes: '', key: crypto.randomUUID() }); setRows([blankLaptop(data.categories[0]?.option_key)]); }}>+ Tạo lô mua</button>}</div>
 
     <div className="intake-list-meta"><span>{visible.length} máy phù hợp</span></div>
     {draft && <form className="intake-panel intake-create" onSubmit={e => { e.preventDefault(); mutate({ action: 'create', batch: draft, laptops: rowsForSave(), key: draft.key }, () => { setDraft(null); setMessage('Đã tạo lô mua và các laptop ở trạng thái Chưa về hàng.'); }); }}>

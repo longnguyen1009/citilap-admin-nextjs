@@ -283,7 +283,7 @@ CREATE TABLE "laptops" (
   "status" TEXT,
   "price_rmb" NUMERIC DEFAULT 0,
   "shipping_rmb" NUMERIC DEFAULT 0,
-  "exchange_rate" NUMERIC DEFAULT 3550,
+  "exchange_rate" NUMERIC DEFAULT 0,
   "import_price_vnd" NUMERIC DEFAULT 0,
   "wholesale_price_vnd" NUMERIC DEFAULT 0,
   "retail_price_vnd" NUMERIC DEFAULT 0,

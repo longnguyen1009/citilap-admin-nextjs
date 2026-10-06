@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { SALES_ROLES, SALES_TECHNICAL_ROLES, TECHNICAL_ROLES } from '@/lib/roles.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allRoles = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'];
-const salesRoles = ['ADMIN', 'SALES', 'SALES_TECH'];
-const technicalRoles = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'];
+const allRoles = SALES_TECHNICAL_ROLES;
+const salesRoles = SALES_ROLES;
+const technicalRoles = TECHNICAL_ROLES;
 
 async function context(request) {
   const { DB } = getCloudflareBindings();

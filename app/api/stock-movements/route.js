@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sanitizePayload, STOCK_MOVEMENT_PAYLOAD_KEYS } from '../../../lib/apiAuth';
 import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
+import { ALL_ROLES, TECHNICAL_ROLES } from '../../../lib/roles.mjs';
 
 const INVENTORY_EVENTS = new Set(['NHẬP KHO', 'CẬP NHẬT KHO', 'DEACTIVATED']);
 const isWarrantyEvent = value => value === 'TIẾP NHẬN BẢO HÀNH' || value.startsWith('BẢO HÀNH:');
@@ -20,7 +21,7 @@ async function validateMovement(db, body, profile) {
     return;
   }
   if (!isWarrantyEvent(movementType)) throw new Error('Loại lịch sử kho không được phép ghi trực tiếp');
-  if (!['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'].includes(profile.role)) throw Object.assign(new Error('Bạn không có quyền ghi lịch sử bảo hành'), { status: 403 });
+  if (!TECHNICAL_ROLES.includes(profile.role)) throw Object.assign(new Error('Bạn không có quyền ghi lịch sử bảo hành'), { status: 403 });
   if (!body.warrantyCaseId || !body.laptopId) throw new Error('Lịch sử bảo hành phải gắn đúng phiếu và laptop');
   const { data, error } = await db.from('warranty_cases').select('laptop_id,order_id').eq('id', body.warrantyCaseId).maybeSingle();
   if (error || !data || Number(data.laptop_id) !== Number(body.laptopId) || (body.orderId && Number(data.order_id) !== Number(body.orderId))) {
@@ -30,7 +31,7 @@ async function validateMovement(db, body, profile) {
 
 export async function GET(request) {
   try {
-    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const { db } = await routeContext(request, ALL_ROLES);
     const { data, error } = await db.from('stock_movements').select('*').order('created_at', { ascending: false }).limit(1000);
     if (error) throw new Error(error.message);
     return NextResponse.json(keysToCamel(data));
@@ -39,7 +40,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const { DB, db, profile } = await routeContext(request, ALL_ROLES);
     const body = sanitizePayload(await request.json(), STOCK_MOVEMENT_PAYLOAD_KEYS);
     await validateMovement(db, body, profile);
     // Server-set audit fields

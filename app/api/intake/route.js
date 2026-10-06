@@ -3,8 +3,9 @@ import { parseListScope, monthDateRange } from '@/lib/listScope';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { SALES_TECHNICAL_ROLES } from '@/lib/roles.mjs';
 
-const RECEIVING_ROLES = ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH'];
+const RECEIVING_ROLES = SALES_TECHNICAL_ROLES;
 const RECEIVING_PRICE_FIELDS = ['purchase_price_rmb', 'shipping_rmb', 'purchase_exchange_rate', 'import_price_vnd', 'price_rmb', 'exchange_rate'];
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const keyOf = value => {

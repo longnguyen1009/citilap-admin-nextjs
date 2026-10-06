@@ -1,5 +1,15 @@
 # Cloudflare migration status
 
+## Local integrity consolidation - 2026-10-06
+
+- Added D1 migration `0020_integrity_consolidation.sql` to canonicalize `TECH` to `TECHNICAL`, seed `KHO TQ`, reconcile supplier-purchase compatibility aliases and keep `price_rmb`/`exchange_rate` synchronized from canonical `purchase_*` fields.
+- Repaired blank-database reproducibility in migrations 0010/0013/0015 by seeding required supplier/account references instead of assuming remote-only catalog rows or IDs.
+- Order profit and committed cost snapshots are derived server-side from `laptops.import_price_vnd`; commission creation requires a complete snapshot. Trade-in inventory conversion now writes the agreed acquisition value into `import_price_vnd` so later order profit uses the same canonical rule.
+- Removed arbitrary Dashboard `<100` million caps and derive inventory potential margin from sale price minus `import_price_vnd` instead of a transient laptop `profitVnd` field.
+- Canonical role groups now live in `lib/roles.mjs`; authenticated legacy `TECH` values normalize to `TECHNICAL` before route/UI authorization.
+- Local verification: D1 migration chain 20/20 with clean foreign keys; workerd runtime PASS; auth 12/12; view parity 7/7 (103 rows); operation coverage 54/54 with zero pending; ESLint PASS; Next.js production build 68/68 pages; `git diff --check` PASS.
+- These 2026-10-06 changes are local only; no production D1 migration or Worker deployment was performed as part of this audit.
+
 ## Operations UI update — 2026-10-02
 
 - Purchases, receiving, QC and actual costs now use compact spacing, navy headers, strong outer borders and visible table separators.

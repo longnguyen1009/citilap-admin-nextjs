@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { getCloudflareBindings } from '@/lib/cloudflare/bindings';
 import { createDatabase } from '@/lib/cloudflare/database.mjs';
 import { requireSession } from '@/lib/cloudflare/session.mjs';
+import { TECHNICAL_ROLES } from '@/lib/roles.mjs';
 
-const ROLES = ['ADMIN', 'TECH', 'TECHNICAL', 'SALES_TECH'];
+const ROLES = TECHNICAL_ROLES;
 const numericId = value => /^\d+$/.test(String(value || '')) && Number(value) > 0 ? Number(value) : null;
 
 export async function GET(request) {

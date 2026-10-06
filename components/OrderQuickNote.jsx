@@ -1,15 +1,13 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 export default function OrderQuickNote({ value, onSave, orderId }) {
   const [draft, setDraft] = useState(value || '');
   const [saving, setSaving] = useState(false);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
 
   const handleSave = async (content) => {
-    const text = content !== undefined ? content : draftRef.current;
+    const text = content !== undefined ? content : draft;
     if (text === (value || '') || saving) return;
     setSaving(true);
     try {
@@ -31,7 +29,6 @@ export default function OrderQuickNote({ value, onSave, orderId }) {
       disabled={saving}
       onChange={e => {
         setDraft(e.target.value);
-        draftRef.current = e.target.value;
       }}
       onKeyDown={e => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -39,7 +36,7 @@ export default function OrderQuickNote({ value, onSave, orderId }) {
           e.currentTarget.blur();
         }
       }}
-      onBlur={() => handleSave()}
+      onBlur={() => handleSave(draft)}
     />
   );
 }

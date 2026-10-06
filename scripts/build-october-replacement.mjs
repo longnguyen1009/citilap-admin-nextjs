@@ -46,8 +46,12 @@ export function buildReplacement() {
  '-- Opening payment balances are NOT reconciled bank transactions. Original source retained.',
  'PRAGMA defer_foreign_keys=ON;',readFileSync(new URL('../db/d1/imports/2026-10-review/approved-suppliers.sql',import.meta.url),'utf8')];
  sql.push('CREATE TABLE _oct_supplier_guard(code TEXT PRIMARY KEY, supplier_id TEXT NOT NULL);');
- sql.push(`CREATE TABLE _oct_account_guard(id TEXT NOT NULL CHECK(id='04fbb0da-771b-4821-bcf3-053f03956043'));
- INSERT INTO _oct_account_guard SELECT (SELECT id FROM cash_accounts WHERE name='VCB TOI' AND id='04fbb0da-771b-4821-bcf3-053f03956043');`);
+sql.push(`INSERT INTO cash_accounts(id,code,name,account_type,currency,opening_balance,opening_balance_at,is_active,created_by)
+SELECT '04fbb0da-771b-4821-bcf3-053f03956043','VCB_TOI','VCB TOI','BANK','VND',0,'2026-10-01',1,'SYSTEM_MIGRATION'
+WHERE NOT EXISTS (SELECT 1 FROM cash_accounts WHERE name='VCB TOI');
+CREATE TABLE _oct_account_guard(id TEXT NOT NULL);
+ INSERT INTO _oct_account_guard
+ SELECT (SELECT id FROM cash_accounts WHERE name='VCB TOI' ORDER BY CASE WHEN id='04fbb0da-771b-4821-bcf3-053f03956043' THEN 0 ELSE 1 END, id LIMIT 1);`);
  for(const code of new Set(machines.map(r=>r.supplier_code))) sql.push(`INSERT INTO _oct_supplier_guard SELECT ${q(code)},(SELECT id FROM suppliers WHERE code=${q(code)});`);
  const old=readFileSync(new URL('../db/d1/migrations/0010_google_sheet_inventory_seed.sql',import.meta.url),'utf8');
  sql.push(...old.match(/^DELETE FROM .*;$/gm));

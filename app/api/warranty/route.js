@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sanitizePayload, validateWarrantyPayload, WARRANTY_PAYLOAD_KEYS } from '../../../lib/apiAuth';
 import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib/cloudflare/route-helpers.mjs';
+import { ALL_ROLES } from '../../../lib/roles.mjs';
 
 const OPEN_STATUSES = ['received', 'checking', 'wait_parts', 'repairing'];
 const RESOLVED_STATUSES = ['done', 'swap_device', 'refunded'];
@@ -8,7 +9,7 @@ const WARRANTY_STATUSES = [...OPEN_STATUSES, ...RESOLVED_STATUSES];
 
 export async function GET(request) {
   try {
-    const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const { db } = await routeContext(request, ALL_ROLES);
     const { data, error } = await db.from('warranty_cases').select('*').order('id', { ascending: false }).limit(1000);
     if (error) throw new Error(error.message);
     return NextResponse.json(keysToCamel(data));
@@ -17,7 +18,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, db, profile } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+    const { DB, db, profile } = await routeContext(request, ALL_ROLES);
     const body = sanitizePayload(await request.json(), WARRANTY_PAYLOAD_KEYS);
     // Server-set audit fields: ignore client-sent timestamps and actor
     delete body.createdAt;

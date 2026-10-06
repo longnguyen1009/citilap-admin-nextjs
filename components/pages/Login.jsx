@@ -182,7 +182,7 @@ export default function Login() {
             </button>
             {showMockLogin && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                {['ADMIN', 'SALES', 'TECH', 'SALES_TECH'].map(role => (
+                {['ADMIN', 'SALES', 'TECHNICAL', 'SALES_TECH'].map(role => (
                   <button
                     key={role}
                     onClick={() => handleMockLogin(role)}

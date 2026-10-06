@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
+import { ALL_ROLES } from '@/lib/roles.mjs';
 
 const PRESET_KEY = 'preset_configs';
 
@@ -12,7 +13,7 @@ const isPresetMap = (value) => {
 
 export async function GET(request) {
   try {
-  const { db } = await routeContext(request, ['ADMIN', 'SALES', 'TECH', 'TECHNICAL', 'SALES_TECH', 'STAFF']);
+  const { db } = await routeContext(request, ALL_ROLES);
   const { data, error } = await db
     .from('app_settings')
     .select('value')
