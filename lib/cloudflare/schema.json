@@ -851,11 +851,6 @@
       "generated": false
     },
     {
-      "name": "tracking_code",
-      "type": "text",
-      "generated": false
-    },
-    {
       "name": "customer_note",
       "type": "text",
       "generated": false

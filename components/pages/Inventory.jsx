@@ -137,7 +137,7 @@ export default function Inventory() {
     shippingRmb: 75,
     exchangeRate: 70,
     importPriceVnd: 95,
-    trackingCode: 160,
+    trackingCodeCn: 160,
     actions: 76
   });
 
@@ -160,7 +160,7 @@ export default function Inventory() {
       keys.push('priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd');
     }
 
-    keys.push('trackingCode');
+    keys.push('trackingCodeCn');
     return keys;
   }, [user?.role]);
 
@@ -236,7 +236,7 @@ export default function Inventory() {
     retailPriceVnd: '',
     importPriceVnd: '',
     importPriceManuallyEdited: false,
-    trackingCode: '',
+    trackingCodeCn: '',
     sourceReferenceId: '1'
   };
 
@@ -362,7 +362,7 @@ export default function Inventory() {
         String(laptop.id || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.serial || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(supplierNameOf(laptop)).toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
-        String(laptop.trackingCode || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        String(laptop.trackingCodeCn || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.conditionNote || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.importDate || '').toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
         String(laptop.warehouseDate || '').toLowerCase().includes(deferredSearchTerm.toLowerCase());
@@ -443,7 +443,7 @@ export default function Inventory() {
       retailPriceVnd: laptop.retailPriceVnd || '',
       importPriceVnd: laptop.importPriceVnd || '',
       importPriceManuallyEdited: Boolean(laptop.importPriceVnd && Number(laptop.importPriceVnd) !== computeImportPrice(laptop.priceRmb, laptop.shippingRmb, laptop.exchangeRate || formulaConfig.defaultRate, formulaConfig)),
-      trackingCode: laptop.trackingCode || '',
+      trackingCodeCn: laptop.trackingCodeCn || '',
       sourceReferenceId: laptop.sourceReferenceId || ''
     });
     setIsAddModalOpen(true);
@@ -614,7 +614,7 @@ export default function Inventory() {
           exchangeRate: parseFlexibleFloat(clean[14]),
           importPriceVnd: clean[15] !== undefined && clean[15] !== '' ? parseFlexibleFloat(clean[15]) : undefined,
           profitVnd: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
-          trackingCode: clean[19] || ''
+          trackingCodeCn: clean[19] || ''
         };
       });
 
@@ -1023,9 +1023,9 @@ export default function Inventory() {
                   <>
                   </>
                 )}
-                <th style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, position: 'relative' }}>
+                <th style={{ width: `${colWidths.trackingCodeCn}px`, minWidth: `${colWidths.trackingCodeCn}px`, position: 'relative' }}>
                   Mã đơn vận
-                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Mã đơn vận" aria-valuemin={45} aria-valuenow={colWidths.trackingCode || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, trackingCode: Math.max(45, (previous.trackingCode || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'trackingCode')} title="Kéo để chỉnh rộng hẹp cột Mã đơn vận" />
+                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Mã đơn vận" aria-valuemin={45} aria-valuenow={colWidths.trackingCodeCn || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, trackingCodeCn: Math.max(45, (previous.trackingCodeCn || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'trackingCodeCn')} title="Kéo để chỉnh rộng hẹp cột Mã đơn vận" />
                 </th>
               </tr>
             </thead>
@@ -1156,7 +1156,7 @@ export default function Inventory() {
                     )}
 
 
-                    <td style={{ width: `${colWidths.trackingCode}px`, minWidth: `${colWidths.trackingCode}px`, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.trackingCode}>{l.trackingCode || '-'}</td>
+                    <td style={{ width: `${colWidths.trackingCodeCn}px`, minWidth: `${colWidths.trackingCodeCn}px`, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'normal', wordBreak: 'break-word' }} title={l.trackingCodeCn}>{l.trackingCodeCn || '-'}</td>
                   </tr>
                 ))
               )}
@@ -1266,8 +1266,8 @@ export default function Inventory() {
                     <Input id="inventory-field-13"
                       type="text"
                       data-testid="product-tracking-input"
-                      value={formData.trackingCode}
-                      onChange={e => setFormData({ ...formData, trackingCode: e.target.value })}
+                      value={formData.trackingCodeCn}
+                      onChange={e => setFormData({ ...formData, trackingCodeCn: e.target.value })}
                     />
                   </div>
                 </div>
@@ -1658,7 +1658,7 @@ export default function Inventory() {
                                   exchangeRate: parseFlexibleFloat(clean[14]),
                                   importPriceVnd: clean[15] !== undefined && clean[15] !== '' ? parseFlexibleFloat(clean[15]) : undefined,
                                   profitVnd: clean[18] !== undefined && clean[18] !== '' ? parseFlexibleFloat(clean[18]) : undefined,
-                                  trackingCode: clean[19] || ''
+                                  trackingCodeCn: clean[19] || ''
                                 };
                               });
                               const result = await importSheetData(parsed);
@@ -1707,7 +1707,7 @@ export default function Inventory() {
       priceRmb: data[i][10],
       shippingRmb: data[i][11],
       exchangeRate: data[i][12],
-      trackingCode: data[i][17]
+      trackingCodeCn: data[i][17]
     });
   }
   return ContentService.createTextOutput(JSON.stringify(result))

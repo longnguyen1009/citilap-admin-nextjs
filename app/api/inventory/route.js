@@ -7,7 +7,7 @@ import { keysToCamel, keysToSnake, routeContext, writeAudit } from '../../../lib
 const LAPTOP_AUDIT_FIELDS = [
   'sku', 'serial', 'name', 'category', 'importDate', 'warehouseDate', 'location',
   'chargerStatus', 'status', 'priceRmb', 'shippingRmb', 'exchangeRate',
-  'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd', 'trackingCode',
+  'importPriceVnd', 'wholesalePriceVnd', 'retailPriceVnd', 'trackingCodeCn',
   'warrantySupplier', 'conditionNote', 'seller', 'batteryHealth',
   'screenStatus', 'cameraMicStatus', 'mainboardStatus', 'partsHistory', 'qcDetails'
 ];
@@ -247,7 +247,7 @@ export async function POST(request) {
 
         if (!isAdmin && ['SUPPLIER_PURCHASE', 'SUPPLIER_REPLACEMENT'].includes(oldData.source_type)) {
           const oldLaptop = keysToCamel(oldData);
-          const procurementFields = ['name', 'serial', 'trackingCode', 'priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd'];
+          const procurementFields = ['name', 'serial', 'trackingCodeCn', 'priceRmb', 'shippingRmb', 'exchangeRate', 'importPriceVnd'];
           const changedProcurement = procurementFields.filter(key => {
             if (body[key] === undefined) return false;
             return String(body[key] ?? '').trim() !== String(oldLaptop[key] ?? '').trim();

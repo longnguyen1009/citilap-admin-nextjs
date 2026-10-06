@@ -101,9 +101,9 @@ const bundle = await build({
         const after=await env.DB.prepare('SELECT count(*) AS n FROM laptops').first();
         if(after.n!==4) throw new Error('Purchase was only partially rolled back');
         const tracked=await updateIncomingTracking(env.DB,{p_laptop_id:laptop.id,p_tracking:' CN123 ',p_actor:'Runtime'});
-        if(tracked.tracking_code_cn!=='CN123'||tracked.tracking_code!=='CN123') throw new Error('Tracking fields differ');
+        if(tracked.tracking_code_cn!=='CN123') throw new Error('Laptop tracking update failed');
         const cleared=await updateIncomingTracking(env.DB,{p_laptop_id:laptop.id,p_tracking:' ',p_actor:'Runtime'});
-        if(cleared.tracking_code_cn!==''||cleared.tracking_code!==null) throw new Error('Tracking clear mismatch');
+        if(cleared.tracking_code_cn!=='') throw new Error('Laptop tracking clear mismatch');
         const ignored=await ignoreIncomingLaptop(env.DB,{p_laptop_id:second.laptops[0].id,p_reason:'Test ignore',p_actor:'Runtime'});
         if(ignored.is_active!==false||ignored.status!=='ignored') throw new Error('Ignore failed');
         rejected=false;
@@ -498,6 +498,10 @@ try {
   }
   const views = await readFile('db/d1/migrations/0003_views.sql', 'utf8');
   for (const statement of views.split(/;\s*\n\s*\n/)) {
+    if (statement.trim()) await db.prepare(statement).run();
+  }
+  const singleTracking = await readFile('db/d1/migrations/0018_single_laptop_tracking_code.sql', 'utf8');
+  for (const statement of singleTracking.split(/;\s*\n\s*\n/)) {
     if (statement.trim()) await db.prepare(statement).run();
   }
   const response = await runtime.dispatchFetch('https://test.example');
