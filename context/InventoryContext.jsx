@@ -454,7 +454,7 @@ export const InventoryProvider = ({ children }) => {
       // Mỗi request vẫn được Route Handler kiểm tra bằng D1 session cookie.
       const safeFetch = (fn) => fn().catch(() => null);
       const needsWarranty = pathname === '/' || pathname.startsWith('/warranty');
-      const needsCustomers = pathname === '/' || ['/orders', '/warranty', '/customers'].some(route => pathname.startsWith(route));
+      const needsCustomers = pathname === '/' || ['/orders', '/payments', '/warranty', '/customers'].some(route => pathname.startsWith(route));
       const needsSettings = ['/inventory', '/settings', '/purchases', '/receiving'].some(route => pathname.startsWith(route));
       const needsPayments = pathname.startsWith('/payments');
       const needsLaptops = pathname === '/' || ['/inventory', '/orders', '/warranty', '/settings'].some(route => pathname.startsWith(route));

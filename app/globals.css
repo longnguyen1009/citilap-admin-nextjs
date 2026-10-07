@@ -1634,6 +1634,25 @@ tr td .sheet-cell-textarea:focus {
     transform: translateY(-1px);
 }
 
+button.list-summary-filter {
+    appearance: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.list-summary-filter.is-active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+button.list-summary-filter:focus-visible,
+.order-copy-id:focus-visible,
+.order-copy-summary:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
 .list-summary-item .summary-icon {
     display: flex;
     align-items: center;
@@ -2824,7 +2843,11 @@ body {
 .invoice-order-fields > .invoice-error { grid-column: 1 / -1; }
 .invoice-order-fields > label, .invoice-order-fields select { min-width: 0; width: 100%; }
 .order-display-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
-.orders-list-table .order-id-card { display: inline-flex; align-items: center; padding: 3px 8px; border: 1px solid #93c5fd; border-radius: 9px; background: #eff6ff; color: #1d4ed8 !important; font-size: .78rem; font-weight: 800; white-space: nowrap; vertical-align: baseline; }
+.orders-list-table .order-id-card { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid #93c5fd; border-radius: 9px; background: #eff6ff; color: #1d4ed8 !important; font-size: .78rem; font-weight: 800; white-space: nowrap; vertical-align: baseline; }
+.orders-list-table button.order-copy-id { appearance: none; font-family: inherit; line-height: inherit; cursor: copy; }
+.orders-list-table button.order-copy-id:hover { border-color: #2563eb; background: #dbeafe; }
+.orders-list-table .order-copy-summary { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: #111827; font: inherit; font-weight: 800; cursor: copy; }
+.orders-list-table .order-copy-summary:hover { background: #e0e7ff; color: #1d4ed8; }
 .orders-list-table .order-actions-cell .order-row-actions { display: flex; flex-direction: column; gap: 5px; align-items: center; }
 .invoice-order-fields .invoice-error { margin: 0; }
 .invoice-gift-options { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; min-width: 0; }

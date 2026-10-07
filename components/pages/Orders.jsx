@@ -20,7 +20,10 @@ import {
   TrendingUp,
   Package,
   MoreHorizontal,
-  Edit3
+  Edit3,
+  Copy,
+  CircleDot,
+  BadgeCheck
 } from 'lucide-react';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
@@ -116,6 +119,7 @@ export default function Orders() {
   const [filterDeliveryStatus, setFilterDeliveryStatus] = useState('');
   const [filterShippingMethod, setFilterShippingMethod] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [quickStatusFilter, setQuickStatusFilter] = useState('');
 
   // Modal State (cho nút "Tạo Đơn Hàng Mới")
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -446,6 +450,12 @@ export default function Orders() {
       if (filterSaleOnline && labelToKey('saleOnline', o.saleOnline, appOptions) !== labelToKey('saleOnline', filterSaleOnline, appOptions)) return false;
       if (filterOrderStatus && labelToKey('orderStatus', o.orderStatus, appOptions) !== labelToKey('orderStatus', filterOrderStatus, appOptions)) return false;
       if (filterPaymentStatus && labelToKey('paymentStatus', o.paymentStatus, appOptions) !== labelToKey('paymentStatus', filterPaymentStatus, appOptions)) return false;
+      const orderStatusKey = labelToKey('orderStatus', o.orderStatus, appOptions);
+      const paymentStatusKey = labelToKey('paymentStatus', o.paymentStatus, appOptions);
+      if (quickStatusFilter === 'awaiting_payment' && !['unpaid', 'cod'].includes(paymentStatusKey)) return false;
+      if (quickStatusFilter === 'done' && orderStatusKey !== 'done') return false;
+      if (quickStatusFilter === 'deposited' && orderStatusKey !== 'deposited' && paymentStatusKey !== 'deposited') return false;
+      if (quickStatusFilter === 'new' && orderStatusKey !== 'new') return false;
       if (filterDeliveryStatus && labelToKey('deliveryStatus', o.deliveryStatus, appOptions) !== labelToKey('deliveryStatus', filterDeliveryStatus, appOptions)) return false;
       if (filterShippingMethod && labelToKey('shippingMethod', o.shippingMethod, appOptions) !== labelToKey('shippingMethod', filterShippingMethod, appOptions)) return false;
 
@@ -459,12 +469,71 @@ export default function Orders() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory, appOptions]);
+  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory, quickStatusFilter, appOptions]);
+
+  const orderStatusCounts = useMemo(() => orders.reduce((counts, order) => {
+    const orderStatusKey = labelToKey('orderStatus', order.orderStatus, appOptions);
+    const paymentStatusKey = labelToKey('paymentStatus', order.paymentStatus, appOptions);
+    if (['unpaid', 'cod'].includes(paymentStatusKey)) counts.awaitingPayment += 1;
+    if (orderStatusKey === 'done') counts.done += 1;
+    if (orderStatusKey === 'deposited' || paymentStatusKey === 'deposited') counts.deposited += 1;
+    if (orderStatusKey === 'new') counts.new += 1;
+    return counts;
+  }, { awaitingPayment: 0, done: 0, deposited: 0, new: 0 }), [orders, appOptions]);
 
 
   const hasActiveFilters = Boolean(
-    searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory
+    searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory || quickStatusFilter
   );
+
+  const applyQuickStatusFilter = (status) => {
+    setQuickStatusFilter(current => current === status ? '' : status);
+    setFilterOrderStatus('');
+    setFilterPaymentStatus('');
+  };
+
+  const copyLaptopId = async (laptopId) => {
+    const text = String(laptopId);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`Đã sao chép ${text}`);
+    } catch {
+      toast.error('Không thể sao chép mã máy.');
+    }
+  };
+
+  const formatCopyAmount = (value) => Number(value || 0).toLocaleString('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+
+  const copyOrderSummary = async (order, laptop, customer) => {
+    const customerSnapshot = String(order.customerInfo || '').split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    const customerName = customer?.name || customerSnapshot[0] || '—';
+    const customerPhone = customer?.phone || customer?.phoneNumber || customerSnapshot.slice(1).join(' ') || '—';
+    const customerAddress = customer?.address || order.customerAddress || '—';
+    const laptopId = order.laptopId || order.requestedLaptopId;
+    const laptopCode = laptopId ? `LO${laptopId}` : 'LO—';
+    const configuration = laptop?.name || order.requestedConfiguration || '—';
+    const salePrice = Number(order.salePrice || 0);
+    const depositAmount = Number(order.depositAmount || 0);
+    const remainingAmount = Number(order.codAmount || 0);
+    const shippingMethod = getLabel('shippingMethod', order.shippingMethod) || order.shippingMethod || '—';
+    const text = [
+      `Đơn số #${order.id}`,
+      `**${customerName} - ${customerPhone}** - ${customerAddress}`,
+      `${laptopCode} - **${configuration}**`,
+      `Giá: ${formatCopyAmount(salePrice)}tr - Đã cọc: ${formatCopyAmount(depositAmount)} - Còn thu: ${formatCopyAmount(remainingAmount)}`,
+      `Gửi hàng: ${shippingMethod}`
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`Đã sao chép thông tin đơn #${order.id}`);
+    } catch {
+      toast.error('Không thể sao chép thông tin đơn hàng.');
+    }
+  };
 
   // Xuất file CSV Đơn Hàng
   const [exporting, setExporting] = useState(false);
@@ -606,7 +675,7 @@ export default function Orders() {
             <select id="order-field-3"
               className="form-control filter-input"
               value={filterOrderStatus} 
-              onChange={e => setFilterOrderStatus(e.target.value)}
+              onChange={e => { setFilterOrderStatus(e.target.value); setQuickStatusFilter(''); }}
             >
               <option value="">-- Tất cả Trạng Thái --</option>
               {ORDER_STATUS_OPTIONS.map(st => (
@@ -620,7 +689,7 @@ export default function Orders() {
             <select id="order-field-4"
               className="form-control filter-input"
               value={filterPaymentStatus} 
-              onChange={e => setFilterPaymentStatus(e.target.value)}
+              onChange={e => { setFilterPaymentStatus(e.target.value); setQuickStatusFilter(''); }}
             >
               <option value="">-- Tất cả Thanh Toán --</option>
               {PAYMENT_STATUS_OPTIONS.map(p => (
@@ -665,20 +734,34 @@ export default function Orders() {
             <strong className="summary-value">{filteredOrders.length}/{orders.length}</strong>
           </div>
         </div>
-        <div className="list-summary-item list-summary-item-warning">
+        <button type="button" className={`list-summary-item list-summary-filter list-summary-item-warning${quickStatusFilter === 'awaiting_payment' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'awaiting_payment'} onClick={() => applyQuickStatusFilter('awaiting_payment')}>
           <div className="summary-icon"><TrendingUp size={15} /></div>
           <div className="summary-text">
             <span className="summary-label">Chờ thanh toán</span>
-            <strong className="summary-value">{orders.filter(order => ['unpaid', 'deposited', 'cod'].includes(labelToKey('paymentStatus', order.paymentStatus, appOptions))).length}</strong>
+            <strong className="summary-value">{orderStatusCounts.awaitingPayment}</strong>
           </div>
-        </div>
-        <div className="list-summary-item list-summary-item-success">
+        </button>
+        <button type="button" className={`list-summary-item list-summary-filter list-summary-item-success${quickStatusFilter === 'done' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'done'} onClick={() => applyQuickStatusFilter('done')}>
           <div className="summary-icon"><Check size={15} /></div>
           <div className="summary-text">
             <span className="summary-label">Hoàn thành</span>
-            <strong className="summary-value">{orders.filter(order => labelToKey('orderStatus', order.orderStatus, appOptions) === 'done').length}</strong>
+            <strong className="summary-value">{orderStatusCounts.done}</strong>
           </div>
-        </div>
+        </button>
+        <button type="button" className={`list-summary-item list-summary-filter list-summary-item-value${quickStatusFilter === 'deposited' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'deposited'} onClick={() => applyQuickStatusFilter('deposited')}>
+          <div className="summary-icon"><BadgeCheck size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Đã cọc</span>
+            <strong className="summary-value">{orderStatusCounts.deposited}</strong>
+          </div>
+        </button>
+        <button type="button" className={`list-summary-item list-summary-filter${quickStatusFilter === 'new' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'new'} onClick={() => applyQuickStatusFilter('new')}>
+          <div className="summary-icon"><CircleDot size={15} /></div>
+          <div className="summary-text">
+            <span className="summary-label">Mới tạo</span>
+            <strong className="summary-value">{orderStatusCounts.new}</strong>
+          </div>
+        </button>
         {hasActiveFilters && (
           <button
             type="button"
@@ -691,6 +774,7 @@ export default function Orders() {
               setFilterDeliveryStatus('');
               setFilterShippingMethod('');
               setFilterCategory('');
+              setQuickStatusFilter('');
             }}
           >
             <X size={13} /> Xóa bộ lọc
@@ -829,7 +913,15 @@ export default function Orders() {
                     <tr key={ord.id} data-testid={`order-row-${ord.id}`} className={getOrderRowStatusClass(ord)}>
                       {/* ID Đơn */}
                       <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}>
-                        #{ord.id}
+                        <button
+                          type="button"
+                          className="order-copy-summary"
+                          onClick={() => copyOrderSummary(ord, laptopObj, linkedCustomer)}
+                          title={`Sao chép thông tin đơn #${ord.id}`}
+                          aria-label={`Sao chép thông tin đơn #${ord.id}`}
+                        >
+                          <span>#{ord.id}</span><Copy size={11} aria-hidden="true" />
+                        </button>
                       </td>
 
                       {/* Thao tác */}
@@ -877,7 +969,7 @@ export default function Orders() {
                       <td style={{ width: colWidths.laptopId, minWidth: colWidths.laptopId }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                           <div className="order-display-text" style={{ fontSize: '0.86rem', fontWeight: 600 }}>
-                            {ord.laptopId && <><span className="order-id-card">#{ord.laptopId}</span>{' '}</>}
+                            {ord.laptopId && <><button type="button" className="order-id-card order-copy-id" onClick={() => copyLaptopId(ord.laptopId)} title={`Sao chép mã máy #${ord.laptopId}`} aria-label={`Sao chép mã máy #${ord.laptopId}`}><span>#{ord.laptopId}</span><Copy size={11} aria-hidden="true" /></button>{' '}</>}
                             {formatConfigText(laptopObj?.name || ord.requestedConfiguration || '—')}
                           </div>
                           {!ord.laptopId && showAllocationDetails && (

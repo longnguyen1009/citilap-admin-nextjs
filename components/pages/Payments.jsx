@@ -42,7 +42,7 @@ const today = () => {
 const formatAmount = value => `${Number(value || 0).toFixed(2)} tr`;
 
 export default function Payments({ initialOrderId = '' }) {
-  const { orders, payments, editPayment, appOptions, isAdmin } = useInventory();
+  const { orders, payments, customers, editPayment, appOptions, isAdmin } = useInventory();
   const [editingPayment, setEditingPayment] = useState(null);
   const paymentMethods = getOptions('paymentMethod', appOptions);
   const [message, setMessage] = useState(null);
@@ -62,21 +62,47 @@ export default function Payments({ initialOrderId = '' }) {
   const refundTotal = payments.reduce((sum, item) => sum + (item.paymentType === 'refund' ? Number(item.amount || 0) : 0), 0);
   const ordersWithDebt = activeOrders.filter(o => Number(o.debtAmount || 0) > 0).length;
 
+  const customerByOrderId = useMemo(() => {
+    const customerById = new Map(customers.map(customer => [String(customer.id), customer]));
+    return new Map(orders.map(order => {
+      const customer = customerById.get(String(order.customerId));
+      const snapshotLines = String(order.customerInfo || '').split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+      const snapshotPhoneLine = snapshotLines.find(line => line.replace(/\D/g, '').length >= 8) || '';
+      const snapshotPhone = snapshotPhoneLine.match(/(?:\+?84|0)[\d\s.-]{7,}/)?.[0]?.trim() || snapshotPhoneLine;
+      const phone = customer?.phone || customer?.phoneNumber || snapshotPhone || '';
+      const snapshotName = snapshotLines
+        .map(line => line === snapshotPhoneLine ? line.replace(snapshotPhone, '').trim() : line)
+        .find(Boolean) || '';
+      const name = customer?.name || snapshotName;
+      const display = [name, phone].filter(Boolean).join(' - ');
+      return [String(order.id), { name: String(name).trim(), phone: String(phone).trim(), display }];
+    }));
+  }, [orders, customers]);
+
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
-      const matchSearch = !paymentSearch ||
-        String(p.paymentDate || '').includes(paymentSearch.trim()) ||
-        String(p.paymentDate || '').split('-').reverse().join('/').includes(paymentSearch.trim()) ||
-        String(p.orderId || '').includes(paymentSearch) ||
-        (paymentTypes.find(t => t.key === p.paymentType)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
-        (paymentMethods.find(m => m.key === p.paymentMethod)?.label || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
-        (p.referenceCode || '').toLowerCase().includes(paymentSearch.toLowerCase()) ||
-        (p.recordedBy || '').toLowerCase().includes(paymentSearch.toLowerCase());
+      const search = paymentSearch.trim().toLowerCase();
+      const searchDigits = search.replace(/\D/g, '');
+      const customer = customerByOrderId.get(String(p.orderId)) || { name: '', phone: '', display: '' };
+      const customerPhone = customer.phone;
+      const matchPhone = customerPhone.toLowerCase().includes(search)
+        || (searchDigits.length >= 3 && customerPhone.replace(/\D/g, '').includes(searchDigits));
+      const matchCustomerName = customer.name.toLowerCase().includes(search);
+      const matchSearch = !search ||
+        String(p.paymentDate || '').includes(search) ||
+        String(p.paymentDate || '').split('-').reverse().join('/').includes(search) ||
+        String(p.orderId || '').includes(search) ||
+        matchPhone ||
+        matchCustomerName ||
+        (paymentTypes.find(t => t.key === p.paymentType)?.label || '').toLowerCase().includes(search) ||
+        (paymentMethods.find(m => m.key === p.paymentMethod)?.label || '').toLowerCase().includes(search) ||
+        (p.referenceCode || '').toLowerCase().includes(search) ||
+        (p.recordedBy || '').toLowerCase().includes(search);
       const matchType = paymentTypeFilter === 'ALL' || p.paymentType === paymentTypeFilter;
       const matchMethod = paymentMethodFilter === 'ALL' || p.paymentMethod === paymentMethodFilter;
       return matchSearch && matchType && matchMethod;
     });
-  }, [payments, paymentSearch, paymentTypeFilter, paymentMethodFilter, paymentMethods]);
+  }, [payments, paymentSearch, paymentTypeFilter, paymentMethodFilter, paymentMethods, customerByOrderId]);
   const paymentPages = useListPagination(filteredPayments, `${paymentSearch}|${paymentTypeFilter}|${paymentMethodFilter}`);
 
   return (
@@ -154,7 +180,7 @@ export default function Payments({ initialOrderId = '' }) {
               <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="text"
-                placeholder="Tìm giao dịch, ngày (10-05)..."
+                placeholder="Tìm giao dịch, đơn, tên/SĐT, ngày..."
                 value={paymentSearch}
                 onChange={e => setPaymentSearch(e.target.value)}
                 style={{ padding: '5px 8px 5px 28px', fontSize: '0.8rem', border: '1px solid #e2e8f0', borderRadius: '6px', width: '200px', background: '#fff' }}
@@ -184,6 +210,7 @@ export default function Payments({ initialOrderId = '' }) {
               <tr>
                 <th style={{ width: '100px' }}>Ngày</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>Đơn</th>
+                <th style={{ width: '210px', minWidth: '210px' }}>Tên - SĐT</th>
                 <th style={{ width: '140px' }}>Loại</th>
                 <th style={{ width: '125px', textAlign: 'right' }}>Số tiền (triệu VNĐ)</th>
                 <th style={{ width: '190px', minWidth: '190px' }}>Phương thức</th>
@@ -195,7 +222,7 @@ export default function Payments({ initialOrderId = '' }) {
             <tbody>
               {filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
+                  <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '48px 20px', color: '#94a3b8' }}>
                     <CreditCard size={40} style={{ opacity: 0.15, marginBottom: '12px' }} />
                     <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>Chưa có giao dịch thanh toán</p>
                     <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.7 }}>Bấm &quot;Ghi nhận thanh toán&quot; để bắt đầu</p>
@@ -205,6 +232,9 @@ export default function Payments({ initialOrderId = '' }) {
                 <tr key={payment.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{payment.paymentDate}</td>
                   <td style={{ textAlign: 'center', fontWeight: 700, color: '#2563eb' }}>#{payment.orderId}</td>
+                  <td style={{ whiteSpace: 'nowrap', fontWeight: 650, color: '#334155' }}>
+                    {customerByOrderId.get(String(payment.orderId))?.display || '—'}
+                  </td>
                   <td>
                     <span className={paymentTypeBadgeClass[payment.paymentType] || 'pill-badge pill-neutral'}>
                       {paymentTypes.find(item => item.key === payment.paymentType)?.label || payment.paymentType}
