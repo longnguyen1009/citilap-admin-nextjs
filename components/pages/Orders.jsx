@@ -283,6 +283,13 @@ export default function Orders() {
     setShowCustomerForm(false);
     setNewCustomer({ name: '', phone: '', address: '' });
     setShowTimeline(false);
+    const normalizePhone = value => String(value || '').replace(/\D/g, '');
+    const snapshotPhone = String(order.customerInfo || '').match(/(?:\+?84|0)[\d\s.-]{7,}/)?.[0] || '';
+    const linkedCustomer = customers.find(customer => String(customer.id) === String(order.customerId));
+    const matchedCustomer = linkedCustomer || customers.find(customer => {
+      const customerPhone = normalizePhone(customer.phone || customer.phoneNumber);
+      return customerPhone.length >= 8 && customerPhone === normalizePhone(snapshotPhone);
+    });
     setFormData({
       ...order,
       id: order.id,
@@ -307,7 +314,9 @@ export default function Orders() {
       branchId: order.branchId || '',
       giftPreset: order.giftPreset || '',
       giftAccessoryIds: Array.isArray(order.giftAccessoryIds) ? order.giftAccessoryIds : [],
-      customerId: order.customerId || '',
+      customerId: matchedCustomer?.id == null ? '' : String(matchedCustomer.id),
+      customerInfo: matchedCustomer ? [matchedCustomer.name, matchedCustomer.phone].filter(Boolean).join('\n') : order.customerInfo || '',
+      customerAddress: matchedCustomer?.address || order.customerAddress || '',
       customerNote: order.customerNote || '',
       trackingCode: order.trackingCode || '',
       shipDate: order.shipDate || '',
