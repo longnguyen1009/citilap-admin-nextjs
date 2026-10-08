@@ -1,3 +1,4 @@
+import { orderCreationHash } from '@/lib/cloudflare/remaining.mjs';
 import { NextResponse } from 'next/server';
 import { parseListScope, businessMonthKey } from '../../../lib/listScope';
 import { keysToCamel } from '../../../lib/cloudflare/route-helpers.mjs';
@@ -39,7 +40,7 @@ async function context(request, roles) {
   return { DB, db: createDatabase(DB), profile: await requireSession(DB, request, roles) };
 }
 
-async function saveOrder(db, order, actor, persisted) {
+async function saveOrder(db, order, actor, persisted, creationKey, requestHash) {
   const normalizedOrder = normalizeOrderJsonFields(order);
   for (const key of ['saleOnline', 'saleOffline']) {
     if (Object.hasOwn(normalizedOrder, key)) normalizedOrder[key] = normalizedOrder[key]?.trim() || null;
@@ -53,7 +54,7 @@ async function saveOrder(db, order, actor, persisted) {
     if (!dbRow.month_key) dbRow.month_key = businessMonthKey();
   }
   const operation = persisted ? 'update_order_with_inventory' : 'create_order_with_inventory';
-  const { data, error } = await db.rpc(operation, { p_order: dbRow, p_recorded_by: actor });
+  const { data, error } = await db.rpc(operation, { p_order: dbRow, p_recorded_by: actor, p_idempotency_key: creationKey, p_request_hash: requestHash });
   if (error) throw Object.assign(new Error(error.message), { status: error.status || 400 });
   const saved = keysToCamel(data);
   if (saved?.order) return { ...saved, order: normalizeOrderJsonFields(saved.order) };
@@ -168,6 +169,18 @@ export async function POST(request) {
     }
     for (const key of protectedCostFields) delete rawPayload[key];
     const body = sanitizePayload(rawPayload, ORDER_PAYLOAD_KEYS, SENSITIVE_ORDER_KEYS, isAdmin);
+    const creationKey = request.headers.get('Idempotency-Key') || rawPayload.idempotencyKey;
+    const requestHash = orderCreationHash(keysToSnake(body));
+    if(isNewOrder){
+      if(typeof creationKey!=='string'||creationKey.length<8||creationKey.length>100) return NextResponse.json({error:'Thi?u m? ch?ng g?i tr?ng. T?i l?i form t?o ??n.'},{status:400});
+      const replay=await db.from('orders').select('*').eq('creation_key',creationKey).maybeSingle();
+      if(replay.error)throw new Error(replay.error.message);
+      if(replay.data){
+        if(replay.data.creation_hash!==requestHash)return NextResponse.json({error:'M? y?u c?u ?? d?ng cho n?i dung kh?c.'},{status:409});
+        const order=normalizeOrderJsonFields(keysToCamel(replay.data));
+        return NextResponse.json({order:isAdmin?order:filterSensitiveFields([order],SENSITIVE_ORDER_KEYS)[0],laptop:null,previousLaptop:null});
+      }
+    }
     if (body.giftAccessoryIds !== undefined) {
       body.giftAccessoryIds = normalizeGiftAccessoryIds(body.giftAccessoryIds);
     }
@@ -368,7 +381,7 @@ export async function POST(request) {
     try {
       data = persistedId
         ? await saveOrder(db, body, profile.name, true)
-        : await saveOrder(db, body, profile.name, false);
+        : await saveOrder(db, body, profile.name, false, creationKey, requestHash);
     } catch (error) {
       if (/already reserved by another active order|duplicate key|unique constraint/i.test(error.message || '')) {
         return NextResponse.json({ error: 'Máy đã được giữ/bán bởi một đơn hàng khác.' }, { status: 409 });

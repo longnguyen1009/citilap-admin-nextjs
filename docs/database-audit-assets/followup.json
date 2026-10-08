@@ -1,0 +1,217 @@
+[
+  {
+    "query": "SELECT o.id AS order_id,o.laptop_id,o.order_status,o.payment_status,o.laptop_locked,l.status AS laptop_status FROM orders o JOIN laptops l ON l.id=o.laptop_id WHERE o.is_active=1 AND o.order_status IN ('prepared','shipping','done') AND l.status<>'sold'",
+    "result": [
+      {
+        "results": [
+          {
+            "order_id": 41,
+            "laptop_id": 1463,
+            "order_status": "done",
+            "payment_status": "paid",
+            "laptop_locked": 0,
+            "laptop_status": "available"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.3911
+          },
+          "duration": 0.3911,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 105,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS orders_with_refund_blocking_deposit FROM orders WHERE deposit_amount>0 AND amount_paid>0",
+    "result": [
+      {
+        "results": [
+          {
+            "orders_with_refund_blocking_deposit": 42
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1735
+          },
+          "duration": 0.1735,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 63,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT sql FROM sqlite_schema WHERE type='table' AND name='orders'",
+    "result": [
+      {
+        "results": [
+          {
+            "sql": "CREATE TABLE \"orders\" (\n  \"id\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"created_date\" TEXT,\n  \"sale_online\" TEXT,\n  \"sale_offline\" TEXT,\n  \"note\" TEXT,\n  \"order_type\" TEXT,\n  \"order_status\" TEXT,\n  \"payment_status\" TEXT,\n  \"payment_method\" TEXT,\n  \"delivery_status\" TEXT,\n  \"shipping_method\" TEXT,\n  \"laptop_id\" INTEGER,\n  \"requested_laptop_id\" INTEGER,\n  \"sale_price\" NUMERIC DEFAULT 0,\n  \"deposit_amount\" NUMERIC DEFAULT 0,\n  \"deposit_note\" TEXT,\n  \"cod_amount\" NUMERIC DEFAULT 0,\n  \"amount_paid\" NUMERIC DEFAULT 0,\n  \"debt_amount\" NUMERIC DEFAULT 0,\n  \"credit_card_fee\" NUMERIC DEFAULT 0,\n  \"profit_vnd\" NUMERIC DEFAULT 0,\n  \"trade_in_laptop_id\" INTEGER,\n  \"customer_id\" INTEGER,\n  \"customer_info\" TEXT,\n  \"customer_address\" TEXT,\n  \"tracking_code\" TEXT,\n  \"ship_date\" TEXT,\n  \"setup_note\" TEXT,\n  \"warranty\" TEXT,\n  \"laptop_locked\" INTEGER DEFAULT false CHECK (\"laptop_locked\" IN (0,1)),\n  \"reservation_expires_at\" TEXT,\n  \"cancel_reason\" TEXT,\n  \"cancelled_at\" TEXT,\n  \"month_key\" TEXT,\n  \"is_active\" INTEGER DEFAULT true CHECK (\"is_active\" IN (0,1)),\n  \"created_at\" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  \"updated_at\" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),\n  \"returned_at\" TEXT,\n  \"return_reason\" TEXT,\n  \"branch_id\" INTEGER,\n  \"gift_accessory_ids\" TEXT DEFAULT '[]' NOT NULL CHECK (\"gift_accessory_ids\" IS NULL OR json_valid(\"gift_accessory_ids\")),\n  \"gift_preset\" TEXT DEFAULT '' NOT NULL,\n  \"cost_snapshot_vnd\" NUMERIC,\n  \"gross_profit_snapshot_vnd\" NUMERIC,\n  \"direct_cost_snapshot_vnd\" NUMERIC,\n  \"net_contribution_snapshot_vnd\" NUMERIC,\n  \"cost_snapshot_status\" TEXT,\n  \"cost_snapshot_reasons\" TEXT CHECK (\"cost_snapshot_reasons\" IS NULL OR json_valid(\"cost_snapshot_reasons\")),\n  \"cost_snapshotted_at\" TEXT,\n  \"payment_due_at\" TEXT,\n  \"trade_in_credit_vnd\" NUMERIC DEFAULT 0 NOT NULL,\n  \"requested_configuration\" TEXT,\n  \"requested_category\" TEXT,\n  CONSTRAINT \"orders_amount_paid_lte_sale_price_chk\" CHECK (COALESCE(amount_paid, 0) >= 0 AND COALESCE(amount_paid, 0) <= COALESCE(sale_price, 0)),\n  CONSTRAINT \"orders_branch_id_fkey\" FOREIGN KEY (branch_id) REFERENCES branches(id),\n  CONSTRAINT \"orders_cod_amount_lte_sale_price_chk\" CHECK (COALESCE(cod_amount, 0) >= 0 AND COALESCE(cod_amount, 0) <= COALESCE(sale_price, 0)),\n  CONSTRAINT \"orders_cost_snapshot_status_check\" CHECK (cost_snapshot_status IS NULL OR (cost_snapshot_status IN ('COMPLETE', 'INCOMPLETE', 'LEGACY'))),\n  CONSTRAINT \"orders_customer_id_fkey\" FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,\n  CONSTRAINT \"orders_deposit_amount_lte_sale_price_chk\" CHECK (COALESCE(deposit_amount, 0) >= 0 AND COALESCE(deposit_amount, 0) <= COALESCE(sale_price, 0)),\n  CONSTRAINT \"orders_laptop_id_fkey\" FOREIGN KEY (laptop_id) REFERENCES laptops(id) ON DELETE SET NULL,\n  CONSTRAINT \"orders_non_negative_values\" CHECK (COALESCE(sale_price, 0) >= 0 AND COALESCE(deposit_amount, 0) >= 0 AND COALESCE(cod_amount, 0) >= 0 AND COALESCE(amount_paid, 0) >= 0 AND COALESCE(debt_amount, 0) >= 0 AND COALESCE(credit_card_fee, 0) >= 0),\n  CONSTRAINT \"orders_payment_totals_valid\" CHECK (COALESCE(amount_paid, 0) <= COALESCE(sale_price, 0) AND COALESCE(deposit_amount, 0) <= COALESCE(amount_paid, 0)),\n  CONSTRAINT \"orders_requested_laptop_id_fkey\" FOREIGN KEY (requested_laptop_id) REFERENCES laptops(id) ON DELETE SET NULL,\n  CONSTRAINT \"orders_trade_in_credit_vnd_check\" CHECK (trade_in_credit_vnd >= 0),\n  CONSTRAINT \"orders_trade_in_laptop_id_fkey\" FOREIGN KEY (trade_in_laptop_id) REFERENCES laptops(id) ON DELETE SET NULL\n)"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1688
+          },
+          "duration": 0.1688,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 165,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS domestic_unknown_available FROM laptops WHERE source_type='UNKNOWN' AND source_reference_id IS NOT NULL AND status='available'",
+    "result": [
+      {
+        "results": [
+          {
+            "domestic_unknown_available": 1
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.5465
+          },
+          "duration": 0.5465,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 123,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS committed_orders_without_snapshot_but_with_import_source FROM orders o WHERE order_status IN ('prepared','shipping','done') AND cost_snapshotted_at IS NULL AND EXISTS(SELECT 1 FROM sheet_import_sources s WHERE s.source_key LIKE '%order%')",
+    "result": [
+      {
+        "results": [
+          {
+            "committed_orders_without_snapshot_but_with_import_source": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.3449
+          },
+          "duration": 0.3449,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 250,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS missing_payment_idempotency FROM payments WHERE idempotency_key IS NULL",
+    "result": [
+      {
+        "results": [
+          {
+            "missing_payment_idempotency": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1679
+          },
+          "duration": 0.1679,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 76,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS refund_rows FROM payments WHERE payment_type='refund'",
+    "result": [
+      {
+        "results": [
+          {
+            "refund_rows": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1435
+          },
+          "duration": 0.1435,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 76,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  }
+]

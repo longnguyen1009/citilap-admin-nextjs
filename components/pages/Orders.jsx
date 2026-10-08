@@ -997,6 +997,7 @@ export default function Orders() {
                       </td>
                       <td style={{ width: colWidths.orderStatus, minWidth: colWidths.orderStatus }}>
                         <span data-testid={`order-status-cell-${ord.id}`} className={`status-badge ${getOrderStatusBadgeClass(ord.orderStatus)}`}>{getLabel('orderStatus', ord.orderStatus)}</span>
+                        {ord.cancelReason === 'ĐỔI HÀNG' && <small className="block mt-1 font-semibold">ĐỔI HÀNG</small>}
                       </td>
 
                       {/* 7. THANH TOÁN (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}

@@ -1,0 +1,69 @@
+[
+  {
+    "results": [
+      {
+        "accessories": 4,
+        "account_reconciliations": 0,
+        "account_transactions": 76,
+        "activity_logs": 156,
+        "app_options": 106,
+        "app_settings": 2,
+        "auth_rate_limits": 2,
+        "auth_sessions": 7,
+        "auth_users": 7,
+        "branches": 1,
+        "cash_accounts": 3,
+        "cod_receivables": 0,
+        "cod_settlements": 0,
+        "commissions": 0,
+        "customers": 60,
+        "financial_records": 76,
+        "image_objects": 0,
+        "invoices": 6,
+        "laptop_cost_components": 0,
+        "laptops": 193,
+        "operation_requests": 5,
+        "orders": 63,
+        "payments": 76,
+        "purchase_batches": 24,
+        "qc_check_items": 0,
+        "qc_inspections": 128,
+        "repair_actions": 0,
+        "repair_jobs": 0,
+        "repair_parts": 0,
+        "reservations": 0,
+        "sheet_import_sources": 250,
+        "stock_movements": 256,
+        "supplier_payments": 0,
+        "supplier_refunds": 0,
+        "supplier_return_events": 0,
+        "supplier_return_items": 0,
+        "supplier_returns": 0,
+        "suppliers": 16,
+        "trade_in_check_items": 0,
+        "trade_in_inspections": 0,
+        "trade_ins": 0,
+        "user_profiles": 7,
+        "warranty_cases": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 5.5142
+      },
+      "duration": 5.5142,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 2351104,
+      "rows_read": 1524,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

@@ -1,0 +1,582 @@
+[
+  {
+    "query": "SELECT (SELECT count(*) FROM (SELECT laptop_id FROM orders WHERE laptop_id IS NOT NULL AND is_active=1 AND order_status NOT IN ('cancelled','returned') AND payment_status<>'refunded' GROUP BY laptop_id HAVING count(*)>1)) AS multiple_active_orders,(SELECT count(*) FROM orders o JOIN laptops l ON l.id=o.laptop_id WHERE o.is_active=1 AND o.order_status IN ('prepared','shipping','done') AND l.status<>'sold') AS committed_not_sold,(SELECT count(*) FROM laptops l WHERE status='sold' AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.laptop_id=l.id AND o.is_active=1 AND o.order_status IN ('prepared','shipping','done'))) AS sold_without_committed_order,(SELECT count(*) FROM orders o JOIN laptops l ON l.id=o.laptop_id WHERE o.is_active=1 AND o.order_status NOT IN ('cancelled','returned') AND l.status IN ('waiting_qc','repair','supplier_return','in_transit','ignored')) AS active_order_technical_state",
+    "result": [
+      {
+        "results": [
+          {
+            "multiple_active_orders": 0,
+            "committed_not_sold": 1,
+            "sold_without_committed_order": 0,
+            "active_order_technical_state": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 1.7365
+          },
+          "duration": 1.7365,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 326,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT (SELECT count(*) FROM orders o WHERE abs(COALESCE(o.amount_paid,0)-COALESCE((SELECT sum(CASE WHEN payment_type='refund' THEN -amount ELSE amount END) FROM payments WHERE order_id=o.id),0))>0.000001) AS paid_ledger_drift,(SELECT count(*) FROM orders WHERE abs(debt_amount-max(sale_price-amount_paid-COALESCE(trade_in_credit_vnd,0)/1000000,0))>0.000001) AS debt_drift,(SELECT count(*) FROM payments p WHERE (SELECT count(*) FROM financial_records f WHERE f.payment_id=p.id)<>1) AS payment_financial_cardinality,(SELECT count(*) FROM payments p WHERE p.account_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM account_transactions t WHERE t.reference_type='PAYMENT' AND t.reference_id=CAST(p.id AS TEXT) AND abs(t.amount-round(p.amount*1000000))<0.5)) AS cash_link_or_amount_drift",
+    "result": [
+      {
+        "results": [
+          {
+            "paid_ledger_drift": 0,
+            "debt_drift": 0,
+            "payment_financial_cardinality": 0,
+            "cash_link_or_amount_drift": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.8624
+          },
+          "duration": 0.8624,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 6266,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT (SELECT count(*) FROM orders WHERE order_status IN ('prepared','shipping','done') AND cost_snapshotted_at IS NULL) AS committed_missing_snapshot,(SELECT count(*) FROM orders o JOIN laptops l ON l.id=o.laptop_id WHERE abs(o.profit_vnd-(o.sale_price-l.import_price_vnd))>0.0001) AS current_profit_drift,(SELECT count(*) FROM orders WHERE cost_snapshotted_at IS NOT NULL AND abs(gross_profit_snapshot_vnd-(sale_price*1000000-cost_snapshot_vnd))>0.5) AS snapshot_current_sale_difference,(SELECT count(*) FROM laptops WHERE source_type IN ('SUPPLIER_PURCHASE','SUPPLIER_REPLACEMENT') AND (price_rmb IS NOT purchase_price_rmb OR exchange_rate IS NOT purchase_exchange_rate)) AS procurement_alias_drift",
+    "result": [
+      {
+        "results": [
+          {
+            "committed_missing_snapshot": 30,
+            "current_profit_drift": 0,
+            "snapshot_current_sale_difference": 0,
+            "procurement_alias_drift": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.5177
+          },
+          "duration": 0.5177,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 427,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT (SELECT count(*) FROM laptops WHERE status IS NULL OR is_active IS NULL) AS null_laptop_state,(SELECT count(*) FROM orders WHERE order_status IS NULL OR payment_status IS NULL OR is_active IS NULL) AS null_order_state,(SELECT count(*) FROM laptops l WHERE l.status='available' AND (EXISTS(SELECT 1 FROM repair_jobs r WHERE r.laptop_id=l.id AND r.status NOT IN ('COMPLETED','CANCELLED')) OR EXISTS(SELECT 1 FROM supplier_return_items r WHERE r.laptop_id=l.id AND r.status NOT IN ('REFUNDED','REPLACED','REJECTED','CANCELLED')))) AS available_with_active_technical_case,(SELECT count(*) FROM account_transactions t JOIN cash_accounts a ON a.id=t.account_id WHERE t.currency<>a.currency) AS account_currency_mismatch",
+    "result": [
+      {
+        "results": [
+          {
+            "null_laptop_state": 0,
+            "null_order_state": 0,
+            "available_with_active_technical_case": 0,
+            "account_currency_mismatch": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.4032
+          },
+          "duration": 0.4032,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 338,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT (SELECT count(*) FROM account_transactions t JOIN cash_accounts a ON a.id=t.account_id WHERE (t.occurred_at>=a.opening_balance_at)<>(julianday(t.occurred_at)>=julianday(a.opening_balance_at))) AS lexical_time_balance_mismatch,(SELECT count(*) FROM purchase_batches b JOIN purchase_batch_summaries v ON v.id=b.id WHERE b.status<>v.status) AS batch_status_projection_difference,(SELECT count(*) FROM supplier_returns r WHERE COALESCE((SELECT sum(amount_rmb) FROM supplier_refunds f WHERE f.supplier_return_id=r.id),0)>COALESCE((SELECT sum(COALESCE(agreed_refund_rmb,expected_refund_rmb,0)) FROM supplier_return_items i WHERE i.supplier_return_id=r.id AND i.status<>'CANCELLED'),0)) AS over_refund",
+    "result": [
+      {
+        "results": [
+          {
+            "lexical_time_balance_mismatch": 0,
+            "batch_status_projection_difference": 2,
+            "over_refund": 0
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.7177
+          },
+          "duration": 0.7177,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 489,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT s.name AS table_name,f.* FROM sqlite_schema s JOIN pragma_foreign_key_list(s.name) f WHERE s.type='table' AND s.name NOT LIKE 'sqlite_%'",
+    "error": "\n{\n  \"error\": {\n    \"text\": \"A request to the Cloudflare API (/accounts/8952957f4eed25a74e19a3e273c4a589/d1/database/a771bd4e-34fb-40a3-86ef-80f31acde278/query) failed.\",\n    \"notes\": [\n      {\n        \"text\": \"not authorized: SQLITE_AUTH [code: 7500]\"\n      }\n    ],\n    \"kind\": \"error\",\n    \"name\": \"APIError\",\n    \"code\": 7500,\n    \"accountTag\": \"8952957f4eed25a74e19a3e273c4a589\"\n  }\n}\n"
+  },
+  {
+    "query": "SELECT s.name AS table_name,i.* FROM sqlite_schema s JOIN pragma_index_list(s.name) i WHERE s.type='table' AND s.name NOT LIKE 'sqlite_%'",
+    "error": "\n{\n  \"error\": {\n    \"text\": \"A request to the Cloudflare API (/accounts/8952957f4eed25a74e19a3e273c4a589/d1/database/a771bd4e-34fb-40a3-86ef-80f31acde278/query) failed.\",\n    \"notes\": [\n      {\n        \"text\": \"not authorized: SQLITE_AUTH [code: 7500]\"\n      }\n    ],\n    \"kind\": \"error\",\n    \"name\": \"APIError\",\n    \"code\": 7500,\n    \"accountTag\": \"8952957f4eed25a74e19a3e273c4a589\"\n  }\n}\n"
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM orders WHERE month_key='10/2026' AND is_active=1 ORDER BY id DESC LIMIT 100 OFFSET 0",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 61,
+            "detail": "SEARCH orders USING INDEX idx_orders_month_key (month_key=?)"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2245
+          },
+          "duration": 0.2245,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM laptops WHERE month_key='10/2026' AND is_active=1 ORDER BY id DESC LIMIT 100 OFFSET 0",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 8,
+            "parent": 0,
+            "notused": 61,
+            "detail": "SEARCH laptops USING INDEX idx_laptops_month_key (month_key=?)"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2499
+          },
+          "duration": 0.2499,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM commissions WHERE order_id IN (SELECT value FROM json_each('[1,2,3]'))",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 2,
+            "parent": 0,
+            "notused": 216,
+            "detail": "SCAN commissions"
+          },
+          {
+            "id": 7,
+            "parent": 0,
+            "notused": 0,
+            "detail": "LIST SUBQUERY 1"
+          },
+          {
+            "id": 10,
+            "parent": 7,
+            "notused": 0,
+            "detail": "SCAN json_each VIRTUAL TABLE INDEX 1:"
+          },
+          {
+            "id": 19,
+            "parent": 7,
+            "notused": 0,
+            "detail": "CREATE BLOOM FILTER"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2003
+          },
+          "duration": 0.2003,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM repair_actions WHERE repair_job_id='audit-no-row' ORDER BY performed_at",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 216,
+            "detail": "SCAN repair_actions"
+          },
+          {
+            "id": 16,
+            "parent": 0,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR ORDER BY"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1645
+          },
+          "duration": 0.1645,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM repair_parts WHERE repair_job_id='audit-no-row'",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 2,
+            "parent": 0,
+            "notused": 216,
+            "detail": "SCAN repair_parts"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1558
+          },
+          "duration": 0.1558,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM laptop_landed_costs WHERE laptop_id=1",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 0,
+            "detail": "MATERIALIZE component_sums"
+          },
+          {
+            "id": 11,
+            "parent": 3,
+            "notused": 224,
+            "detail": "SCAN laptop_cost_components USING INDEX laptop_cost_components_laptop_idx"
+          },
+          {
+            "id": 102,
+            "parent": 0,
+            "notused": 45,
+            "detail": "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)"
+          },
+          {
+            "id": 107,
+            "parent": 0,
+            "notused": 82,
+            "detail": "SCAN c LEFT-JOIN"
+          },
+          {
+            "id": 247,
+            "parent": 0,
+            "notused": 0,
+            "detail": "CORRELATED SCALAR SUBQUERY 5"
+          },
+          {
+            "id": 252,
+            "parent": 247,
+            "notused": 45,
+            "detail": "SEARCH r USING INDEX repair_jobs_one_active_per_laptop (laptop_id=?)"
+          },
+          {
+            "id": 266,
+            "parent": 0,
+            "notused": 0,
+            "detail": "CORRELATED SCALAR SUBQUERY 6"
+          },
+          {
+            "id": 271,
+            "parent": 266,
+            "notused": 0,
+            "detail": "SCAN json_each VIRTUAL TABLE INDEX 1:"
+          },
+          {
+            "id": 314,
+            "parent": 266,
+            "notused": 0,
+            "detail": "CORRELATED SCALAR SUBQUERY 7"
+          },
+          {
+            "id": 319,
+            "parent": 314,
+            "notused": 45,
+            "detail": "SEARCH r USING INDEX repair_jobs_one_active_per_laptop (laptop_id=?)"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 1.1376
+          },
+          "duration": 1.1376,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT * FROM cash_account_balances WHERE is_active=1",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 0,
+            "detail": "MATERIALIZE t"
+          },
+          {
+            "id": 13,
+            "parent": 3,
+            "notused": 213,
+            "detail": "SCAN x USING INDEX account_transactions_account_time_idx"
+          },
+          {
+            "id": 16,
+            "parent": 3,
+            "notused": 46,
+            "detail": "SEARCH ca USING INDEX sqlite_autoindex_cash_accounts_2 (id=?)"
+          },
+          {
+            "id": 69,
+            "parent": 0,
+            "notused": 0,
+            "detail": "MATERIALIZE r"
+          },
+          {
+            "id": 72,
+            "parent": 69,
+            "notused": 0,
+            "detail": "CO-ROUTINE (subquery-5)"
+          },
+          {
+            "id": 76,
+            "parent": 72,
+            "notused": 224,
+            "detail": "SCAN account_reconciliations USING INDEX account_reconciliations_account_idx"
+          },
+          {
+            "id": 96,
+            "parent": 72,
+            "notused": 0,
+            "detail": "USE TEMP B-TREE FOR LAST TERM OF ORDER BY"
+          },
+          {
+            "id": 120,
+            "parent": 69,
+            "notused": 216,
+            "detail": "SCAN (subquery-5)"
+          },
+          {
+            "id": 171,
+            "parent": 0,
+            "notused": 216,
+            "detail": "SCAN a"
+          },
+          {
+            "id": 188,
+            "parent": 0,
+            "notused": 47,
+            "detail": "SEARCH t USING AUTOMATIC COVERING INDEX (account_id=?) LEFT-JOIN"
+          },
+          {
+            "id": 198,
+            "parent": 0,
+            "notused": 0,
+            "detail": "BLOOM FILTER ON r (account_id=? AND position=?)"
+          },
+          {
+            "id": 213,
+            "parent": 0,
+            "notused": 53,
+            "detail": "SEARCH r USING AUTOMATIC PARTIAL COVERING INDEX (account_id=? AND position=?) LEFT-JOIN"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.6031
+          },
+          "duration": 0.6031,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "EXPLAIN QUERY PLAN SELECT id FROM laptops WHERE lower(tracking_code_cn) LIKE '%audit%' LIMIT 100",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 3,
+            "parent": 0,
+            "notused": 216,
+            "detail": "SCAN laptops"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.1622
+          },
+          "duration": 0.1622,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  }
+]

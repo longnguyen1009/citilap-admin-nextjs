@@ -1,0 +1,22 @@
+import {readFileSync,existsSync,writeFileSync} from 'node:fs';
+import {dirname,resolve} from 'node:path';
+import assert from 'node:assert/strict';
+const base='docs/database-audit-assets/';
+const json=n=>JSON.parse(readFileSync(base+n+'.json','utf8'));
+const report=readFileSync('docs/database-audit.md','utf8');
+const coverage=json('coverage');
+const checks=[];
+const check=(name,fn)=>{fn();checks.push({name,status:'PASS'});};
+check('43 tables, 551 columns, 106 application indexes',()=>{assert.equal(coverage.tables,43);assert.equal(coverage.columns,551);assert.equal(coverage.explicitIndexes+coverage.automaticIndexes,106);});
+check('Every column appears exactly once in Column Audit',()=>{
+ const rows=report.split('## 5. Column Audit')[1].split('## 6. Unused Columns')[0].split('\n').filter(x=>/^\| \w+ \| \w+ \| /.test(x)&&!x.startsWith('| Table |'));
+ assert.equal(rows.length,551);assert.equal(new Set(rows.map(x=>x.split('|').slice(1,3).join('.'))).size,551);
+});
+check('36 required sections and 15 recommendations',()=>{for(let i=1;i<=36;i++)assert.ok(report.includes('## '+i+'. '));assert.equal((report.match(/^### R\d{2} — /gm)||[]).length,15);});
+check('No missing table purpose or unresolved template markers',()=>{assert.deepEqual(coverage.missingPurposes,[]);assert.ok(!/\{\{[A-Z_]+\}\}/.test(report));});
+check('All local report and appendix links resolve',()=>{for(const path of ['docs/database-audit.md',base+'database-map.md',base+'index-review.md']){const text=readFileSync(path,'utf8');for(const m of text.matchAll(/\]\(([^)]+)\)/g)){const target=m[1].split('#')[0];if(!target||/^https?:/.test(target))continue;assert.ok(existsSync(resolve(dirname(path),decodeURIComponent(target))),path+' -> '+target);}}});
+check('Live profile coverage for every column',()=>{const refs=json('column-references');assert.equal(refs.filter(x=>x.profile!==undefined).length,551);});
+check('Captured successful remote responses have no writes',()=>{for(const name of ['remote-schema','remote-columns','remote-counts','remote-migrations','remote-fk-check','integrity','details','followup','profiles','profiles-retry']){for(const record of json(name)){for(const r of record.result||('success' in record?[record]:[])){assert.equal(r.success,true);assert.equal(r.meta.rows_written,0);assert.equal(r.meta.changed_db,false);}}}});
+check('No exact duplicate explicit index bodies',()=>{const defs=json('remote-schema')[0].results.filter(x=>x.type==='index'&&x.sql).map(x=>x.sql.replace(/^CREATE\s+(UNIQUE\s+)?INDEX\s+\S+\s+/i,(_,u)=>(u||''))).sort();assert.equal(new Set(defs).size,defs.length);});
+writeFileSync(base+'report-validation.json',JSON.stringify({scope:'Report/evidence verification only; no business workflow mutations or migrations run',checks},null,2));
+console.log(`${checks.length}/${checks.length} report verification checks PASS`);

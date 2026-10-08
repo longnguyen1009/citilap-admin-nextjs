@@ -989,6 +989,16 @@
       "name": "qc_details",
       "type": "jsonb",
       "generated": false
+    },
+    {
+      "name": "acquisition_closed",
+      "type": "boolean",
+      "generated": false
+    },
+    {
+      "name": "previous_laptop_id",
+      "type": "bigint",
+      "generated": false
     }
   ],
   "operation_requests": [
@@ -1281,6 +1291,16 @@
     },
     {
       "name": "requested_category",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "creation_key",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "creation_hash",
       "type": "text",
       "generated": false
     }
@@ -2608,6 +2628,41 @@
     {
       "name": "updated_at",
       "type": "timestamp with time zone",
+      "generated": false
+    },
+    {
+      "name": "workflow",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "seller_name",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "seller_phone",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "category",
+      "type": "text",
+      "generated": false
+    },
+    {
+      "name": "original_laptop_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "new_order_id",
+      "type": "bigint",
+      "generated": false
+    },
+    {
+      "name": "request_hash",
+      "type": "text",
       "generated": false
     }
   ],

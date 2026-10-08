@@ -1,0 +1,19 @@
+{
+  "tables": 43,
+  "columns": 551,
+  "explicitIndexes": 52,
+  "automaticIndexes": 54,
+  "columnClassifications": {
+    "USED": 505,
+    "REDUNDANT": 6,
+    "SNAPSHOT": 11,
+    "QUESTIONABLE DESIGN": 2,
+    "DUPLICATED": 5,
+    "POSSIBLY UNUSED": 4,
+    "WRITE_ONLY": 2,
+    "READ_ONLY / HISTORICAL": 16
+  },
+  "sourceFilesScanned": 291,
+  "runtimeFilesScanned": 173,
+  "missingPurposes": []
+}

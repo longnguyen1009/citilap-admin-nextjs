@@ -1,0 +1,37 @@
+{
+  "scope": "Report/evidence verification only; no business workflow mutations or migrations run",
+  "checks": [
+    {
+      "name": "43 tables, 551 columns, 106 application indexes",
+      "status": "PASS"
+    },
+    {
+      "name": "Every column appears exactly once in Column Audit",
+      "status": "PASS"
+    },
+    {
+      "name": "36 required sections and 15 recommendations",
+      "status": "PASS"
+    },
+    {
+      "name": "No missing table purpose or unresolved template markers",
+      "status": "PASS"
+    },
+    {
+      "name": "All local report and appendix links resolve",
+      "status": "PASS"
+    },
+    {
+      "name": "Live profile coverage for every column",
+      "status": "PASS"
+    },
+    {
+      "name": "Captured successful remote responses have no writes",
+      "status": "PASS"
+    },
+    {
+      "name": "No exact duplicate explicit index bodies",
+      "status": "PASS"
+    }
+  ]
+}

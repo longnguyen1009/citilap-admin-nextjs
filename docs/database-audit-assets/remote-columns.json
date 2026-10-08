@@ -1,0 +1,5564 @@
+[
+  {
+    "results": [
+      {
+        "table_name": "d1_migrations",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "d1_migrations",
+        "cid": 1,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "d1_migrations",
+        "cid": 2,
+        "name": "applied_at",
+        "type": "TIMESTAMP",
+        "notnull": 1,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_users",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_users",
+        "cid": 1,
+        "name": "email",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_users",
+        "cid": 2,
+        "name": "password_hash",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_users",
+        "cid": 3,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_users",
+        "cid": 4,
+        "name": "last_sign_in_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 1,
+        "name": "sku",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 2,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 3,
+        "name": "kind",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'other'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 4,
+        "name": "price",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 5,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "accessories",
+        "cid": 6,
+        "name": "active",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 1,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 2,
+        "name": "recorded_balance",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 3,
+        "name": "actual_balance",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 4,
+        "name": "difference",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 3
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 5,
+        "name": "reconciled_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 6,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 7,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_reconciliations",
+        "cid": 8,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 1,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 2,
+        "name": "direction",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 3,
+        "name": "amount",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 4,
+        "name": "currency",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 5,
+        "name": "reference_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 6,
+        "name": "reference_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 7,
+        "name": "transaction_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 8,
+        "name": "occurred_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 9,
+        "name": "description",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 10,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 11,
+        "name": "transfer_group_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 12,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "account_transactions",
+        "cid": 13,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 1,
+        "name": "entity_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 2,
+        "name": "entity_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 3,
+        "name": "action",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 4,
+        "name": "changes",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 5,
+        "name": "user_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "activity_logs",
+        "cid": 6,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 1,
+        "name": "group_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 2,
+        "name": "option_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 3,
+        "name": "label",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 4,
+        "name": "is_active",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 5,
+        "name": "sort_order",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 6,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_options",
+        "cid": 7,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "branches",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "branches",
+        "cid": 1,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "branches",
+        "cid": 2,
+        "name": "address",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "branches",
+        "cid": 3,
+        "name": "active",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 1,
+        "name": "code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 2,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 3,
+        "name": "account_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 4,
+        "name": "currency",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 5,
+        "name": "opening_balance",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 6,
+        "name": "opening_balance_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 7,
+        "name": "is_active",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 8,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 9,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cash_accounts",
+        "cid": 10,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 1,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 2,
+        "name": "carrier",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 3,
+        "name": "tracking_number",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 4,
+        "name": "expected_cod_amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 5,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'PENDING_DELIVERY'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 6,
+        "name": "shipped_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 7,
+        "name": "delivered_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 8,
+        "name": "expected_settlement_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 9,
+        "name": "settled_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 10,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 11,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 12,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 13,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_receivables",
+        "cid": 14,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 1,
+        "name": "cod_receivable_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 2,
+        "name": "amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 3,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 4,
+        "name": "reference",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 5,
+        "name": "settled_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 6,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 7,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "cod_settlements",
+        "cid": 8,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 1,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 3,
+        "name": "beneficiary_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 4,
+        "name": "beneficiary_user_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 5,
+        "name": "beneficiary_name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 6,
+        "name": "commission_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 7,
+        "name": "amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 8,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'PENDING'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 9,
+        "name": "calculation_basis",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 10,
+        "name": "calculation_snapshot_json",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 11,
+        "name": "earned_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 12,
+        "name": "approved_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 13,
+        "name": "paid_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 14,
+        "name": "payment_account_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 15,
+        "name": "payment_reference",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 16,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 17,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 18,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 19,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "commissions",
+        "cid": 20,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 1,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 2,
+        "name": "phone",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 3,
+        "name": "address",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 4,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "customers",
+        "cid": 5,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 1,
+        "name": "record_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 2,
+        "name": "category",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 3,
+        "name": "amount",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 4,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 5,
+        "name": "payment_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 6,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 7,
+        "name": "occurred_on",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "CURRENT_DATE",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 8,
+        "name": "payment_method",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 9,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 10,
+        "name": "recorded_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "financial_records",
+        "cid": 11,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 1,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 3,
+        "name": "customer_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 4,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 5,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "invoices",
+        "cid": 6,
+        "name": "snapshot",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 1,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 2,
+        "name": "cost_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 3,
+        "name": "amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 4,
+        "name": "amount_rmb",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 5,
+        "name": "exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 6,
+        "name": "source_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 7,
+        "name": "source_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 8,
+        "name": "description",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 9,
+        "name": "occurred_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 10,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 11,
+        "name": "voided_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 12,
+        "name": "voided_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 13,
+        "name": "void_reason",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptop_cost_components",
+        "cid": 14,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 1,
+        "name": "serial",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 2,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 3,
+        "name": "category",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 4,
+        "name": "import_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 5,
+        "name": "warehouse_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 6,
+        "name": "location",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 7,
+        "name": "charger_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 8,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 9,
+        "name": "price_rmb",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 10,
+        "name": "shipping_rmb",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 11,
+        "name": "exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "3550",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 12,
+        "name": "import_price_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 13,
+        "name": "wholesale_price_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 14,
+        "name": "retail_price_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 15,
+        "name": "customer_note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 16,
+        "name": "battery_health",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 17,
+        "name": "warranty_supplier",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 18,
+        "name": "screen_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 19,
+        "name": "camera_mic_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 20,
+        "name": "mainboard_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 21,
+        "name": "condition_note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 22,
+        "name": "seller",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 23,
+        "name": "is_active",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 24,
+        "name": "parts_history",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "'[]'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 25,
+        "name": "month_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 26,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 27,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 28,
+        "name": "sku",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'LT-' || upper(hex(randomblob(8)))",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 29,
+        "name": "available_for_sale_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 30,
+        "name": "source_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'UNKNOWN'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 31,
+        "name": "source_reference_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 32,
+        "name": "purchase_batch_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 33,
+        "name": "tracking_code_cn",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 34,
+        "name": "purchase_price_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 35,
+        "name": "purchase_exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 36,
+        "name": "received_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 37,
+        "name": "sold_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 38,
+        "name": "ignored_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 39,
+        "name": "ignored_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 40,
+        "name": "ignore_reason",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 41,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'System'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "laptops",
+        "cid": 42,
+        "name": "qc_details",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'{}'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "operation_requests",
+        "cid": 0,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "operation_requests",
+        "cid": 1,
+        "name": "operation",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "operation_requests",
+        "cid": 2,
+        "name": "result",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "operation_requests",
+        "cid": 3,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "operation_requests",
+        "cid": 4,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 1,
+        "name": "created_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 2,
+        "name": "sale_online",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 3,
+        "name": "sale_offline",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 4,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 5,
+        "name": "order_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 6,
+        "name": "order_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 7,
+        "name": "payment_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 8,
+        "name": "payment_method",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 9,
+        "name": "delivery_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 10,
+        "name": "shipping_method",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 11,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 12,
+        "name": "requested_laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 13,
+        "name": "sale_price",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 14,
+        "name": "deposit_amount",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 15,
+        "name": "deposit_note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 16,
+        "name": "cod_amount",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 17,
+        "name": "amount_paid",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 18,
+        "name": "debt_amount",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 19,
+        "name": "credit_card_fee",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 20,
+        "name": "profit_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 21,
+        "name": "trade_in_laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 22,
+        "name": "customer_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 23,
+        "name": "customer_info",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 24,
+        "name": "customer_address",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 25,
+        "name": "tracking_code",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 26,
+        "name": "ship_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 27,
+        "name": "setup_note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 28,
+        "name": "warranty",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 29,
+        "name": "laptop_locked",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "false",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 30,
+        "name": "reservation_expires_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 31,
+        "name": "cancel_reason",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 32,
+        "name": "cancelled_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 33,
+        "name": "month_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 34,
+        "name": "is_active",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 35,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 36,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 37,
+        "name": "returned_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 38,
+        "name": "return_reason",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 39,
+        "name": "branch_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 40,
+        "name": "gift_accessory_ids",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'[]'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 41,
+        "name": "gift_preset",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 42,
+        "name": "cost_snapshot_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 43,
+        "name": "gross_profit_snapshot_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 44,
+        "name": "direct_cost_snapshot_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 45,
+        "name": "net_contribution_snapshot_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 46,
+        "name": "cost_snapshot_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 47,
+        "name": "cost_snapshot_reasons",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 48,
+        "name": "cost_snapshotted_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 49,
+        "name": "payment_due_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 50,
+        "name": "trade_in_credit_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 51,
+        "name": "requested_configuration",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "orders",
+        "cid": 52,
+        "name": "requested_category",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 1,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 2,
+        "name": "payment_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 3,
+        "name": "amount",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 4,
+        "name": "payment_method",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'transfer_cash'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 5,
+        "name": "payment_date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "CURRENT_DATE",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 6,
+        "name": "reference_code",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 7,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 8,
+        "name": "recorded_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 9,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 10,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "payments",
+        "cid": 11,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 1,
+        "name": "batch_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 2,
+        "name": "supplier_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 3,
+        "name": "purchase_date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 4,
+        "name": "currency",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'CNY'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 5,
+        "name": "exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 6,
+        "name": "subtotal_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 7,
+        "name": "domestic_shipping_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 8,
+        "name": "other_cost_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 9,
+        "name": "destination",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'OTHER'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 10,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'DRAFT'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 11,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 12,
+        "name": "active",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 13,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 14,
+        "name": "updated_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 15,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 16,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 17,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "purchase_batches",
+        "cid": 18,
+        "name": "procurement_flow",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'LEGACY'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 1,
+        "name": "qc_inspection_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 2,
+        "name": "check_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 3,
+        "name": "label",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 4,
+        "name": "result",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 5,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 6,
+        "name": "checked_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 7,
+        "name": "checked_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 8,
+        "name": "category",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'OTHER'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 9,
+        "name": "requirement",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'REQUIRED'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_check_items",
+        "cid": 10,
+        "name": "sort_order",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 1,
+        "name": "inspection_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 3,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'IN_PROGRESS'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 4,
+        "name": "result",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 5,
+        "name": "started_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 6,
+        "name": "started_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 7,
+        "name": "completed_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 8,
+        "name": "completed_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 9,
+        "name": "overall_notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 10,
+        "name": "mainboard_status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'UNKNOWN'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 11,
+        "name": "charger_status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'UNKNOWN'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 12,
+        "name": "cosmetic_grade",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 13,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 14,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 15,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 16,
+        "name": "completion_idempotency_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 17,
+        "name": "disposition",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "qc_inspections",
+        "cid": 18,
+        "name": "detail_snapshot",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 1,
+        "name": "repair_job_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 2,
+        "name": "action_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 3,
+        "name": "description",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 4,
+        "name": "performed_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_actions",
+        "cid": 5,
+        "name": "performed_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 1,
+        "name": "repair_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 3,
+        "name": "source_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 4,
+        "name": "source_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 5,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'OPEN'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 6,
+        "name": "reported_issue",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 7,
+        "name": "diagnosis",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 8,
+        "name": "repair_plan",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 9,
+        "name": "resolution",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 10,
+        "name": "priority",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'NORMAL'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 11,
+        "name": "assigned_to",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 12,
+        "name": "started_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 13,
+        "name": "completed_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 14,
+        "name": "labor_cost_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 15,
+        "name": "parts_cost_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 16,
+        "name": "total_cost_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 3
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 17,
+        "name": "requires_re_qc",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 18,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 19,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 20,
+        "name": "completion_idempotency_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 21,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 22,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 23,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 24,
+        "name": "outcome",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_jobs",
+        "cid": 25,
+        "name": "recommended_action",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 1,
+        "name": "repair_job_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 2,
+        "name": "part_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 3,
+        "name": "part_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 4,
+        "name": "serial",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 5,
+        "name": "quantity",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 6,
+        "name": "unit_cost_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 7,
+        "name": "total_cost_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 3
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 8,
+        "name": "source",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 9,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 10,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "repair_parts",
+        "cid": 11,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 1,
+        "name": "reservation_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 3,
+        "name": "customer_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 4,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 5,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 6,
+        "name": "reserved_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 7,
+        "name": "reserved_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 8,
+        "name": "expires_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 9,
+        "name": "deposit_payment_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 10,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 11,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 12,
+        "name": "converted_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 13,
+        "name": "expired_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 14,
+        "name": "cancelled_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 15,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 16,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "reservations",
+        "cid": 17,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 1,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 2,
+        "name": "movement_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 3,
+        "name": "from_location",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 4,
+        "name": "to_location",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 5,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 6,
+        "name": "warranty_case_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 7,
+        "name": "note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 8,
+        "name": "performed_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 9,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 10,
+        "name": "reference_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "stock_movements",
+        "cid": 11,
+        "name": "reference_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 1,
+        "name": "supplier_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 2,
+        "name": "purchase_batch_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 3,
+        "name": "amount_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 4,
+        "name": "amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 5,
+        "name": "exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 6,
+        "name": "payment_method",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 7,
+        "name": "reference",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 8,
+        "name": "payment_date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 9,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 10,
+        "name": "recorded_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 11,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 12,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_payments",
+        "cid": 13,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 1,
+        "name": "supplier_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 2,
+        "name": "supplier_return_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 3,
+        "name": "amount_rmb",
+        "type": "NUMERIC",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 4,
+        "name": "amount_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 5,
+        "name": "exchange_rate",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 6,
+        "name": "refund_method",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 7,
+        "name": "reference",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 8,
+        "name": "received_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 9,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 10,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 11,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_refunds",
+        "cid": 12,
+        "name": "account_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 1,
+        "name": "supplier_return_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 2,
+        "name": "event_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 3,
+        "name": "details",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'{}'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 4,
+        "name": "performed_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_events",
+        "cid": 5,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 1,
+        "name": "supplier_return_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 3,
+        "name": "repair_job_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 4,
+        "name": "qc_inspection_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 5,
+        "name": "reason",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 6,
+        "name": "condition_notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 7,
+        "name": "expected_refund_rmb",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 8,
+        "name": "agreed_refund_rmb",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 9,
+        "name": "replacement_laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 10,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'ACTIVE'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 11,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 12,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_return_items",
+        "cid": 13,
+        "name": "previous_laptop_status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 1,
+        "name": "return_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 2,
+        "name": "supplier_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 3,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'DRAFT'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 4,
+        "name": "resolution_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 5,
+        "name": "reason",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 6,
+        "name": "reason_notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 7,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 8,
+        "name": "return_carrier",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 9,
+        "name": "return_tracking_number",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 10,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 11,
+        "name": "approved_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 12,
+        "name": "approved_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 13,
+        "name": "shipped_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 14,
+        "name": "supplier_received_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 15,
+        "name": "closed_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 16,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 17,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "supplier_returns",
+        "cid": 18,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 1,
+        "name": "code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 2,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 3,
+        "name": "display_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 4,
+        "name": "wechat_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 5,
+        "name": "wechat_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 6,
+        "name": "phone",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 7,
+        "name": "country",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'Trung Quá»‘c'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 8,
+        "name": "province",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 9,
+        "name": "city",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 10,
+        "name": "address",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 11,
+        "name": "bank_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 12,
+        "name": "bank_account_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 13,
+        "name": "bank_account_number",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 14,
+        "name": "alipay_account",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 15,
+        "name": "preferred_shipping_destination",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'OTHER'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 16,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 17,
+        "name": "active",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "true",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 18,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 19,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "suppliers",
+        "cid": 20,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_check_items",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_check_items",
+        "cid": 1,
+        "name": "inspection_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_check_items",
+        "cid": 2,
+        "name": "check_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_check_items",
+        "cid": 3,
+        "name": "result",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_check_items",
+        "cid": 4,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 1,
+        "name": "trade_in_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 2,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'IN_PROGRESS'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 3,
+        "name": "mainboard_status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'UNKNOWN'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 4,
+        "name": "findings",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "''",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 5,
+        "name": "inspected_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 6,
+        "name": "started_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 7,
+        "name": "completed_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_in_inspections",
+        "cid": 8,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random() % 4)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))",
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 1,
+        "name": "trade_in_code",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 2,
+        "name": "customer_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 3,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 4,
+        "name": "brand",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 5,
+        "name": "model",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 6,
+        "name": "serial",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 7,
+        "name": "cpu",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 8,
+        "name": "gpu",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 9,
+        "name": "ram",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 10,
+        "name": "ssd",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 11,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 12,
+        "name": "estimated_value_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 13,
+        "name": "agreed_value_vnd",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 14,
+        "name": "reported_condition",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 15,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 16,
+        "name": "received_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 17,
+        "name": "inventory_laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 18,
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 19,
+        "name": "created_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 20,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "trade_ins",
+        "cid": 21,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 1,
+        "name": "order_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 2,
+        "name": "laptop_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 3,
+        "name": "reported_issue",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 4,
+        "name": "status",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 5,
+        "name": "received_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 6,
+        "name": "resolved_date",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 7,
+        "name": "repair_cost",
+        "type": "NUMERIC",
+        "notnull": 0,
+        "dflt_value": "0",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 8,
+        "name": "parts_replaced",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 9,
+        "name": "diagnosis",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 10,
+        "name": "resolution",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 11,
+        "name": "resolution_note",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 12,
+        "name": "notes",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 13,
+        "name": "customer_info",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 14,
+        "name": "handled_by",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 15,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "warranty_cases",
+        "cid": 16,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_sessions",
+        "cid": 0,
+        "name": "token_hash",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_sessions",
+        "cid": 1,
+        "name": "user_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_sessions",
+        "cid": 2,
+        "name": "created_at",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_sessions",
+        "cid": 3,
+        "name": "expires_at",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_rate_limits",
+        "cid": 0,
+        "name": "key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_rate_limits",
+        "cid": 1,
+        "name": "attempts",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "auth_rate_limits",
+        "cid": 2,
+        "name": "expires_at",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 1,
+        "name": "object_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 2,
+        "name": "content_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 3,
+        "name": "byte_size",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 4,
+        "name": "uploaded_by",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "image_objects",
+        "cid": 5,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_settings",
+        "cid": 0,
+        "name": "key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_settings",
+        "cid": 1,
+        "name": "value",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_settings",
+        "cid": 2,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "app_settings",
+        "cid": 3,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 0,
+        "name": "id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 1,
+        "name": "name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 2,
+        "name": "role",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'SALES'",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 3,
+        "name": "is_active",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": "1",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 4,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "user_profiles",
+        "cid": 5,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+        "pk": 0,
+        "hidden": 0
+      },
+      {
+        "table_name": "sheet_import_sources",
+        "cid": 0,
+        "name": "source_key",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1,
+        "hidden": 0
+      },
+      {
+        "table_name": "sheet_import_sources",
+        "cid": 1,
+        "name": "payload",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0,
+        "hidden": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 3.9031
+      },
+      "duration": 3.9031,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 2351104,
+      "rows_read": 719,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

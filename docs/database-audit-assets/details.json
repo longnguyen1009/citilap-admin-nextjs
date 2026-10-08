@@ -1,0 +1,314 @@
+[
+  {
+    "query": "SELECT o.id AS order_id,o.laptop_id,o.order_status,o.payment_status,o.laptop_locked,l.status AS laptop_status FROM orders o JOIN laptops l ON l.id=o.laptop_id WHERE o.is_active=1 AND o.order_status IN ('prepared','shipping','done') AND l.status<>'sold'",
+    "error": "\n{\n  \"error\": {\n    \"text\": \"A request to the Cloudflare API (/accounts/8952957f4eed25a74e19a3e273c4a589/d1/database/a771bd4e-34fb-40a3-86ef-80f31acde278/query) failed.\",\n    \"notes\": [\n      {\n        \"text\": \"The given account is not valid or is not authorized to access this service [code: 7403]\"\n      }\n    ],\n    \"kind\": \"error\",\n    \"name\": \"APIError\",\n    \"code\": 7403,\n    \"accountTag\": \"8952957f4eed25a74e19a3e273c4a589\"\n  }\n}\n"
+  },
+  {
+    "query": "SELECT order_status,count(*) AS orders,count(cost_snapshotted_at) AS snapshotted FROM orders GROUP BY order_status",
+    "result": [
+      {
+        "results": [
+          {
+            "order_status": "cancelled",
+            "orders": 3,
+            "snapshotted": 0
+          },
+          {
+            "order_status": "deposited",
+            "orders": 18,
+            "snapshotted": 0
+          },
+          {
+            "order_status": "done",
+            "orders": 33,
+            "snapshotted": 7
+          },
+          {
+            "order_status": "shipping",
+            "orders": 9,
+            "snapshotted": 5
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2633
+          },
+          "duration": 0.2633,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 126,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT b.id,b.status AS stored_status,v.status AS summary_status,b.active FROM purchase_batches b JOIN purchase_batch_summaries v ON v.id=b.id WHERE b.status<>v.status",
+    "result": [
+      {
+        "results": [
+          {
+            "id": 53,
+            "stored_status": "IN_TRANSIT_VN",
+            "summary_status": "IN_TRANSIT",
+            "active": 1
+          },
+          {
+            "id": 63,
+            "stored_status": "CONFIRMED",
+            "summary_status": "IN_TRANSIT",
+            "active": 1
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 1.4705
+          },
+          "duration": 1.4705,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 336,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT name,sql FROM sqlite_schema WHERE type='index' AND tbl_name IN ('orders','repair_actions','repair_parts','commissions','purchase_batches')",
+    "result": [
+      {
+        "results": [
+          {
+            "name": "sqlite_autoindex_commissions_1",
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_commissions_2",
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_purchase_batches_1",
+            "sql": null
+          },
+          {
+            "name": "sqlite_autoindex_purchase_batches_2",
+            "sql": null
+          },
+          {
+            "name": "commissions_source_unique",
+            "sql": "CREATE UNIQUE INDEX commissions_source_unique ON commissions (order_id, beneficiary_type, COALESCE((beneficiary_user_id), beneficiary_name), commission_type) WHERE (status <> 'CANCELLED')"
+          },
+          {
+            "name": "idx_orders_month_key",
+            "sql": "CREATE INDEX idx_orders_month_key ON orders (month_key)"
+          },
+          {
+            "name": "orders_laptop_active_idx",
+            "sql": "CREATE INDEX orders_laptop_active_idx ON orders (laptop_id, is_active, order_status, payment_status)"
+          },
+          {
+            "name": "orders_requested_laptop_idx",
+            "sql": "CREATE INDEX orders_requested_laptop_idx ON orders (requested_laptop_id, is_active, order_status, payment_status)"
+          },
+          {
+            "name": "purchase_batches_idempotency_unique",
+            "sql": "CREATE UNIQUE INDEX purchase_batches_idempotency_unique ON purchase_batches (idempotency_key) WHERE (idempotency_key IS NOT NULL)"
+          },
+          {
+            "name": "purchase_batches_supplier_idx",
+            "sql": "CREATE INDEX purchase_batches_supplier_idx ON purchase_batches (supplier_id, purchase_date DESC)"
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2912
+          },
+          "duration": 0.2912,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 165,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT o.order_status,o.payment_status,count(*) AS n FROM orders o GROUP BY o.order_status,o.payment_status",
+    "result": [
+      {
+        "results": [
+          {
+            "order_status": "cancelled",
+            "payment_status": "deposited",
+            "n": 2
+          },
+          {
+            "order_status": "cancelled",
+            "payment_status": "unpaid",
+            "n": 1
+          },
+          {
+            "order_status": "deposited",
+            "payment_status": "deposited",
+            "n": 18
+          },
+          {
+            "order_status": "done",
+            "payment_status": "paid",
+            "n": 33
+          },
+          {
+            "order_status": "shipping",
+            "payment_status": "cod",
+            "n": 7
+          },
+          {
+            "order_status": "shipping",
+            "payment_status": "deposited",
+            "n": 2
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.4005
+          },
+          "duration": 0.4005,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 126,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT typeof(amount) AS storage_type,count(*) AS n FROM payments GROUP BY typeof(amount)",
+    "result": [
+      {
+        "results": [
+          {
+            "storage_type": "integer",
+            "n": 35
+          },
+          {
+            "storage_type": "real",
+            "n": 41
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2227
+          },
+          "duration": 0.2227,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 152,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT count(*) AS n,sum(CASE WHEN detail_snapshot IS NOT NULL THEN 1 ELSE 0 END) AS snapshots,sum(CASE WHEN overall_notes<>'' THEN 1 ELSE 0 END) AS notes FROM qc_inspections",
+    "result": [
+      {
+        "results": [
+          {
+            "n": 128,
+            "snapshots": 123,
+            "notes": 123
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 1.8225
+          },
+          "duration": 1.8225,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 128,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  {
+    "query": "SELECT '2026-10-07'>='2026-10-07T00:00:00.000Z' AS lexical_included,julianday('2026-10-07')>=julianday('2026-10-07T00:00:00.000Z') AS temporal_included",
+    "result": [
+      {
+        "results": [
+          {
+            "lexical_included": 0,
+            "temporal_included": 1
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "APAC",
+          "served_by_colo": "KIX",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.159
+          },
+          "duration": 0.159,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 2351104,
+          "rows_read": 0,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  }
+]

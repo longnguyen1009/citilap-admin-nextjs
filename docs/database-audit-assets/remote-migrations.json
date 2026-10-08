@@ -1,0 +1,104 @@
+[
+  {
+    "results": [
+      {
+        "name": "0001_schema.sql",
+        "applied_at": "2026-09-30 16:33:06"
+      },
+      {
+        "name": "0002_auth_storage.sql",
+        "applied_at": "2026-09-30 16:33:06"
+      },
+      {
+        "name": "0003_views.sql",
+        "applied_at": "2026-09-30 16:36:38"
+      },
+      {
+        "name": "0004_settings_integrity.sql",
+        "applied_at": "2026-10-01 15:52:45"
+      },
+      {
+        "name": "0005_app_options_seed.sql",
+        "applied_at": "2026-10-01 15:59:40"
+      },
+      {
+        "name": "0006_roles_and_catalog_seed.sql",
+        "applied_at": "2026-10-02 07:25:12"
+      },
+      {
+        "name": "0007_invoice_catalog_seed.sql",
+        "applied_at": "2026-10-03 05:46:26"
+      },
+      {
+        "name": "0008_category_key_normalization.sql",
+        "applied_at": "2026-10-03 11:10:23"
+      },
+      {
+        "name": "0009_cancelled_laptop_label.sql",
+        "applied_at": "2026-10-05 09:38:55"
+      },
+      {
+        "name": "0010_google_sheet_inventory_seed.sql",
+        "applied_at": "2026-10-05 11:17:29"
+      },
+      {
+        "name": "0011_order_payment_totals.sql",
+        "applied_at": "2026-10-06 07:03:44"
+      },
+      {
+        "name": "0012_optional_order_sales.sql",
+        "applied_at": "2026-10-06 07:03:44"
+      },
+      {
+        "name": "0013_october_sheet_replacement.sql",
+        "applied_at": "2026-10-06 08:25:38"
+      },
+      {
+        "name": "0014_confirmed_october_laptop_statuses.sql",
+        "applied_at": "2026-10-06 08:51:37"
+      },
+      {
+        "name": "0015_october_full_replacement.sql",
+        "applied_at": "2026-10-06 09:02:21"
+      },
+      {
+        "name": "0016_move_september_order_laptops_to_october.sql",
+        "applied_at": "2026-10-06 09:35:36"
+      },
+      {
+        "name": "0017_sync_laptop_tracking_codes.sql",
+        "applied_at": "2026-10-06 09:39:33"
+      },
+      {
+        "name": "0018_single_laptop_tracking_code.sql",
+        "applied_at": "2026-10-06 10:01:34"
+      },
+      {
+        "name": "0019_normalize_order_payment_status.sql",
+        "applied_at": "2026-10-06 10:31:57"
+      },
+      {
+        "name": "0020_integrity_consolidation.sql",
+        "applied_at": "2026-10-06 17:18:37"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.2819
+      },
+      "duration": 0.2819,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 2351104,
+      "rows_read": 20,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]
