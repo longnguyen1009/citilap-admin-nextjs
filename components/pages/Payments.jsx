@@ -18,6 +18,7 @@ const paymentTypes = [
   { key: 'refund', label: 'Hoàn tiền' },
   { key: 'other', label: 'Khoản khác' }
 ];
+const editablePaymentTypes = paymentTypes.filter(type => type.key !== 'refund');
 
 const paymentTypeBadgeClass = {
   deposit: 'pill-badge pill-purple',
@@ -250,7 +251,7 @@ export default function Payments({ initialOrderId = '' }) {
                   </td>
                   <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.referenceCode || '-'}</td>
                   <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{payment.recordedBy || '-'}</td>
-                  {isAdmin && <td><Button size="sm" variant="outline" onClick={() => { setMessage(null); setEditingPayment({ id: Number(payment.id), expectedAmount: Number(payment.amount), amount: payment.amount, reason: '' }); }}>Sửa</Button></td>}
+                  {isAdmin && <td>{payment.paymentType === 'refund' ? <span style={{ color: '#94a3b8', fontSize: '0.8rem' }} title="Hoàn tiền được xử lý theo quy trình riêng">—</span> : <Button size="sm" variant="outline" onClick={() => { setMessage(null); setEditingPayment({ id: Number(payment.id), expectedAmount: Number(payment.amount), amount: payment.amount, expectedPaymentType: payment.paymentType, paymentType: payment.paymentType, reason: '' }); }}>Sửa</Button>}</td>}
                 </tr>
               ))}
             </tbody>
@@ -260,15 +261,20 @@ export default function Payments({ initialOrderId = '' }) {
       </div>
 
       {/* PAYMENT MODAL */}
-      <Modal open={Boolean(editingPayment)} onOpenChange={open => { if (!open && !saving) setEditingPayment(null); }} title="Sửa số tiền giao dịch" maxWidth="max-w-xl">
+      <Modal open={Boolean(editingPayment)} onOpenChange={open => { if (!open && !saving) setEditingPayment(null); }} title="Sửa giao dịch thu tiền" maxWidth="max-w-xl">
         {editingPayment && <form onSubmit={event => { event.preventDefault(); submission.run(async () => {
           const result = await editPayment({ ...editingPayment, amount: Number(editingPayment.amount) });
           setMessage({ type: result.ok ? 'success' : 'error', text: result.ok ? 'Đã sửa giao dịch và cập nhật công nợ.' : result.message });
           if (result.ok) setEditingPayment(null);
         }); }} style={{ display: 'grid', gap: 12 }}>
-          <p>Số tiền cũ: {formatAmount(editingPayment.expectedAmount)}. Thay đổi được lưu vào lịch sử.</p>
-          <label>Số tiền mới (triệu VNĐ)<input className="form-control" type="number" min="0.000001" step="0.000001" required value={editingPayment.amount} onChange={e => setEditingPayment({ ...editingPayment, amount: e.target.value })} /></label>
-          <label>Lý do sửa<textarea className="form-control" required maxLength={1000} value={editingPayment.reason} onChange={e => setEditingPayment({ ...editingPayment, reason: e.target.value })} /></label>
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>Giao dịch cũ: <strong>{paymentTypes.find(type => type.key === editingPayment.expectedPaymentType)?.label}</strong> · {formatAmount(editingPayment.expectedAmount)}. Thay đổi được lưu vào lịch sử.</p>
+          <label style={{ display: 'grid', gap: 6 }}>Loại thu tiền
+            <select className="form-control" required value={editingPayment.paymentType} onChange={e => setEditingPayment({ ...editingPayment, paymentType: e.target.value })}>
+              {editablePaymentTypes.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: 6 }}>Số tiền mới (triệu VNĐ)<input className="form-control" type="number" min="0.000001" step="0.000001" required value={editingPayment.amount} onChange={e => setEditingPayment({ ...editingPayment, amount: e.target.value })} /></label>
+          <label style={{ display: 'grid', gap: 6 }}>Lý do sửa<textarea className="form-control" required maxLength={1000} rows={3} value={editingPayment.reason} onChange={e => setEditingPayment({ ...editingPayment, reason: e.target.value })} /></label>
           {message?.type === 'error' && <p role="alert">{message.text}</p>}
           <Button type="submit" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>
         </form>}
