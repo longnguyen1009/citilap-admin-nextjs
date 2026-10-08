@@ -10,7 +10,7 @@ Tháng/ngày nghiệp vụ tính theo UTC+7. Gửi lại cùng yêu cầu không
 
 ## Phạm vi và điều kiện
 
-- ADMIN xác nhận nhập kho/thu tiền, theo quyền nhận máy của luồng cũ. SALES và SALES_TECH xem hồ sơ; TECHNICAL chỉ xem thông tin máy.
+- ADMIN và SALES_TECH cùng dùng `/trade-ins`, có quyền tạo và xác nhận cả ba luồng (bao gồm ghi thu bù đổi máy). SALES chỉ xem hồ sơ; TECHNICAL chỉ xem thông tin máy. Phân quyền giống nhau ở giao diện, API và dịch vụ D1.
 - Đổi máy hỗ trợ thu bù dương hoặc đổi ngang; chưa triển khai chi trả khi máy mới rẻ hơn giá thu lại.
 - Đơn cũ còn công nợ phải xử lý trước khi đổi máy. Máy đã được thu lại hoặc không còn trạng thái đã bán không được nhận lần nữa.
 - Giá vốn hai luồng thu mua để NULL, không giả định miễn phí hoặc dùng lại giá vốn lịch sử. Luồng đổi máy giữ giá vốn của laptop trả về theo yêu cầu chuyển lại cùng bản ghi.

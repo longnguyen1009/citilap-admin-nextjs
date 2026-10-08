@@ -27,6 +27,7 @@ function fixture() {
   return { sql, db, get: (table, id) => sql.prepare(`SELECT * FROM ${table} WHERE id=?`).get(id) };
 }
 const admin = { role: 'ADMIN', name: 'Test admin' };
+const salesTech = { role: 'SALES_TECH', name: 'Test sales tech' };
 const walk = { workflow: 'WALK_IN', sellerName: 'Khách lẻ', name: 'LOQ 15', category: 'loq', serial: 'WALK-1', idempotencyKey: 'walk-in-test-1' };
 const buy = { workflow: 'BUYBACK', orderId: 9001, sellerName: 'Khách cũ', sellerPhone: '0912345678', idempotencyKey: 'buy-back-test-1' };
 const exchange = { workflow: 'EXCHANGE', orderId: 9001, laptopId: 9002, agreedVnd: 12000000, saleVnd: 25000000, accountId: 'test-cash', idempotencyKey: 'exchange-test-1' };
@@ -44,6 +45,23 @@ test('walk-in receives current-month waiting-QC stock, source and seller; unknow
     await assert.rejects(receiveCustomerLaptop(db, admin, { ...walk, name: 'changed' }), { status: 409 });
     await assert.rejects(receiveCustomerLaptop(db, admin, { ...walk, idempotencyKey: 'new-serial-conflict' }), { status: 409 });
   } finally { sql.close(); }
+});
+
+test('SALES_TECH can receive a walk-in, buy back a sold laptop and exchange with immediate cash settlement', async () => {
+  for (const [payload, expected] of [[walk, 'WALK_IN'], [buy, 'BUYBACK'], [exchange, 'EXCHANGE']]) {
+    const { sql, db, get } = fixture();
+    try {
+      const row = await receiveCustomerLaptop(db, salesTech, { ...payload, idempotencyKey: `sales-tech-${expected.toLowerCase()}` });
+      assert.equal(row.workflow, expected);
+      assert.equal(row.created_by, salesTech.name);
+      if (expected === 'EXCHANGE') {
+        assert.equal(get('orders', 9001).cancel_reason, 'ĐỔI HÀNG');
+        assert.equal(sql.prepare("SELECT amount FROM account_transactions WHERE account_id='test-cash' AND transaction_type='CUSTOMER_PAYMENT'").get().amount, 13000000);
+      } else {
+        assert.equal(get('laptops', row.inventory_laptop_id).status, 'waiting_qc');
+      }
+    } finally { sql.close(); }
+  }
 });
 
 test('buyback creates new acquisition with same serial while preserving old order, laptop and QC history', async () => {
@@ -110,6 +128,7 @@ test('permissions, old debt, missing phone, unavailable replacement and negative
   const { sql, db } = fixture();
   try {
     await assert.rejects(receiveCustomerLaptop(db, { role: 'SALES' }, walk), { status: 403 });
+    await assert.rejects(receiveCustomerLaptop(db, { role: 'TECHNICAL' }, walk), { status: 403 });
     await assert.rejects(receiveCustomerLaptop(db, admin, { ...buy, sellerPhone: '' }));
     await assert.rejects(receiveCustomerLaptop(db, admin, { ...exchange, saleVnd: 10000000 }));
     sql.exec('UPDATE orders SET debt_amount=1 WHERE id=9001');

@@ -13,7 +13,7 @@ for (const file of readdirSync('db/d1/migrations').filter(f => f.endsWith('.sql'
 sql.exec(`PRAGMA foreign_keys=ON;
   INSERT INTO customers(id,name,phone,address) VALUES(99001,'Khách kiểm thử','0901234567','Địa chỉ kiểm thử');
   INSERT INTO laptops(id,name,serial,category,status,import_price_vnd,retail_price_vnd) VALUES
-    (99001,'Lenovo LOQ 15 - máy đã bán','QA-OLD','loq','sold',10,15),
+    (99001,'Lenovo LOQ 15 - máy đã bán','QA-OLD','loq','available',10,15),
     (99002,'Lenovo Legion 5 - máy nâng cấp','QA-NEW','legion_5_25_26','available',20,25);
   INSERT INTO orders(id,laptop_id,customer_id,customer_info,customer_address,sale_price,amount_paid,debt_amount,order_status,payment_status)
     VALUES(99001,99001,99001,'Khách kiểm thử - 0901234567','Địa chỉ kiểm thử',15,15,0,'done','paid');
@@ -39,7 +39,7 @@ const apiBundle = await build({ entryPoints: ['app/api/trade-ins/route.js'], bun
     build.onResolve({ filter: /^(next\/server|@\/lib\/cloudflare\/route-helpers.mjs)$/ }, args => ({ path: args.path, namespace: 'test' }));
     build.onLoad({ filter: /.*/, namespace: 'test' }, args => ({ contents: args.path === 'next/server'
       ? 'export const NextResponse=Response;'
-      : 'export async function routeContext(){return {DB:globalThis.tradeInPreviewDB,profile:{role:"ADMIN",name:"Browser QA"}};}' }));
+      : 'export async function routeContext(request){return {DB:globalThis.tradeInPreviewDB,profile:{role:request.headers.get("x-test-role")||"ADMIN",name:"Browser QA"}};}' }));
   } }],
 });
 const apiPath = join(temp, 'route.mjs'); writeFileSync(apiPath, apiBundle.outputFiles[0].text);
@@ -50,8 +50,8 @@ const ui = await build({ stdin: { contents: `import React from 'react';import {c
     build.onResolve({ filter: /^(next\/navigation|@\/context\/AuthContext|@\/lib\/apiFetchers)$/ }, args => ({ path: args.path, namespace: 'test' }));
     build.onLoad({ filter: /.*/, namespace: 'test' }, args => ({ contents: args.path === 'next/navigation'
       ? 'export const useSearchParams=()=>new URLSearchParams(window.location.search);'
-      : args.path.includes('AuthContext') ? 'export const useAuth=()=>({user:{role:"ADMIN",name:"Browser QA"}});'
-        : 'export async function getAuthHeaders(){return {};}' }));
+      : args.path.includes('AuthContext') ? 'export const useAuth=()=>({user:{role:new URLSearchParams(window.location.search).get("role")||"ADMIN",name:"Browser QA"}});'
+        : 'export async function getAuthHeaders(){return {"x-test-role":new URLSearchParams(window.location.search).get("role")||"ADMIN"};}' }));
   } }],
 });
 const cssDir = '.next/static/chunks';
@@ -59,7 +59,7 @@ const server = createServer(async (req, res) => {
   try {
     if (req.url.startsWith('/api/trade-ins')) {
       const parts = []; for await (const part of req) parts.push(part);
-      const request = new Request(`http://127.0.0.1:3187${req.url}`, { method: req.method, ...(req.method === 'POST' ? { body: Buffer.concat(parts).toString() } : {}) });
+      const request = new Request(`http://127.0.0.1:3187${req.url}`, { method: req.method, headers: req.headers, ...(req.method === 'POST' ? { body: Buffer.concat(parts).toString() } : {}) });
       const result = await route[req.method](request);
       res.writeHead(result.status, Object.fromEntries(result.headers)); res.end(await result.text());
     } else if (req.url === '/preview.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(ui.outputFiles[0].text); }

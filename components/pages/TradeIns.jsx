@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getAuthHeaders } from '@/lib/apiFetchers';
+import { TRADE_IN_WRITE_ROLES } from '@/lib/roles.mjs';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,7 @@ export default function TradeIns() {
       <Input aria-label="Tìm hồ sơ thu đổi" placeholder="Mã hồ sơ, tên máy, Serial…" value={query} onChange={e => setQuery(e.target.value)}/>
       {query && <Button type="button" variant="ghost" aria-label="Xóa tìm kiếm" onClick={() => { setQuery(''); setSearch(''); setPage(1); }}><X size={16}/></Button>}
       <Button variant="outline"><Search size={16}/> Tìm</Button>
-      {user?.role === 'ADMIN' && <Button type="button" onClick={() => setOpen(true)}><Plus size={16}/> Thu máy / đổi máy</Button>}
+      {TRADE_IN_WRITE_ROLES.includes(user?.role) && <Button type="button" onClick={() => setOpen(true)}><Plus size={16}/> Thu máy / đổi máy</Button>}
     </form>
     {error && <p role="alert" className="error-message">{error} <Button variant="outline" onClick={refresh}>Thử lại</Button></p>}
     {loading ? <div role="status" className="salesops-empty">Đang tải hồ sơ…</div> : !data.rows.length ? <div className="salesops-empty">Chưa có hồ sơ phù hợp.</div> : <div className="salesops-grid">{data.rows.map(row => <article className="salesops-card" key={row.id}>

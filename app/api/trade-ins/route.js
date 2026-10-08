@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { routeContext } from '@/lib/cloudflare/route-helpers.mjs';
-import { SALES_TECHNICAL_ROLES } from '@/lib/roles.mjs';
+import { SALES_TECHNICAL_ROLES, TRADE_IN_WRITE_ROLES } from '@/lib/roles.mjs';
 import { receiveCustomerLaptop } from '@/lib/cloudflare/trade-in-workflows.mjs';
 
 export async function GET(request) {
@@ -9,7 +9,7 @@ export async function GET(request) {
     const params = new URL(request.url).searchParams;
     const type = params.get('type') || 'list';
     const q = `%${(params.get('q') || '').trim().slice(0, 100)}%`;
-    if (type !== 'list' && profile.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (type !== 'list' && !TRADE_IN_WRITE_ROLES.includes(profile.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     let result;
     if (type === 'orders') {
       result = await DB.prepare(`SELECT o.id,o.customer_id,o.customer_info,o.customer_address,o.sale_price,o.debt_amount,
@@ -49,7 +49,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { DB, profile } = await routeContext(request, ['ADMIN']);
+    const { DB, profile } = await routeContext(request, TRADE_IN_WRITE_ROLES);
     return NextResponse.json(await receiveCustomerLaptop(DB, profile, await request.json()), { status: 201 });
   } catch (error) { return NextResponse.json({ error: error.message }, { status: error.status || 500 }); }
 }

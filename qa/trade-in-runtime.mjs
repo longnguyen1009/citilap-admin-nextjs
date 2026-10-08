@@ -23,7 +23,7 @@ try {
   for (const { sql } of ddl) await db.prepare(sql).run();
   await db.batch([
     db.prepare("INSERT INTO app_options(group_key,option_key,label,is_active) VALUES('category','loq','LOQ',1)"),
-    db.prepare("INSERT INTO laptops(id,name,serial,category,status,import_price_vnd) VALUES(1,'Old','OLD','loq','sold',10),(2,'New','NEW','loq','available',20)"),
+    db.prepare("INSERT INTO laptops(id,name,serial,category,status,import_price_vnd) VALUES(1,'Old','OLD','loq','available',10),(2,'New','NEW','loq','available',20)"),
     db.prepare("INSERT INTO orders(id,laptop_id,customer_info,customer_address,sale_price,amount_paid,debt_amount,order_status,payment_status) VALUES(1,1,'Runtime customer','Address',15,15,0,'done','paid')"),
     db.prepare("INSERT INTO cash_accounts(id,code,name,account_type,currency,opening_balance_at,created_by) VALUES('cash','CASH','Test','CASH','VND','2020-01-01','Test')"),
   ]);
@@ -37,7 +37,7 @@ try {
   const exchange = { workflow: 'EXCHANGE', orderId: 1, laptopId: 2, saleVnd: 25000000, agreedVnd: 12000000, accountId: 'cash', idempotencyKey: 'runtime-exchange-key' };
   const response = await call(exchange), result = await response.json();
   assert.equal(response.status, 200, JSON.stringify(result));
-  assert.equal((await db.prepare('SELECT amount FROM account_transactions').first()).amount, 13000000);
+  assert.equal((await db.prepare("SELECT amount FROM account_transactions WHERE account_id='cash' AND transaction_type='CUSTOMER_PAYMENT'").first()).amount, 13000000);
   const replay = await call(exchange);
   assert.equal(replay.status, 200);
   assert.equal((await replay.json()).new_order_id, result.new_order_id);
