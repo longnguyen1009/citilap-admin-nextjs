@@ -112,10 +112,10 @@
 /* Match the inventory sheet's operational palette, including hover/selection. */
 .intake-page.intake-page tr.status-in_transit,
 .intake-page.intake-page tr.status-waiting_qc { --intake-row: #fff; }
-.intake-page.intake-page tr.status-available { --intake-row: #d89f00; }
+.intake-page.intake-page tr.status-available { --intake-row: #ffdf66; }
 .intake-page.intake-page tr.status-reserved { --intake-row: #a9c9f7; }
 .intake-page.intake-page tr.status-repair { --intake-row: #c9362b; }
-.intake-page.intake-page tr:is(.status-sold,.status-supplier_return,.status-back_money,.status-ignored) { --intake-row: #89919b; }
+.intake-page.intake-page tr:is(.status-sold,.status-supplier_return,.status-back_money,.status-ignored) { --intake-row: #999999; }
 .intake-page.intake-page :is(.purchase-row,.intake-batch tbody tr) > td:not(.purchase-supplier) {
   background: var(--intake-row, #fff); color: #111; border-color: #7d93a5;
 }

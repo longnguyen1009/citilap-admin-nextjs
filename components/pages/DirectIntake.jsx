@@ -1,4 +1,6 @@
 'use client';
+import { LaptopName, LaptopCopyId } from '@/components/common/LaptopName';
+
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -181,7 +183,7 @@ export default function DirectIntake({ receiving = false, batchId = '' }) {
                   {laptops.map(laptop => <tr key={laptop.id} className={`status-${laptop.status} ${Object.hasOwn(selected, laptop.id) ? 'intake-selected-row' : ''}`}>
                     <td><input type="checkbox" checked={Object.hasOwn(selected, laptop.id)} onChange={event => setSelected(current => { const next = { ...current }; if (event.target.checked) next[laptop.id] = { serial: laptop.serial || '', notes: laptop.condition_note || '' }; else delete next[laptop.id]; return next; })} /></td>
                     <td><code>Mã VC: {laptop.tracking_code_cn || '—'}</code></td>
-                    <td><b>#{laptop.id} · {laptop.name}</b><small>{laptop.condition_note}</small></td>
+                    <td><b><LaptopCopyId id={laptop.id} name={laptop.name} prefix="#" /> · <LaptopName name={laptop.name} /></b><small>{laptop.condition_note}</small></td>
                     <td className="inventory-category-cell" style={{ textAlign: 'center' }}><LaptopCategoryBadge category={laptop.category} categories={data.categories} /></td>
                     <td>Serial: {laptop.serial || '—'}</td>
                     {isAdmin && <td>{formatRmb(laptop.purchase_price_rmb)}<small>Ship {formatRmb(laptop.shipping_rmb)}</small></td>}

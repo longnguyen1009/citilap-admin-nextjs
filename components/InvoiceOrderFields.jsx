@@ -3,10 +3,32 @@ import { useEffect, useState } from 'react';
 import { invoiceRequest } from '@/lib/invoiceClient';
 
 const presets = { none: [], mouse: ['mouse'], backpack: ['backpack'], basic: ['mouse','backpack'], full: ['mouse','backpack','mousepad','sleeve'] };
-export default function InvoiceOrderFields({ value, onChange }) {
+export default function InvoiceOrderFields({ value, onChange, isNew = false }) {
   const [catalog, setCatalog] = useState({ branches: [], accessories: [] });
   const [error, setError] = useState('');
-  useEffect(() => { let active = true; invoiceRequest('/api/invoice-catalog').then(data => { if (active) setCatalog(data); }).catch(e => { if (active) setError(e.message); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    let active = true;
+    invoiceRequest('/api/invoice-catalog').then(data => {
+      if (!active) return;
+      setCatalog(data);
+      if (isNew) {
+        onChange(current => {
+          const firstBranch = data.branches.find(branch => branch.active);
+          const giftPreset = current.giftPreset || 'basic';
+          const basicGiftIds = giftPreset === 'basic' && !(current.giftAccessoryIds || []).length
+            ? presets.basic.map(kind => data.accessories.find(item => item.active && item.kind === kind)?.id).filter(Boolean)
+            : current.giftAccessoryIds;
+          return {
+            ...current,
+            branchId: current.branchId || (firstBranch ? String(firstBranch.id) : ''),
+            giftPreset,
+            giftAccessoryIds: basicGiftIds,
+          };
+        });
+      }
+    }).catch(e => { if (active) setError(e.message); });
+    return () => { active = false; };
+  }, [isNew, onChange]);
   const choose = preset => {
     const selected = (presets[preset] || []).map(kind => catalog.accessories.find(item => item.active && item.kind === kind));
     if (selected.some(item => !item)) { setError('Combo thiếu phụ kiện đang hoạt động. Kiểm tra danh mục phụ kiện.'); return; }

@@ -23,7 +23,8 @@ import {
   Edit3,
   Copy,
   CircleDot,
-  BadgeCheck
+  BadgeCheck,
+  ChevronDown
 } from 'lucide-react';
 import ActivityTimeline from '../ActivityTimeline';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import { useSubmission } from '@/lib/useSubmission';
 import { remainingOrderAmount, orderBalanceAfterDeposit } from '@/lib/orderPaymentAmounts.mjs';
 
 const formatConfigText = (value) => String(value || '').replaceAll('/', '/\u200B');
+const todayInVietnam = () => new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' });
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -114,6 +116,8 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [filterSaleOnline, setFilterSaleOnline] = useState('');
+  const [filterSaleOffline, setFilterSaleOffline] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filterOrderStatus, setFilterOrderStatus] = useState('');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
   const [filterDeliveryStatus, setFilterDeliveryStatus] = useState('');
@@ -146,14 +150,14 @@ export default function Orders() {
     depositNote: '',
     codAmount: '',
     setupNote: 'Cài cơ bản',
-    warranty: '6 tháng',
+    warranty: '3 tháng',
     branchId: '',
-    giftPreset: '',
+    giftPreset: 'basic',
     giftAccessoryIds: [],
     customerId: '',
     customerNote: '',
     trackingCode: '',
-    shipDate: '',
+    shipDate: todayInVietnam(),
     orderType: ORDER_TYPES ? ORDER_TYPES[0] : 'Bán lẻ (Retail)',
     paymentMethod: PAYMENT_METHODS ? PAYMENT_METHODS[0] : 'Chuyển khoản / Tiền mặt',
     
@@ -182,7 +186,6 @@ export default function Orders() {
     laptopId: 480,
     orderStatus: 120,
     paymentStatus: 180,
-    paymentMethod: 100,
     deliveryStatus: 115,
     shippingMethod: 200,
     salePrice: 90,
@@ -204,7 +207,6 @@ export default function Orders() {
       'laptopId',
       'orderStatus',
       'paymentStatus',
-      'paymentMethod',
       'deliveryStatus',
       'shippingMethod',
       'salePrice'
@@ -258,14 +260,14 @@ export default function Orders() {
       depositNote: '',
       codAmount: '',
       setupNote: 'Cài cơ bản',
-      warranty: '6 tháng',
+      warranty: '3 tháng',
       branchId: '',
-      giftPreset: '',
+      giftPreset: 'basic',
       giftAccessoryIds: [],
       customerId: '',
       customerNote: '',
       trackingCode: '',
-      shipDate: '',
+      shipDate: todayInVietnam(),
       orderType: ORDER_TYPES[0],
       paymentMethod: PAYMENT_METHODS[0],
       
@@ -457,6 +459,7 @@ export default function Orders() {
       }
 
       if (filterSaleOnline && labelToKey('saleOnline', o.saleOnline, appOptions) !== labelToKey('saleOnline', filterSaleOnline, appOptions)) return false;
+      if (filterSaleOffline && labelToKey('saleOffline', o.saleOffline, appOptions) !== labelToKey('saleOffline', filterSaleOffline, appOptions)) return false;
       if (filterOrderStatus && labelToKey('orderStatus', o.orderStatus, appOptions) !== labelToKey('orderStatus', filterOrderStatus, appOptions)) return false;
       if (filterPaymentStatus && labelToKey('paymentStatus', o.paymentStatus, appOptions) !== labelToKey('paymentStatus', filterPaymentStatus, appOptions)) return false;
       const orderStatusKey = labelToKey('orderStatus', o.orderStatus, appOptions);
@@ -478,7 +481,7 @@ export default function Orders() {
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory, quickStatusFilter, appOptions]);
+  }, [orders, laptops, customers, deferredSearchTerm, filterSaleOnline, filterSaleOffline, filterOrderStatus, filterPaymentStatus, filterDeliveryStatus, filterShippingMethod, filterCategory, quickStatusFilter, appOptions]);
 
   const orderStatusCounts = useMemo(() => orders.reduce((counts, order) => {
     const orderStatusKey = labelToKey('orderStatus', order.orderStatus, appOptions);
@@ -492,7 +495,7 @@ export default function Orders() {
 
 
   const hasActiveFilters = Boolean(
-    searchTerm || filterSaleOnline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory || quickStatusFilter
+    searchTerm || filterSaleOnline || filterSaleOffline || filterOrderStatus || filterPaymentStatus || filterDeliveryStatus || filterShippingMethod || filterCategory || quickStatusFilter
   );
 
   const applyQuickStatusFilter = (status) => {
@@ -580,17 +583,6 @@ export default function Orders() {
     }
   };
 
-  const getPaymentMethodBadgeClass = (method) => {
-    const key = labelToKey('paymentMethod', method, appOptions);
-    switch (key) {
-      case 'transfer_cash': return 'pill-info';
-      case 'card': return 'pill-purple';
-      case 'installment': return 'pill-info';
-      case 'debt': return 'pill-danger';
-      default: return 'pill-neutral';
-    }
-  };
-
   const getDeliveryStatusBadgeClass = (status) => {
     const key = labelToKey('deliveryStatus', status, appOptions);
     switch (key) {
@@ -653,7 +645,7 @@ export default function Orders() {
       {/* FILTER & SEARCH CARD */}
       <div className="card glass filter-card orders-filter-card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
         <div className="filter-grid orders-filter-grid" style={{ gap: '0.75rem' }}>
-          <div className="filter-item" style={{ gridColumn: 'span 2' }}>
+          <div className="filter-item orders-smart-search-filter">
             <label htmlFor="order-field-1" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
               <Search size={13} style={{ display: 'inline', marginRight: '3px' }} /> Tìm kiếm thông minh
             </label>
@@ -666,15 +658,15 @@ export default function Orders() {
           </div>
 
           <div className="filter-item">
-            <label htmlFor="order-field-2" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Online</label>
+            <label htmlFor="order-field-2" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Phân Loại Sản Phẩm</label>
             <select id="order-field-2"
               className="form-control filter-input"
-              value={filterSaleOnline} 
-              onChange={e => setFilterSaleOnline(e.target.value)}
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
             >
-              <option value="">-- Tất cả SALE --</option>
-              {SALE_ONLINE_OPTIONS.map(s => (
-                <option key={s} value={s}>{s}</option>
+              <option value="">-- Tất cả Phân Loại --</option>
+              {getOptions('category').map(opt => (
+                <option key={opt.key} value={opt.label}>{opt.label}</option>
               ))}
             </select>
           </div>
@@ -721,19 +713,40 @@ export default function Orders() {
             </select>
           </div>
 
-          <div className="filter-item">
-            <label htmlFor="order-field-6" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>Phân Loại Sản Phẩm</label>
-            <select id="order-field-6"
-              className="form-control filter-input"
-              value={filterCategory} 
-              onChange={e => setFilterCategory(e.target.value)}
+          <div className="filter-item orders-expand-filter">
+            <span className="orders-expand-label">Bộ lọc khác</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-expanded={showAdvancedFilters}
+              aria-controls="order-advanced-filters"
+              onClick={() => setShowAdvancedFilters(current => !current)}
+              className="orders-expand-button"
             >
-              <option value="">-- Tất cả Phân Loại --</option>
-              {getOptions('category').map(opt => (
-                <option key={opt.key} value={opt.label}>{opt.label}</option>
-              ))}
-            </select>
+              Mở rộng
+              <ChevronDown size={14} style={{ transform: showAdvancedFilters ? 'rotate(180deg)' : undefined, transition: 'transform 160ms ease' }} />
+            </Button>
           </div>
+
+          {showAdvancedFilters && (
+            <div id="order-advanced-filters" className="orders-advanced-filters">
+              <div className="filter-item">
+                <label htmlFor="order-sale-online-filter" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Online</label>
+                <select id="order-sale-online-filter" className="form-control filter-input" value={filterSaleOnline} onChange={e => setFilterSaleOnline(e.target.value)}>
+                  <option value="">-- Tất cả SALE Online --</option>
+                  {SALE_ONLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="filter-item">
+                <label htmlFor="order-sale-offline-filter" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SALE Offline</label>
+                <select id="order-sale-offline-filter" className="form-control filter-input" value={filterSaleOffline} onChange={e => setFilterSaleOffline(e.target.value)}>
+                  <option value="">-- Tất cả SALE Offline --</option>
+                  {SALE_OFFLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       <div className="list-summary-strip" aria-label="Tóm tắt đơn hàng">
         <div className="list-summary-item">
@@ -744,28 +757,28 @@ export default function Orders() {
           </div>
         </div>
         <button type="button" className={`list-summary-item list-summary-filter list-summary-item-warning${quickStatusFilter === 'awaiting_payment' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'awaiting_payment'} onClick={() => applyQuickStatusFilter('awaiting_payment')}>
-          <div className="summary-icon"><TrendingUp size={15} /></div>
+          <div className="summary-icon">{quickStatusFilter === 'awaiting_payment' ? <Check size={15} /> : <TrendingUp size={15} />}</div>
           <div className="summary-text">
             <span className="summary-label">Chờ thanh toán</span>
             <strong className="summary-value">{orderStatusCounts.awaitingPayment}</strong>
           </div>
         </button>
         <button type="button" className={`list-summary-item list-summary-filter list-summary-item-success${quickStatusFilter === 'done' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'done'} onClick={() => applyQuickStatusFilter('done')}>
-          <div className="summary-icon"><Check size={15} /></div>
+          <div className="summary-icon">{quickStatusFilter === 'done' ? <Check size={15} /> : <BadgeCheck size={15} />}</div>
           <div className="summary-text">
             <span className="summary-label">Hoàn thành</span>
             <strong className="summary-value">{orderStatusCounts.done}</strong>
           </div>
         </button>
         <button type="button" className={`list-summary-item list-summary-filter list-summary-item-value${quickStatusFilter === 'deposited' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'deposited'} onClick={() => applyQuickStatusFilter('deposited')}>
-          <div className="summary-icon"><BadgeCheck size={15} /></div>
+          <div className="summary-icon">{quickStatusFilter === 'deposited' ? <Check size={15} /> : <BadgeCheck size={15} />}</div>
           <div className="summary-text">
             <span className="summary-label">Đã cọc</span>
             <strong className="summary-value">{orderStatusCounts.deposited}</strong>
           </div>
         </button>
         <button type="button" className={`list-summary-item list-summary-filter${quickStatusFilter === 'new' ? ' is-active' : ''}`} aria-pressed={quickStatusFilter === 'new'} onClick={() => applyQuickStatusFilter('new')}>
-          <div className="summary-icon"><CircleDot size={15} /></div>
+          <div className="summary-icon">{quickStatusFilter === 'new' ? <Check size={15} /> : <CircleDot size={15} />}</div>
           <div className="summary-text">
             <span className="summary-label">Mới tạo</span>
             <strong className="summary-value">{orderStatusCounts.new}</strong>
@@ -778,6 +791,7 @@ export default function Orders() {
             onClick={() => {
               setSearchTerm('');
               setFilterSaleOnline('');
+              setFilterSaleOffline('');
               setFilterOrderStatus('');
               setFilterPaymentStatus('');
               setFilterDeliveryStatus('');
@@ -837,12 +851,6 @@ export default function Orders() {
                 <th style={{ width: `${colWidths.paymentStatus}px`, minWidth: `${colWidths.paymentStatus}px`, position: 'relative' }}>
                   Thanh Toán
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Thanh Toán" aria-valuemin={45} aria-valuenow={colWidths.paymentStatus || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, paymentStatus: Math.max(45, (previous.paymentStatus || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'paymentStatus')} title="Kéo để chỉnh rộng hẹp cột Thanh Toán" />
-                </th>
-
-                {/* PHƯƠNG THỨC THANH TOÁN */}
-                <th style={{ width: `${colWidths.paymentMethod}px`, minWidth: `${colWidths.paymentMethod}px`, position: 'relative' }}>
-                  Phương Thức TT
-                  <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Phương Thức TT" aria-valuemin={45} aria-valuenow={colWidths.paymentMethod || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, paymentMethod: Math.max(45, (previous.paymentMethod || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'paymentMethod')} title="Kéo để chỉnh rộng hẹp cột Phương Thức TT" />
                 </th>
 
                 {/* 8. GIAO HÀNG (ĐƯA LÊN TRƯỚC GIÁ BÁN) */}
@@ -969,7 +977,7 @@ export default function Orders() {
 
                       <td style={{ width: colWidths.createdDate, minWidth: colWidths.createdDate }}>
                         <div className="order-display-text">{toVnFormat(ord.createdDate) || '—'}</div>
-                        {ord.saleOnline && <strong>{getLabel('saleOnline', ord.saleOnline)}</strong>}
+                        {ord.saleOnline && <span className="order-sale-online-card">{getLabel('saleOnline', ord.saleOnline)}</span>}
                         {ord.saleOffline && <div>{getLabel('saleOffline', ord.saleOffline)}</div>}
                       </td>
                       <td style={{ width: colWidths.note, minWidth: colWidths.note }}>
@@ -1023,7 +1031,6 @@ export default function Orders() {
                         )}
                       </td>
 
-                      <td style={{ width: colWidths.paymentMethod, minWidth: colWidths.paymentMethod }}><span className={`status-badge ${getPaymentMethodBadgeClass(ord.paymentMethod)}`}>{getLabel('paymentMethod', ord.paymentMethod)}</span></td>
                       <td style={{ width: colWidths.deliveryStatus, minWidth: colWidths.deliveryStatus }}><span data-testid={`order-delivery-cell-${ord.id}`} className={`status-badge ${getDeliveryStatusBadgeClass(ord.deliveryStatus)}`}>{getLabel('deliveryStatus', ord.deliveryStatus)}</span></td>
                       <td style={{ width: colWidths.shippingMethod, minWidth: colWidths.shippingMethod }}>
                         <div className="order-display-text">{getLabel('shippingMethod', ord.shippingMethod) || '—'}</div>
@@ -1476,7 +1483,7 @@ export default function Orders() {
                   />
                 </div>
 
-                <InvoiceOrderFields value={formData} onChange={setFormData} />
+                <InvoiceOrderFields value={formData} onChange={setFormData} isNew={!formData.id} />
 
               </div>
 

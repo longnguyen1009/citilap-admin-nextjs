@@ -125,3 +125,8 @@ body .intake-page.intake-page .purchase-supplier button { margin-top:2px; paddin
   body .qc-page.qc-page .qc-machine { flex-wrap:wrap; }
   body .cost-page.cost-page .cost-hero button { margin:0; }
 }
+
+body .intake-page.intake-page .intake-batch tbody tr > td,
+body .intake-page.intake-page .intake-batch tbody tr:hover > td {
+  background: var(--intake-row, #fff); color: #111;
+}

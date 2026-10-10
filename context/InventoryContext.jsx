@@ -941,7 +941,7 @@ const mapLabelsToKeys = (fields, appOpts) => {
       depositNote: orderData.depositNote || '',
       codAmount: normalizedInput.codAmount || 0,
       setupNote: orderData.setupNote || 'Cài cơ bản',
-      warranty: orderData.warranty || '6 tháng',
+      warranty: orderData.warranty || '3 tháng',
       branchId: orderData.branchId || null,
       giftPreset: orderData.giftPreset || '',
       giftAccessoryIds: Array.isArray(orderData.giftAccessoryIds) ? orderData.giftAccessoryIds : [],

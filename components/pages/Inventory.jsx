@@ -29,7 +29,7 @@ import { Modal } from '@/components/ui/modal';
 import InvoiceLink from '../InvoiceLink';
 import ProductNameInput from '@/components/common/ProductNameInput';
 import { getAuthHeaders } from '@/lib/apiFetchers';
-import OrderAllocation from '@/components/OrderAllocation';
+import { LaptopName, LaptopCopyId } from '@/components/common/LaptopName';
 
 const toYMD = (vnDate) => {
   if (!vnDate) return '';
@@ -47,28 +47,35 @@ const toVnFormat = (ymd) => {
   return ymd;
 };
 
+const normalizeInventoryDate = (value) => {
+  const date = String(value || '').trim();
+  const isoMatch = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T\s])/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+  const vnMatch = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!vnMatch) return '';
+  const year = vnMatch[3].length === 2 ? `20${vnMatch[3]}` : vnMatch[3];
+  return `${year}-${vnMatch[2].padStart(2, '0')}-${vnMatch[1].padStart(2, '0')}`;
+};
+
 const supplierNameOf = laptop => laptop?.supplierName || laptop?.domesticSourceName || laptop?.seller || '';
 const DOMESTIC_SUPPLIERS = [
   { id: '1', name: 'Nhập thợ VN' },
   { id: '2', name: 'Thu lại khách lẻ' },
 ];
 const DIRECT_CREATE_ROLES = new Set(SALES_TECHNICAL_ROLES);
+const getStableBadgeTone = (value) => {
+  const text = String(value || '').trim().toLocaleLowerCase('vi');
+  if (!text) return { bg: '#f1f5f9', color: '#64748b', border: '#cbd5e1' };
+  const hash = [...text].reduce((total, character) => ((total * 31) + character.codePointAt(0)) >>> 0, 0);
+  const hue = hash % 360;
+  return {
+    bg: `hsl(${hue} 78% 90%)`,
+    color: `hsl(${hue} 62% 25%)`,
+    border: `hsl(${hue} 58% 56%)`,
+  };
+};
 
 export default function Inventory() {
-  const [demandOrders, setDemandOrders] = useState([]);
-  const [allocationOrder, setAllocationOrder] = useState(null);
-  useEffect(() => {
-    let active = true;
-    async function loadDemand() {
-      try {
-        const response = await fetch('/api/order-allocation?demand=1', { headers: await getAuthHeaders() });
-        if (response.ok && active) setDemandOrders(await response.json());
-      } catch { /* The inventory list remains usable if demand cannot load. */ }
-    }
-    void loadDemand();
-    const timer = setInterval(loadDemand, 60000);
-    return () => { active = false; clearInterval(timer); };
-  }, []);
   const {
     laptops: allLaptops,
     filteredLaptops: laptops,
@@ -103,8 +110,7 @@ export default function Inventory() {
   const [selectedLoc, setSelectedLoc] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [selectedSeller, setSelectedSeller] = useState('ALL');
-  const [warehouseDateFrom, setWarehouseDateFrom] = useState('');
-  const [warehouseDateTo, setWarehouseDateTo] = useState('');
+  const [selectedWarehouseDate, setSelectedWarehouseDate] = useState('');
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
   // Ref đóng dropdown khi nhấp ra ngoài
@@ -133,7 +139,7 @@ export default function Inventory() {
     serial: 90,
     chargerStatus: 100,
     seller: 128,
-    status: 110,
+    status: 100,
     priceRmb: 80,
     shippingRmb: 75,
     exchangeRate: 70,
@@ -274,20 +280,6 @@ export default function Inventory() {
     }
   };
 
-  // Trợ lý chọn Class màu cho Phân Loại
-  const getCategoryBadgeClass = (category) => {
-    if (!category) return 'pill-badge pill-neutral';
-    const label = getLabel('category', category, fieldOptionsConfig) || String(category);
-    const cat = String(label).toUpperCase();
-    if (cat.includes('LEGION 5 PRO')) return 'pill-badge pill-success';
-    if (cat.includes('LEGION SLIM')) return 'pill-badge pill-danger';
-    if (cat.includes('LEGION')) return 'pill-badge pill-danger';
-    if (cat.includes('ROG')) return 'pill-badge pill-neutral';
-    if (cat.includes('ZEPHYRUS') || cat.includes('TUF') || cat.includes('ASUS')) return 'pill-badge pill-info';
-    if (cat.includes('ACER')) return 'pill-badge pill-info';
-    return 'pill-badge pill-neutral';
-  };
-
   // Trợ lý chọn Class màu cho Status Badge
   const getStatusBadgeClass = (status) => {
     const key = labelToKey('laptopStatus', status, fieldOptionsConfig);
@@ -332,14 +324,7 @@ export default function Inventory() {
 
   // Trợ lý chọn Class màu cho Nguồn nhập (dạng badge pill)
   const getSellerBadgeClass = (seller) => {
-    if (!seller) return { bg: '#f1f5f9', color: '#64748b' };
-    const s = String(seller).toLowerCase();
-    if (s.includes('guangzhou')) return { bg: '#dbeafe', color: '#1d4ed8' };
-    if (s.includes('shenzhen')) return { bg: '#d1fae5', color: '#065f46' };
-    if (s.includes('beijing')) return { bg: '#ede9fe', color: '#5b21b6' };
-    if (s.includes('a-ming') || s.includes('aming')) return { bg: '#ffedd5', color: '#c2410c' };
-    if (s.includes('xiao')) return { bg: '#ccfbf1', color: '#0f766e' };
-    return { bg: '#f1f5f9', color: '#475569' };
+    return getStableBadgeTone(seller);
   };
 
   // Tính toán chỉ số tổng quan
@@ -374,34 +359,16 @@ export default function Inventory() {
       const matchStatus = selectedStatus === 'ALL' || laptop.status === selectedStatus || labelToKey('laptopStatus', laptop.status, fieldOptionsConfig) === selectedStatus;
       const matchSeller = selectedSeller === 'ALL' || String(supplierNameOf(laptop)) === String(selectedSeller);
 
-      const matchWarehouseDate = (() => {
-        if (!warehouseDateFrom && !warehouseDateTo) return true;
-        const wDate = laptop.warehouseDate;
-        if (!wDate) return false;
-        const toComparable = (d) => {
-          if (!d) return null;
-          if (d.includes('/')) {
-            const [dd, mm, yyyy] = d.split('/');
-            return yyyy + '-' + mm.padStart(2, '0') + '-' + dd.padStart(2, '0');
-          }
-          return d;
-        };
-        const w = toComparable(wDate);
-        const from = toComparable(warehouseDateFrom);
-        const to = toComparable(warehouseDateTo);
-        if (from && w < from) return false;
-        if (to && w > to) return false;
-        return true;
-      })();
+      const matchWarehouseDate = !selectedWarehouseDate || normalizeInventoryDate(laptop.warehouseDate) === selectedWarehouseDate;
 
       return matchSearch && matchCat && matchLoc && matchStatus && matchSeller && matchWarehouseDate;
     }).sort((a, b) => {
       return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
     });
-  }, [laptops, deferredSearchTerm, selectedCats, selectedLoc, selectedStatus, selectedSeller, warehouseDateFrom, warehouseDateTo, fieldOptionsConfig]);
+  }, [laptops, deferredSearchTerm, selectedCats, selectedLoc, selectedStatus, selectedSeller, selectedWarehouseDate, fieldOptionsConfig]);
 
   const hasActiveFilters = Boolean(
-    searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || selectedSeller !== 'ALL' || warehouseDateFrom || warehouseDateTo
+    searchTerm || selectedCats.length || selectedLoc !== 'ALL' || selectedStatus !== 'ALL' || selectedSeller !== 'ALL' || selectedWarehouseDate
   );
 
   // Trợ lý Bật/Tắt Phân loại trong Multi-Select
@@ -637,17 +604,6 @@ export default function Inventory() {
   return (
     <section className="page-section list-workspace-page">
       {/* COMPACT SECTION HEADER */}
-      {allocationOrder && <OrderAllocation
-        order={allocationOrder}
-        initialLaptopId={allocationOrder.initialLaptopId}
-        onClose={(payload) => {
-          if (payload?.orders) {
-            const changedIds = new Set(payload.orders.map(order => String(order.id)));
-            setDemandOrders(previous => previous.filter(order => !changedIds.has(String(order.id))));
-          }
-          setAllocationOrder(null);
-        }}
-      />}
       <div className="section-title section-header list-page-header inventory-page-header">
         <div className="workspace-heading">
           <div className="list-period" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
@@ -877,12 +833,8 @@ export default function Inventory() {
           </div>
 
           <div className="filter-item" style={{ flex: '0 1 150px' }}>
-            <label htmlFor="inventory-field-4" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Từ ngày</label>
-            <input id="inventory-field-4" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateFrom} onChange={e => setWarehouseDateFrom(e.target.value)} />
-          </div>
-          <div className="filter-item" style={{ flex: '0 1 150px' }}>
-            <label htmlFor="inventory-field-5" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Đến ngày</label>
-            <input id="inventory-field-5" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={warehouseDateTo} onChange={e => setWarehouseDateTo(e.target.value)} />
+            <label htmlFor="inventory-field-4" style={{ fontSize: '0.72rem', marginBottom: '0.15rem' }}><Filter size={11} style={{ display: 'inline', marginRight: '2px' }} /> Ngày nhập</label>
+            <input id="inventory-field-4" type="date" style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', width: '100%' }} value={selectedWarehouseDate} onChange={e => setSelectedWarehouseDate(e.target.value)} />
           </div>
         </div>
 
@@ -900,8 +852,7 @@ export default function Inventory() {
                 setSelectedLoc('ALL');
                 setSelectedStatus('ALL');
                 setSelectedSeller('ALL');
-                setWarehouseDateFrom('');
-                setWarehouseDateTo('');
+                setSelectedWarehouseDate('');
               }}
             >
               <X size={13} /> Xóa bộ lọc
@@ -981,7 +932,7 @@ export default function Inventory() {
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Phân loại" aria-valuemin={45} aria-valuenow={colWidths.category || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, category: Math.max(45, (previous.category || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'category')} title="Kéo để chỉnh rộng hẹp cột Phân loại" />
                 </th>
                 <th style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, position: 'relative' }}>
-                  Tình trạng & Ghi chú
+                  Ghi chú
                   <div className="col-resizer" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Kéo để chỉnh rộng hẹp cột Ghi chú" aria-valuemin={45} aria-valuenow={colWidths.conditionNote || 100} onKeyDown={e => { if (["ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); setColWidths(previous => ({ ...previous, conditionNote: Math.max(45, (previous.conditionNote || 100) + (e.key === "ArrowRight" ? 10 : -10)) })); } }} onPointerDown={(e) => startResizing(e, 'conditionNote')} title="Kéo để chỉnh rộng hẹp cột Ghi chú" />
                 </th>
                 <th style={{ width: `${colWidths.seller}px`, minWidth: `${colWidths.seller}px`, position: 'relative' }}>
@@ -1040,7 +991,7 @@ export default function Inventory() {
               ) : (
                 filteredLaptops.map((l, index) => (
                   <tr key={l.id || index} data-testid={`inventory-row-${l.id}`} className={getRowStatusClass(l.status)}>
-                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}>{l.laptopId || l.id}</td>
+                    <td className="sticky-col-1" style={{ width: `${colWidths.id}px`, minWidth: `${colWidths.id}px`, fontWeight: 800, color: '#111827', textAlign: 'center' }}><LaptopCopyId id={l.laptopId || l.id} name={l.name} /></td>
                     <td className="sticky-col-2" style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px`, textAlign: 'center', left: `${colWidths.id}px` }}>
                       <details
                         className="inventory-action-menu"
@@ -1084,7 +1035,7 @@ export default function Inventory() {
                       })()}
                     </td>
                     <td className="inventory-name-cell" style={{ width: `${colWidths.name}px`, minWidth: `${colWidths.name}px` }} title={l.name}>
-                      <span>{l.name}</span>
+                      <span><LaptopName name={l.name} /></span>
                       {l.tradeInSourceCode && <a className="phase9-inline-link" href={`/trade-ins?q=${encodeURIComponent(l.tradeInSourceCode)}`}>Thu cũ · {l.tradeInSourceCode}</a>}
                     </td>
                     <td className="inventory-status-cell" style={{ width: `${colWidths.status}px`, minWidth: `${colWidths.status}px` }}>
@@ -1092,28 +1043,15 @@ export default function Inventory() {
                         {getLabel('laptopStatus', l.status, fieldOptionsConfig) || 'Chưa có trạng thái'}
                       </span>
                       {l.sourceUnresolved && <Link href="/receiving" className="phase9-inline-link warning">Chưa rõ nguồn</Link>}
-                      {(() => {
-                        const matching = demandOrders.filter(order => (order.requested_configuration || order.requestedConfiguration) === l.name && (!order.requested_category && !order.requestedCategory || String(order.requested_category || order.requestedCategory) === String(l.category || '')));
-                        return matching.length > 0 && <details><summary>{matching.length} đơn cọc cùng cấu hình</summary>{matching.map(order => <button type="button" className="btn btn-outline" key={order.id} onClick={() => setAllocationOrder({ id: order.id, requestedConfiguration: order.requested_configuration || order.requestedConfiguration, initialLaptopId: l.id })}>Phân máy cho #{order.id} · {order.customer_info || order.customerInfo}</button>)}</details>;
-                      })()}
                       {l.activeReservation && <a className="phase9-inline-link warning" href={`/reservations?q=${encodeURIComponent(l.activeReservation.code)}`} title={`Hết hạn ${new Date(l.activeReservation.expiresAt).toLocaleString('vi-VN')}`}>Đang giữ · {l.activeReservation.customer?.name || l.activeReservation.code}</a>}
                       {labelToKey('laptopStatus', l.status, fieldOptionsConfig) === 'sold' && l.laptopId && <InvoiceLink laptopId={l.laptopId} label="Xem hóa đơn" />}
                     </td>
                     <td className="inventory-category-cell" style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}>
-                      <span className={`cat-badge ${getCategoryBadgeClass(l.category)}`}>
+                      <span className="cat-badge" style={(() => { const tone = getStableBadgeTone(getLabel('category', l.category, fieldOptionsConfig)); return { background: tone.bg, color: tone.color, borderColor: tone.border }; })()}>
                         {getLabel('category', l.category, fieldOptionsConfig)}
                       </span>
                     </td>
-                    <td className="inventory-note-cell" style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.82rem', fontWeight: 700, color: '#111827' }}>
-                      <div className="inventory-test-summary">
-                        <span className={l.batteryHealth != null && Number(l.batteryHealth) < 80 ? 'has-error' : ''}>Pin: {l.batteryHealth == null ? '-' : `${l.batteryHealth}%`}</span>
-                        <span>·</span>
-                        <span className={String(l.screenStatus).toLowerCase() === 'ok' ? '' : 'has-error'}>
-                          Màn hình: {l.screenStatus
-                            ? (String(l.screenStatus).toLowerCase() === 'ok' ? 'Đạt' : 'Không đạt')
-                            : '-'}
-                        </span>
-                      </div>
+                    <td className="inventory-note-cell" style={{ width: `${colWidths.conditionNote}px`, minWidth: `${colWidths.conditionNote}px`, fontSize: '0.82rem', color: '#111827' }}>
                       <div className="inventory-condition-text" title={l.conditionNote}>{l.conditionNote || '-'}</div>
                     </td>
                     <td className="inventory-seller-cell" style={{ width: `${colWidths.seller}px`, minWidth: `${colWidths.seller}px` }} title={supplierNameOf(l)}>
@@ -1121,7 +1059,7 @@ export default function Inventory() {
                         const supplierName = supplierNameOf(l);
                         const sc = getSellerBadgeClass(supplierName);
                         return supplierName ? (
-                          <span className="inventory-seller-badge" style={{ '--seller-color': sc.color, background: sc.bg }}>
+                          <span className="inventory-seller-badge" style={{ '--seller-color': sc.color, background: sc.bg, borderColor: sc.border }}>
                             {getLabel('seller', supplierName)}
                           </span>
                         ) : <span className="inventory-seller-empty">-</span>;

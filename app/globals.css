@@ -1646,6 +1646,14 @@ button.list-summary-filter.is-active {
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+button.list-summary-filter.is-active .summary-label,
+button.list-summary-filter.is-active .summary-value { font-weight: 900; color: #fff; }
+button.list-summary-item-warning.is-active { border-color: #d97706; background: #f59e0b; }
+button.list-summary-item-success.is-active { border-color: #047857; background: #10b981; }
+button.list-summary-item-value.is-active { border-color: #1d4ed8; background: #3b82f6; }
+button.list-summary-filter.is-active:not(.list-summary-item-warning):not(.list-summary-item-success):not(.list-summary-item-value) { border-color: #475569; background: #64748b; }
+button.list-summary-filter.is-active .summary-icon { background: rgba(255, 255, 255, 0.95); }
+
 button.list-summary-filter:focus-visible,
 .order-copy-id:focus-visible,
 .order-copy-summary:focus-visible {
@@ -2103,6 +2111,10 @@ select option:checked {
         gap: 8px !important;
     }
     .list-workspace-page .orders-filter-grid .filter-item { grid-column: auto !important; min-width: 0; }
+    .list-workspace-page .orders-advanced-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(180px, 220px)); gap: 8px; }
+    .list-workspace-page .orders-expand-filter { display: flex; flex-direction: column; }
+    .list-workspace-page .orders-expand-label { margin-bottom: .2rem; color: #64748b; font-size: .75rem; font-weight: 600; }
+    .list-workspace-page .orders-expand-button { width: 100%; min-height: 32px; height: 32px; justify-content: center; white-space: nowrap; }
     .list-workspace-page .filter-item input,
     .list-workspace-page .filter-item select { min-height: 32px; height: 32px; padding: 4px 8px; font-size: 0.78rem; }
 }
@@ -2848,6 +2860,7 @@ body {
 .orders-list-table button.order-copy-id:hover { border-color: #2563eb; background: #dbeafe; }
 .orders-list-table .order-copy-summary { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: #111827; font: inherit; font-weight: 800; cursor: copy; }
 .orders-list-table .order-copy-summary:hover { background: #e0e7ff; color: #1d4ed8; }
+.orders-list-table .order-sale-online-card { display: inline-flex; align-items: center; width: fit-content; margin-top: 4px; padding: 3px 8px; border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; color: #1d4ed8; font-size: .72rem; font-weight: 800; line-height: 1.2; }
 .orders-list-table .order-actions-cell .order-row-actions { display: flex; flex-direction: column; gap: 5px; align-items: center; }
 .invoice-order-fields .invoice-error { margin: 0; }
 .invoice-gift-options { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; min-width: 0; }
@@ -3138,8 +3151,31 @@ body {
 
 /* Compact row action menu and high-contrast spreadsheet grid. */
 .inventory-action-menu{position:relative;display:inline-grid;justify-items:center;width:100%}.inventory-action-menu summary{display:grid;place-items:center;width:30px;height:26px;margin:auto;border:1px solid #64748b;border-radius:5px;background:#fff;cursor:pointer;list-style:none}.inventory-action-menu summary::-webkit-details-marker{display:none}.inventory-action-menu>div{position:absolute;z-index:410;top:32px;left:50%;display:grid;gap:5px;width:max-content;min-width:96px;padding:5px;transform:translateX(-50%);border:1px solid #111;background:#fff;box-shadow:0 8px 20px #0f172a42}.inventory-action-menu>div :is(button,a){display:flex!important;align-items:center;justify-content:center;gap:5px;width:100%;min-height:27px;padding-inline:8px!important;white-space:nowrap}.inventory-list-table td.sticky-col-2:has(.inventory-action-menu[open]),.orders-list-table td.sticky-col-2:has(.inventory-action-menu[open]){z-index:400!important;overflow:visible!important}.inventory-list-table tr:has(.inventory-action-menu[open]),.orders-list-table tr:has(.inventory-action-menu[open]){position:relative;z-index:390}.inventory-list-table tr:has(.inventory-action-menu[open]) td.sticky-col-2,.orders-list-table tr:has(.inventory-action-menu[open]) td.sticky-col-2{vertical-align:middle!important}
-.inventory-seller-cell{text-align:left}.inventory-seller-badge{display:inline-block;max-width:100%;padding:2px 8px;box-sizing:border-box;border-radius:12px;color:var(--seller-color)!important;font-size:.75rem;font-weight:600!important;line-height:1.4;text-align:center;white-space:normal;overflow-wrap:anywhere}.inventory-seller-empty{color:#94a3b8!important;font-weight:600!important}
-.inventory-list-table :is(th,td),.orders-list-table :is(th,td){border-right:1px solid #000!important;border-bottom:1px solid #000!important}.inventory-list-table tr>*:first-child,.orders-list-table tr>*:first-child{border-left:1px solid #000!important}.inventory-list-table thead tr:first-child th,.orders-list-table thead tr:first-child th{border-top:1px solid #000!important}.inventory-test-summary{display:flex;align-items:center;gap:5px;white-space:nowrap}.inventory-condition-text{margin-top:3px;font-weight:650}
+.inventory-seller-cell{text-align:center}.inventory-seller-badge{display:inline-block;max-width:100%;padding:2px 8px;box-sizing:border-box;border-radius:12px;color:var(--seller-color)!important;font-size:.75rem;font-weight:600!important;line-height:1.4;text-align:center;white-space:normal;overflow-wrap:anywhere}.inventory-seller-empty{color:#94a3b8!important;font-weight:600!important}
+.inventory-list-table :is(th,td),.orders-list-table :is(th,td){border-right:1px solid #000!important;border-bottom:1px solid #000!important}.inventory-list-table tr>*:first-child,.orders-list-table tr>*:first-child{border-left:1px solid #000!important}.inventory-list-table thead tr:first-child th,.orders-list-table thead tr:first-child th{border-top:1px solid #000!important}.inventory-test-summary{display:flex;align-items:center;gap:5px;white-space:nowrap}.inventory-condition-text{margin-top:3px;font-weight:400}
 
 /* Structured repair completion and cancellation forms. */
 .repair-completion{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin:0 20px 16px;padding:14px;border:1px solid #d3d8d5;border-left:4px solid #9b4d21;border-radius:9px;background:#fffaf5}.repair-completion h3{grid-column:1/-1;margin:0;color:#713713;font-size:.84rem}.repair-completion label{display:grid;gap:5px;color:#596570;font-size:.7rem;font-weight:800}.repair-completion textarea,.repair-completion select{min-height:40px;padding:8px 9px;border:1px solid #cbd2d3;border-radius:7px;background:#fff}.repair-completion textarea{min-height:76px;resize:vertical}.repair-completion>div{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}.repair-completion button{min-height:38px;padding:8px 13px;border:0;border-radius:7px;color:#fff;background:#9b4d21;font-weight:800;cursor:pointer}.repair-completion button[type=button]{color:#46505a;background:#e7eae8}.repair-completion button.danger{background:#b33a32}.repair-cancellation{grid-template-columns:1fr;border-left-color:#b33a32;background:#fff8f7}.repair-completion-hint{align-self:center;max-width:330px;color:#6d747b;font-size:.72rem}@media(max-width:800px){.repair-completion{grid-template-columns:1fr;margin:0 10px 12px}.repair-completion h3,.repair-completion>div{grid-column:1}}
+
+/* Google Sheet palette, scoped to laptop inventory. */
+.inventory-list-table tbody tr.row-san-hang { --row-bg: #ffdf66; }
+.inventory-list-table tbody tr.row-chua-nhap { --row-bg: #fff; }
+.inventory-list-table tbody tr:is(.row-da-ban, .row-tra-hang, .row-tra-tien, .row-bo-qua) { --row-bg: #999; }
+.inventory-list-table tbody tr:is(.row-chua-nhap, .row-da-ban, .row-tra-hang, .row-tra-tien, .row-bo-qua) > td { background: var(--row-bg) !important; }
+.laptop-color-highlight { font-weight: 900; text-decoration: underline; text-underline-offset: 3px; }
+body .laptop-copy-id { padding: 2px 4px; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 800; cursor: pointer; }
+body .laptop-copy-id:hover { text-decoration: underline; }
+body .laptop-copy-id:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+body .list-workspace-page .list-table-scroll table.data-table-wide.inventory-list-table :is(th, td) { border-color: #000 !important; }
+.list-table-scroll .inventory-list-table tbody td.inventory-name-cell { font-weight: 500 !important; }
+.list-table-scroll .inventory-list-table tbody td.inventory-note-cell,
+.list-table-scroll .inventory-list-table .inventory-condition-text { font-weight: 400 !important; }
+.inventory-list-table .cat-badge,
+.inventory-list-table .inventory-seller-badge { border: 1px solid; box-shadow: none; }
+body .laptop-copy-id { display: inline-flex; align-items: center; justify-content: center; gap: 4px; cursor: copy; }
+body .laptop-copy-id svg { flex: 0 0 auto; opacity: .72; }
+
+/* Denser inventory rows: keep multi-line names and notes readable. */
+body .list-workspace-page .list-table-scroll table.inventory-list-table tbody td {
+    padding: 4px 8px !important;
+}
